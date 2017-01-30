@@ -1,0 +1,80 @@
+//
+// Created by cc on 11/25/16.
+//
+
+#include "common/json/json.hpp"
+#include "run/run_settings_t.hpp"
+
+using namespace std;
+using namespace sp2;
+
+bool load_structure(const Json::Value &config, structure_t &structure)
+{
+    // structural information can either be in the same file as the rest
+    // of the configuration data (aka config.json) or can be specified as
+    // being in a separate file using a field in config.json containing the
+    // file name.
+
+    // first check if a separate filename is specified
+    string structure_file = config.get("structure_file", "").asString();
+    if (!structure_file.empty())
+    {
+        if (!io::read_structure(structure_file, structure))
+        {
+            cout << "Error, failed to read structure file." << endl;
+            return false;
+        }
+    }
+    else
+    {
+        // if no separate file was specified, check for data within the
+        // configuration file itself
+        if (!io::deserialize_field(config, structure, "structure"))
+            return false;
+    }
+    return true;
+}
+
+bool run_settings_t::serialize(Json::Value &output) const
+{
+    output["run_type"] = "";
+    output["structure_file"] = "";
+
+    io::serialize_basic(output,
+        "add_hydrogen", add_hydrogen,
+        "log_filename", log_filename,
+        "symm", symm_settings,
+        "atac", atac_settings,
+        "phonopy", phonopy_settings,
+        "minimize", minimize_settings
+    );
+
+    return true;
+}
+
+bool run_settings_t::deserialize(const Json::Value &input)
+{
+    mode = io::deserialize_enum<run_type>(input, "run_type", {
+        {"atac",     run_type::ATAC},     // acceptable inputs
+        {"minimize", run_type::MINIMIZE}, //
+        {"symm",     run_type::SYMM},     //
+        {"phonopy",  run_type::PHONOPY}
+    }, run_type::NONE, true);
+
+    if (mode == run_type::NONE)
+        return false;
+
+    if (!load_structure(input, structure) && mode != run_type::SYMM)
+        return false;
+
+    io::deserialize_basic(input,
+        "add_hydrogen", add_hydrogen,
+        "log_filename", log_filename,
+        "symm", symm_settings,
+        "atac", atac_settings,
+        "phonopy", phonopy_settings,
+        "minimize", minimize_settings
+    );
+
+    return true;
+}
