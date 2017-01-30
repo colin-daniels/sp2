@@ -6,12 +6,14 @@ project(sp2 CXX)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 include(PreventInSourceBuilds)
 include(DownloadProject)
+include(ExternalProject)
 
 # enable ctest
 enable_testing()
 
 option(SP2_USE_MPI "Enable MPI" ON)
-option(SP2_USE_LAMMPS "Enable LAMMPS" OFF)
+option(SP2_USE_LAMMPS "Enable LAMMPS" ON)
+option(SP2_STATIC "Make static lib/executable (off will make shared)" OFF)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,6 +32,18 @@ endif()
 # add external code, sets SOURCE_FILES and EXTERNAL_INCLUDE_DIRS
 add_subdirectory(external)
 include_directories(src ${EXTERNAL_INCLUDE_DIRS})
+link_libraries(templ)
+
+if(SP2_USE_LAMMPS)
+    add_definitions(-DSP2_USE_LAMMPS)
+
+    # lammps specific files, dont bother compiling if not needed
+    set(SOURCE_FILES ${SOURCE_FILES}
+            src/lammps/system_control_t.cpp
+            src/lammps/lammps_interface.hpp
+            src/lammps/settings_t.cpp
+            src/lammps/settings_t.hpp)
+endif()
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     add_definitions(-DSP2_DEBUG)
@@ -175,10 +189,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         # src/atac/system_control_t.hpp
         src/atac/settings_t.hpp
         src/atac/settings_t.cpp
-        # src/lammps/system_control_t.cpp
-        # src/lammps/lammps_interface.hpp
-        src/lammps/settings_t.cpp
-        src/lammps/settings_t.hpp
         src/run/common.cpp
         src/run/run_symm.cpp
         # src/run/run_relaxation.cpp
@@ -203,9 +213,9 @@ add_executable(sp2-bin
 set_target_properties(sp2-bin PROPERTIES
         OUTPUT_NAME sp2)
 
-# sp2 library (libsp2.so)
+# sp2 library (libsp2.a/so)
 add_library(sp2-lib SHARED
-        src/run/library_interface.cpp
+        src/run/lib/library_interface.cpp
         ${SOURCE_FILES})
 
 # explicitly set library filename to libsp2.so
@@ -218,4 +228,9 @@ set_target_properties(sp2-lib PROPERTIES
 # code generation dependencies
 add_dependencies(sp2-bin generate)
 add_dependencies(sp2-lib generate)
+
+if(SP2_USE_LAMMPS)
+    target_link_libraries(sp2-bin lammps)
+    target_link_libraries(sp2-lib lammps)
+endif()
 

@@ -12,6 +12,10 @@
 #include <gtest/gtest.h>
 #endif // SP2_DEBUG
 
+#include <lammps/lammps.h>
+#include <lammps/input.h>
+#include <lammps/atom.h>
+
 using namespace std;
 using namespace sp2;
 

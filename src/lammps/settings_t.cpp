@@ -2,13 +2,6 @@
 
 using namespace sp2;
 
-lammps_settings_t::lammps_settings_t() :
-    n_tasks(0),
-    compute_lj(true),
-    compute_torsion(false),
-    log_output(false),
-    sigma_scale(3.0) {}
-
 bool lammps_settings_t::serialize(Json::Value& output) const
 {
     io::serialize_basic(output,

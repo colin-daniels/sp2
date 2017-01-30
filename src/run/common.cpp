@@ -1,9 +1,5 @@
 #include "run/run_types.hpp"
 
-#include "common/io/structure.hpp"
-#include "atac/settings_t.hpp"
-#include "common/minimize/settings.hpp"
-#include "lammps/settings_t.hpp"
 #include "common/json/json.hpp"
 
 using namespace std;

@@ -1,21 +1,18 @@
 #ifndef SP2_LAMMPS_INTERFACE_HPP
 #define SP2_LAMMPS_INTERFACE_HPP
 
-#ifndef LAMMPS_INTERFACE_HPP_INCLUDED
-#define LAMMPS_INTERFACE_HPP_INCLUDED
-
 /// \file lammps_interface.hpp
 /// \brief Interface header for the LAMMPS \cite plimpton1995fast library
 
 #include "common/util/mpi.hpp"
 #include "lammps/settings_t.hpp"
 #include "common/enums.hpp"
-#include "atac/atac_subsys_t.hpp"
 
-#include <mpi.h>
+#include <boost/mpi/communicator.hpp>
 
 #include <vector>
 #include <string>
+#include <common/structure_t.hpp>
 
 // forward declare of LAMMPS, to avoid having to include files here
 /// LAMMPS \cite plimpton1995fast namespace
@@ -29,7 +26,7 @@ namespace sp2 {
 namespace lammps {
 
 /// Primary interface class to LAMMPS \cite plimpton1995fast
-class system_control_t : public atac::atac_subsys_t
+class system_control_t
 {
 private:
     int na, ///< number of atoms
@@ -46,12 +43,12 @@ private:
     LAMMPS_NS::LAMMPS *lmp;
 
     /// MPI communicator information
-    util::mpi_group_t mpi_info;
+    boost::mpi::communicator comm;
 
 public:
     /// constructor, pulls communicator from MPI_COMM_WORLD, constructs lmp object
     /// \param mpi_group util::mpi_group_t input MPI group information and comms
-    system_control_t(util::mpi_group_t mpi_group);
+    system_control_t(boost::mpi::communicator comm);
     /// destructor, automatically destroys the lammps object pointed to by lmp
     ~system_control_t();
 

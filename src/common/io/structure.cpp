@@ -103,8 +103,16 @@ bool io::read_structure(std::string filename,
         // and then deserialize the lattice information from
         // the comment line
         Json::Value val;
-        return io::read_json(val, comment_line) &&
-               output.deserialize_lattice(val["lattice"]);
+        if (Json::Reader().parse(comment_line, val))
+            return output.deserialize_lattice(val["lattice"]);
+        else
+        {
+            if (!comment_line.empty())
+                std::cout << "Warning, non-empty comment failed "
+                          << "to parse into JSON." << std::endl;
+
+            return true;
+        }
     }
     case file_type::JSON: {
         // just read and deserialize

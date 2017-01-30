@@ -1,10 +1,10 @@
 #include "lammps_interface.hpp"
-#include "common/io/util.hpp
+#include "common/io/util.hpp"
 #include "common/io/structure.hpp"
 #include "common/util/templates.hpp"
 #include "common/structure_t.hpp"
 
-#include <fstream>
+#include <sstream>
 
 // lammps include files
 #include <lammps/lammps.h>
@@ -12,16 +12,18 @@
 #include <lammps/atom.h>
 #include <lammps/library.h>
 
-#include <cassert>
+#include <boost/mpi/communicator.hpp>
+#include <common/util/blas.hpp>
+#include <common/io/util.hpp>
 
 using namespace LAMMPS_NS;
 
 using namespace std;
 using namespace sp2;
 
-lammps::system_control_t::system_control_t(util::mpi_group_t mpi_group) :
+lammps::system_control_t::system_control_t(boost::mpi::communicator comm) :
     na(0), nb(0), total_potential(0), lmp(nullptr),
-    mpi_info(mpi_group) {}
+    comm(comm) {}
 
 lammps::system_control_t::~system_control_t() {
     delete lmp;}
@@ -38,7 +40,7 @@ vector<double> lammps::system_control_t::get_position() const {
 vector<double> lammps::system_control_t::get_gradient() const
 {
     vector<double> grad(force);
-    vscal(-1, grad);
+    sp2::vscal(-1.0, grad);
     return grad;
 }
 
@@ -72,16 +74,16 @@ void lammps::system_control_t::init(const structure_t &info,
     position = info.positions;
     force.resize(na * 3, 0);
 
-    if (!io::file_exists("CH.airebo"))
-    {
-        cerr << "CH.airebo is missing, cannot use LAMMPS, aborting..." << endl;
-        abort();
-    }
+//    if (!sp2::io::file_exists("CH.airebo"))
+//    {
+//        cerr << "CH.airebo is missing, cannot use LAMMPS, aborting..." << endl;
+//        abort();
+//    }
 
     delete lmp;
 
     if (lmp_set.log_output)
-        lmp = new LAMMPS(0, NULL, mpi_info.group_comm);
+        lmp = new LAMMPS(0, NULL, static_cast<MPI_Comm>(comm));
     else
     {
         // LAMMPS constructor takes char* not const char*
@@ -89,7 +91,7 @@ void lammps::system_control_t::init(const structure_t &info,
             opt1[] = "-screen",
             opt2[] = "none";
         char *args[] = {dir, opt1, opt2};
-        lmp = new LAMMPS(3, args, mpi_info.group_comm);
+        lmp = new LAMMPS(3, args, static_cast<MPI_Comm>(comm));
     }
 
     if (!lmp)
@@ -100,7 +102,7 @@ void lammps::system_control_t::init(const structure_t &info,
         "processors * * *",             // automatic processor mapping
         "atom_style atomic",            // attributes to store per-atom
         "thermo_modify lost error",     // don't let atoms disappear
-        // without telling us
+                                        // without telling us
         "atom_modify map array",        // store all positions in an array
         "atom_modify sort 0 0.0"        // don't reorder atoms during simulation
     );
@@ -121,7 +123,7 @@ void lammps::system_control_t::init(const structure_t &info,
         );
     }
 
-    MPI_Barrier(mpi_info.group_comm);
+    comm.barrier();
 
     exec_command(
         "pair_style airebo "            // airebo pair style potential
@@ -214,13 +216,13 @@ structure_t lammps::system_control_t::get_structure() const
 
 void lammps::system_control_t::write_output(std::string filename)
 {
-    if (mpi_info.group_rank == 0)
+    if (comm.rank() == 0)
         io::write_structure(filename, get_structure());
 }
 
 void lammps::system_control_t::append_output(std::string filename)
 {
-    if (mpi_info.group_rank == 0)
+    if (comm.rank() == 0)
         io::write_structure(filename, get_structure(), true);
 }
 
@@ -387,3 +389,23 @@ void lammps::system_control_t::update_boundaries(bool initial, bool fixed)
         );
     }
 }
+
+#ifdef SP2_DEBUG
+
+#include <gtest/gtest.h>
+#include "common/io/structure.hpp"
+
+TEST(lammps, all) {
+    sp2::structure_t input;
+    io::read_structure("graphene.xyz", input);
+
+    boost::mpi::communicator comm;
+    lammps::system_control_t sys(comm);
+    sys.init(input, lammps_settings_t{});
+
+    sys.update();
+
+    EXPECT_NE(sys.get_value(), 0.0);
+}
+
+#endif // SP2_DEBUG
