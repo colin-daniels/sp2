@@ -52,7 +52,7 @@ void exp_table_hpp()
     outfile.close();
 }
 
-#ifdef SP2_DEBUG
+#ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
 
 TEST(codegen, benchmark) {
@@ -90,4 +90,4 @@ TEST(codegen, benchmark) {
               << std::endl;
 }
 
-#endif // SP2_DEBUG
+#endif // SP2_ENABLE_TESTS

@@ -1,114 +1,49 @@
 cmake_minimum_required(VERSION 3.2)
-
 project(sp2 CXX)
 
-# add extra modules
+# support unix only
+if(NOT UNIX)
+    message(FATAL_ERROR "SP2 is supported on unix only." )
+endif()
+
+# set default build type to release
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING
+            "Choose the type of build, options are: \n\
+None Debug Release RelWithDebInfo MinSizeRel Coverage."
+            FORCE)
+endif()
+
+# add standard modules
+include(ExternalProject)
+include(CMakeParseArguments)
+include(ProcessorCount)
+
+# as well as our custom modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 include(PreventInSourceBuilds)
 include(DownloadProject)
-include(ExternalProject)
+include(FindPythonModule)
 
 # enable ctest
 enable_testing()
 
-option(SP2_USE_MPI "Enable MPI" ON)
-option(SP2_USE_LAMMPS "Enable LAMMPS" ON)
-option(SP2_STATIC "Make static lib/executable (off will make shared)" OFF)
-
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-# set default build type to release
-if(NOT WIN32)
-    if(NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE Release CACHE STRING
-            "Choose the type of build, options are: \n\
-None Debug Release RelWithDebInfo MinSizeRel Coverage."
-            FORCE)
-    endif()
-endif()
-
-# add external code, sets SOURCE_FILES and EXTERNAL_INCLUDE_DIRS
-add_subdirectory(external)
-include_directories(src ${EXTERNAL_INCLUDE_DIRS})
-link_libraries(templ)
-
-if(SP2_USE_LAMMPS)
-    add_definitions(-DSP2_USE_LAMMPS)
-
-    # lammps specific files, dont bother compiling if not needed
-    set(SOURCE_FILES ${SOURCE_FILES}
-            src/lammps/system_control_t.cpp
-            src/lammps/lammps_interface.hpp
-            src/lammps/settings_t.cpp
-            src/lammps/settings_t.hpp)
-endif()
-
-if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    add_definitions(-DSP2_DEBUG)
-
-    add_test(all sp2 --test)
-
-    link_libraries(gtest)
-endif()
-
 ################################################################################
-## Code Generation                                                            ##
+## Options                                                                    ##
 ################################################################################
 
-# set output directory for generated code, make it, and add its parent
-# directory to includes
-set(CG_OUTPUT_DIR ${CMAKE_BINARY_DIR}/generated)
-file(MAKE_DIRECTORY ${CG_OUTPUT_DIR})
-include_directories(${CG_OUTPUT_DIR}/../)
+option(SP2_ENABLE_MPI       "Enable MPI" ON)
+option(SP2_ENABLE_LAMMPS    "Enable LAMMPS" ON)
+option(SP2_ENABLE_PHONOPY   "Enable Phonopy" ON)
+option(SP2_ENABLE_TESTS     "Enable/build tests" ON)
 
-# load the codegen project, sets CG_OUTPUT_FILES
-add_subdirectory(src/common/codegen)
-
-# custom command/target to run code generation
-add_custom_command(OUTPUT ${CG_OUTPUT_FILES}
-        COMMAND codegen
-        DEPENDS codegen
-        WORKING_DIRECTORY ${CG_OUTPUT_DIR}
-        COMMENT "Generating source code")
-
-add_custom_target(generate DEPENDS ${CG_OUTPUT_FILES}
-        COMMENT "Verifying generated code")
+option(BUILD_SHARED_LIBS    "Build shared libraries (DLLs)." OFF)
 
 ################################################################################
-## MPI                                                                        ##
+## Source files                                                               ##
 ################################################################################
 
-if(SP2_USE_MPI)
-    add_definitions(-DSP2_USE_MPI)
-
-    find_package(MPI REQUIRED)
-    list(APPEND CMAKE_CXX_COMPILE_FLAGS
-            ${MPI_CXX_COMPILE_FLAGS})
-
-    include_directories(${MPI_CXX_INCLUDE_PATH})
-
-    set(CMAKE_CXX_LINK_FLAGS
-            ${CMAKE_CXX_LINK_FLAGS}
-            ${MPI_CXX_LINK_FLAGS})
-
-    link_libraries(boost_mpi
-            boost_serialization
-            ${MPI_CXX_LIBRARIES})
-else()
-    set(THREADS_PREFER_PTHREAD_FLAG ON)
-    find_package(Threads REQUIRED)
-
-    link_libraries(SP2_LIBS ${SP2_LIBS}
-            Threads::Threads)
-endif()
-
-################################################################################
-## Main targets                                                               ##
-################################################################################
-
-set(SOURCE_FILES ${SOURCE_FILES}
+set(SOURCE_FILES
         src/common/vec3_t.hpp
         src/common/vec3_t.cpp
         src/common/function_types.hpp
@@ -120,7 +55,6 @@ set(SOURCE_FILES ${SOURCE_FILES}
         src/common/util/blas.hpp
         src/common/util/random.cpp
         src/common/util/random.hpp
-        src/common/util/mpi.hpp
         src/common/util/templates.hpp
         src/common/util/numerical_diff.hpp
         src/common/util/interpolate.cpp
@@ -135,6 +69,8 @@ set(SOURCE_FILES ${SOURCE_FILES}
         src/common/io/file_types/xyz.hpp
         src/common/io/file_types/cif.cpp
         src/common/io/file_types/cif.hpp
+        src/common/io/file_types/poscar.cpp
+        src/common/io/file_types/poscar.hpp
         src/common/json/json.cpp
         src/common/json/json.hpp
         src/common/json/json_serializable_t.hpp
@@ -145,12 +81,37 @@ set(SOURCE_FILES ${SOURCE_FILES}
         src/common/minimize/test/test_functions.hpp
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
-        src/common/minimize/pso/adaptive_pso.cpp
-        src/common/minimize/pso/particle_t.cpp
-        src/common/minimize/pso/particle_t.hpp
-        src/common/minimize/pso/swarm_t.cpp
-        src/common/minimize/pso/swarm_t.hpp
         src/common/minimize/acgsd.cpp
+################################################################################
+        IF_MPI_ENABLED src/common/util/mpi.hpp
+        # PSO requires MPI
+        IF_MPI_ENABLED src/common/minimize/pso/adaptive_pso.cpp
+        IF_MPI_ENABLED src/common/minimize/pso/particle_t.cpp
+        IF_MPI_ENABLED src/common/minimize/pso/particle_t.hpp
+        IF_MPI_ENABLED src/common/minimize/pso/swarm_t.cpp
+        IF_MPI_ENABLED src/common/minimize/pso/swarm_t.hpp
+        # and by extension so does symmetry search
+        IF_MPI_ENABLED src/run/run_symm.cpp
+        IF_MPI_ENABLED src/symm/pso_adapters.cpp
+        IF_MPI_ENABLED src/symm/pso_adapters.hpp
+        IF_MPI_ENABLED src/symm/util.cpp
+        IF_MPI_ENABLED src/symm/util.hpp
+        IF_MPI_ENABLED src/symm/space_group_t.cpp
+        IF_MPI_ENABLED src/symm/space_group_t.hpp
+        IF_MPI_ENABLED src/symm/symm_settings_t.cpp
+        IF_MPI_ENABLED src/symm/symm_settings_t.hpp
+        IF_MPI_ENABLED src/symm/system_control_t.cpp
+        IF_MPI_ENABLED src/symm/system_control_t.hpp
+################################################################################
+        IF_LAMMPS_ENABLED src/lammps/system_control_t.cpp
+        IF_LAMMPS_ENABLED src/lammps/lammps_interface.hpp
+        IF_LAMMPS_ENABLED src/lammps/settings_t.cpp
+        IF_LAMMPS_ENABLED src/lammps/settings_t.hpp
+################################################################################
+        IF_PHONOPY_ENABLED src/run/run_phonopy.cpp
+        IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.cpp
+        IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.hpp
+################################################################################
         src/common/graph/ud_graph_t.cpp
         src/common/graph/ud_graph_t.hpp
         src/common/graph/permutation_t.cpp
@@ -175,34 +136,112 @@ set(SOURCE_FILES ${SOURCE_FILES}
         src/airebo/utility_functions.hpp
         src/airebo/test.hpp
         src/airebo/test.cpp
-        src/symm/pso_adapters.cpp
-        src/symm/pso_adapters.hpp
-        src/symm/util.cpp
-        src/symm/util.hpp
-        src/symm/space_group_t.cpp
-        src/symm/space_group_t.hpp
-        src/symm/symm_settings_t.cpp
-        src/symm/symm_settings_t.hpp
-        src/symm/system_control_t.cpp
-        src/symm/system_control_t.hpp
         # src/atac/system_control_t.cpp
         # src/atac/system_control_t.hpp
         src/atac/settings_t.hpp
         src/atac/settings_t.cpp
         src/run/common.cpp
-        src/run/run_symm.cpp
         # src/run/run_relaxation.cpp
         # src/run/run_atac.cpp
         src/run/run_types.hpp
-        src/common/io/file_types/poscar.cpp
-        src/common/io/file_types/poscar.hpp
-        src/run/run_phonopy.cpp
         src/run/run_settings_t.cpp
         src/run/run_settings_t.hpp
-        src/phonopy/phonopy_settings.cpp
-        src/phonopy/phonopy_settings.hpp
         src/common/json/json_serializable_t.cpp
         src/airebo/airebo_util.hpp)
+
+include(Sp2ParseSources)
+parse_sources(SOURCE_FILES ${SOURCE_FILES})
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_BINARY_DIR})
+
+# add subdirectories for external code as well as the code generation target
+add_subdirectory(external)
+add_subdirectory(src/common/codegen)
+
+link_libraries(templ)
+link_libraries(jsoncpp)
+
+if(SP2_ENABLE_LAMMPS)
+    link_libraries(lammps)
+endif()
+
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    add_definitions(-DSP2_DEBUG)
+endif()
+
+if(SP2_ENABLE_TESTS)
+    add_test(all sp2 --test)
+    add_definitions(-DSP2_ENABLE_TESTS)
+    link_libraries(gtest)
+endif()
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+################################################################################
+## MPI                                                                        ##
+################################################################################
+
+if(SP2_ENABLE_MPI)
+    find_package(MPI REQUIRED)
+
+    add_definitions(-DSP2_ENABLE_MPI)
+    list(APPEND CMAKE_CXX_COMPILE_FLAGS
+            ${MPI_CXX_COMPILE_FLAGS})
+
+    include_directories(${MPI_CXX_INCLUDE_PATH})
+
+    set(CMAKE_CXX_LINK_FLAGS
+            ${CMAKE_CXX_LINK_FLAGS}
+            ${MPI_CXX_LINK_FLAGS})
+
+    link_libraries(boost_mpi
+            boost_serialization
+            ${MPI_CXX_LIBRARIES})
+else()
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+    find_package(Threads REQUIRED)
+
+    link_libraries(Threads::Threads)
+endif()
+
+################################################################################
+## Phonopy                                                                    ##
+################################################################################
+
+function(find_phonopy version)
+    cmake_parse_arguments(FP_ARGS "REQUIRED" "" "" ${ARGN})
+
+    # force find_package() to look for python again
+    unset(PYTHON_EXECUTABLE CACHE)
+    unset(PYTHONINTERP_FOUND CACHE)
+
+    if(FP_ARGS_REQUIRED)
+        set(REQUIRED_STR "REQUIRED")
+    endif()
+
+    find_package(PythonInterp ${version} ${REQUIRED_STR})
+    if(PYTHONINTERP_FOUND)
+        find_python_module(phonopy ${REQUIRED_STR})
+    endif()
+endfunction(find_phonopy)
+
+if(SP2_ENABLE_PHONOPY AND NOT PYMOD_PHONOPY_LOCATION)
+    # first we try to find the python 3+ version of phonopy
+    find_phonopy(3)
+    # then if that fails, fall back to 2.7
+    if(NOT PYMOD_PHONOPY_FOUND)
+        find_phonopy(2.7)
+    endif()
+
+    add_definitions(-DSP2_ENABLE_PHONOPY)
+endif()
+
+################################################################################
+## Main targets                                                               ##
+################################################################################
 
 # sp2 executable (sp2)
 add_executable(sp2-bin
@@ -214,11 +253,11 @@ set_target_properties(sp2-bin PROPERTIES
         OUTPUT_NAME sp2)
 
 # sp2 library (libsp2.a/so)
-add_library(sp2-lib SHARED
+add_library(sp2-lib
         src/run/lib/library_interface.cpp
         ${SOURCE_FILES})
 
-# explicitly set library filename to libsp2.so
+# explicitly set library filename to libsp2.so/libsp2.a
 # additionally, stop the library from being made by default
 set_target_properties(sp2-lib PROPERTIES
         OUTPUT_NAME sp2
@@ -226,11 +265,6 @@ set_target_properties(sp2-lib PROPERTIES
         EXCLUDE_FROM_DEFAULT_BUILD 1)
 
 # code generation dependencies
-add_dependencies(sp2-bin generate)
-add_dependencies(sp2-lib generate)
-
-if(SP2_USE_LAMMPS)
-    target_link_libraries(sp2-bin lammps)
-    target_link_libraries(sp2-lib lammps)
-endif()
+add_dependencies(sp2-bin code_generation)
+add_dependencies(sp2-lib code_generation)
 

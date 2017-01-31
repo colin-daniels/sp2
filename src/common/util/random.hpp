@@ -7,9 +7,9 @@
 
 #include <random>
 
-#ifdef SP2_USE_MPI
+#ifdef SP2_ENABLE_MPI
 #include <boost/mpi/communicator.hpp>
-#endif // SP2_USE_MPI
+#endif // SP2_ENABLE_MPI
 
 namespace sp2 {
 namespace util {
@@ -42,10 +42,10 @@ public:
     /// Get underlying pseudorandom number generator object.
     auto& get_gen() {return gen;}
 
-#ifdef SP2_USE_MPI
+#ifdef SP2_ENABLE_MPI
     /// MPI broadcast member function.
     void bcast(const boost::mpi::communicator &comm, int root);
-#endif // SP2_USE_MPI
+#endif // SP2_ENABLE_MPI
 
 };
 

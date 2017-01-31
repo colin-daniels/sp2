@@ -3,18 +3,13 @@
 #include <map>
 
 #include "run/run_types.hpp"
-#include "run/run_settings_t.hpp"
 #include "common/json/json.hpp"
 
 #include <boost/mpi.hpp>
 
-#ifdef SP2_DEBUG
+#ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
-#endif // SP2_DEBUG
-
-#include <lammps/lammps.h>
-#include <lammps/input.h>
-#include <lammps/atom.h>
+#endif // SP2_ENABLE_TESTS
 
 using namespace std;
 using namespace sp2;
@@ -27,9 +22,9 @@ int main(int argc, char *argv[])
     // setup program environment
     boost::mpi::environment env;
 
-////////////////
-// check command line flags for special options that bypass normal operation
-////////////////
+////////////////////////////////////////////////////////////////////////////////
+// check command line flags for special options that bypass normal operation  //
+////////////////////////////////////////////////////////////////////////////////
 
     map<string, function<int(void)>> run_special;
 
@@ -38,20 +33,20 @@ int main(int argc, char *argv[])
         return generate_defaults("config.json");
     };
 
-#ifdef SP2_DEBUG
+#ifdef SP2_ENABLE_TESTS
     run_special["--test"] = [&]{
         ::testing::InitGoogleTest(&argc, argv);
         return RUN_ALL_TESTS();
     };
-#endif
+#endif // SP2_ENABLE_TESTS
 
     for (int i = 1; i < argc; ++i)
         if (run_special.count(argv[i]))
             return run_special[argv[i]]();
 
-////////////////
-// normal operation
-////////////////
+////////////////////////////////////////////////////////////////////////////////
+// normal operation                                                           //
+////////////////////////////////////////////////////////////////////////////////
 
     // get config filename (if specified)
     string config_filename = "config.json";
@@ -75,9 +70,9 @@ int run_normal(string config_filename, MPI_Comm comm)
         return EXIT_FAILURE;
     }
 
-////////////////
-// determine the type of run and execute it
-////////////////
+////////////////////////////////////////////////////////////////////////////////
+// determine the type of run and execute it                                   //
+////////////////////////////////////////////////////////////////////////////////
 
     // try to read all the settings from the config
     run_settings_t settings;
@@ -96,9 +91,11 @@ int run_normal(string config_filename, MPI_Comm comm)
     case run_type::SYMM:
         // symmetry structure search
         return run_symm(settings, comm);
+#ifdef SP2_ENABLE_PHONOPY
     case run_type::PHONOPY:
         // phonopy
         return run_phonopy(settings, comm);
+#endif // SP2_ENABLE_PHONOPY
     default:
         return EXIT_FAILURE;
     }

@@ -4,11 +4,11 @@
 
 #include "common/util/random.hpp"
 
-#ifdef SP2_USE_MPI
+#ifdef SP2_ENABLE_MPI
 #include <boost/mpi.hpp>
 
 namespace mpi = boost::mpi;
-#endif // SP2_USE_MPI
+#endif // SP2_ENABLE_MPI
 
 using namespace std;
 using namespace sp2;
@@ -33,7 +33,7 @@ void util::rng_t::seed_random(std::size_t len)
     seed(std::seed_seq(seeds.begin(), seeds.end()));
 }
 
-#ifdef SP2_USE_MPI
+#ifdef SP2_ENABLE_MPI
 void util::rng_t::bcast(const mpi::communicator &comm, int root)
 {
     // serialize to a string
@@ -48,4 +48,4 @@ void util::rng_t::bcast(const mpi::communicator &comm, int root)
     stringstream iss(state);
     iss >> gen;
 }
-#endif // SP2_USE_MPI
+#endif // SP2_ENABLE_MPI

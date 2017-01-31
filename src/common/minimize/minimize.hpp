@@ -7,9 +7,9 @@
 #include <vector>
 #include <functional>
 
-#ifdef SP2_USE_MPI
+#ifdef SP2_ENABLE_MPI
 #include <boost/mpi.hpp>
-#endif // SP2_USE_MPI
+#endif // SP2_ENABLE_MPI
 
 #include "common/minimize/settings.hpp"
 #include "common/function_types.hpp"
@@ -53,7 +53,7 @@ std::vector<double> linear_cg(vector_fn_t matrix_fn,
     std::vector<double> b, double tolerance = 1e-12);
 
 // PSO currently cannot be run without MPI
-#ifdef SP2_USE_MPI
+#ifdef SP2_ENABLE_MPI
 
 /// \brief Adaptive particle swarm optimization \cite zhan2009adaptive .
 /// \param settings : Input settings.
@@ -72,7 +72,7 @@ using pso_update_fn_t = std::function<void(particle_t&)>;
 std::vector<double> adaptive_pso(pso_update_fn_t update_fn,
     const pso_settings_t &settings, boost::mpi::communicator comm);
 
-#endif // SP2_USE_MPI
+#endif // SP2_ENABLE_MPI
 
 } // namespace minimize
 } // namespace sp2

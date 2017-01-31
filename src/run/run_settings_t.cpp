@@ -45,7 +45,9 @@ bool run_settings_t::serialize(Json::Value &output) const
         "log_filename", log_filename,
         "symm", symm_settings,
         "atac", atac_settings,
+#ifdef SP2_ENABLE_PHONOPY
         "phonopy", phonopy_settings,
+#endif // SP2_ENABLE_PHONOPY
         "minimize", minimize_settings
     );
 
@@ -58,7 +60,9 @@ bool run_settings_t::deserialize(const Json::Value &input)
         {"atac",     run_type::ATAC},     // acceptable inputs
         {"minimize", run_type::MINIMIZE}, //
         {"symm",     run_type::SYMM},     //
+#ifdef SP2_ENABLE_PHONOPY
         {"phonopy",  run_type::PHONOPY}
+#endif // SP2_ENABLE_PHONOPY
     }, run_type::NONE, true);
 
     if (mode == run_type::NONE)
@@ -72,7 +76,9 @@ bool run_settings_t::deserialize(const Json::Value &input)
         "log_filename", log_filename,
         "symm", symm_settings,
         "atac", atac_settings,
+#ifdef SP2_ENABLE_PHONOPY
         "phonopy", phonopy_settings,
+#endif // SP2_ENABLE_PHONOPY
         "minimize", minimize_settings
     );
 
