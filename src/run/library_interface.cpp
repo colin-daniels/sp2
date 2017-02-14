@@ -40,18 +40,25 @@ void calc_potential(
     // rows are lattice vectors
     double lattice[3][3]
 ) {
-    airebo::system_control_t sys;
-    sys.init(get_structure(n_atoms, positions, lattice));
+    try
+    {
+        airebo::system_control_t sys;
+        sys.init(get_structure(n_atoms, positions, lattice));
 
-    // copy gradient to output
-    std::copy_n(
-        sys.get_gradient().begin(),
-        n_atoms * 3,
-        gradient
-    );
+        // copy gradient to output
+        std::copy_n(
+            sys.get_gradient().begin(),
+            n_atoms * 3,
+            gradient
+        );
 
-    // output potential
-    *potential = sys.get_value();
+        // output potential
+        *potential = sys.get_value();
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "caught exception: \"" << e.what() << "\"\n";
+    }
 }
 
 void relax_structure(
@@ -61,16 +68,23 @@ void relax_structure(
     double *potential, // output in eV
     double lattice[3][3]
 ) {
-    airebo::system_control_t sys;
-    sys.init(get_structure(n_atoms, positions, lattice));
+    try
+    {
+        airebo::system_control_t sys;
+        sys.init(get_structure(n_atoms, positions, lattice));
 
-    minimize::acgsd_settings_t settings;
-    settings.output_level = 0;
-    settings.gradient_tolerance = 1e-4;
-    minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
+        minimize::acgsd_settings_t settings;
+        settings.output_level = 0;
+        settings.gradient_tolerance = 1e-4;
+        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
 
-    // output gradient, position, and potential
-    std::copy_n(sys.get_gradient().begin(), n_atoms * 3, gradient);
-    std::copy_n(sys.get_position().begin(), n_atoms * 3, positions);
-    *potential = sys.get_value();
+        // output gradient, position, and potential
+        std::copy_n(sys.get_gradient().begin(), n_atoms * 3, gradient);
+        std::copy_n(sys.get_position().begin(), n_atoms * 3, positions);
+        *potential = sys.get_value();
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "caught exception: \"" << e.what() << "\"\n";
+    }
 }
