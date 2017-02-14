@@ -25,10 +25,6 @@
 using namespace std;
 using namespace sp2;
 
-/// read all input poscar files, return vector of output filenames
-vector<string> process_displacements();
-
-
 double polarization(vector<vec3_t> &eigs, airebo::system_control_t &sys,
     int A, int B);
 
@@ -37,11 +33,11 @@ vector<pair<double, double>> calc_raman_spectra(
     airebo::system_control_t &sys, double temperature, double incident,
     vec3_t pol_A, vec3_t pol_B);
 
-void relax_structure(structure_t &structure, bool add_hydrogen);
-
+void relax_structure(structure_t &structure, run_settings_t rset);
 
 int generate_displacements(phonopy::phonopy_settings_t pset);
-int generate_force_sets();
+int generate_force_sets(run_settings_t rset);
+
 int generate_bands(phonopy::phonopy_settings_t pset);
 int generate_eigs(phonopy::phonopy_settings_t pset);
 int generate_dos(phonopy::phonopy_settings_t pset);
@@ -68,7 +64,7 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 
     // relax
     write_log(settings.log_filename, "Relaxing Structure");
-    relax_structure(structure, settings.add_hydrogen);
+    relax_structure(structure, settings);
 
     sort_structure_types(structure);
     io::write_structure("relaxed.xyz", structure);
@@ -81,7 +77,7 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 
     write_log(settings.log_filename, "Generating Force Sets");
 
-    if (generate_force_sets() != 0)
+    if (generate_force_sets(settings) != 0)
         return EXIT_FAILURE;
 
     write_log(settings.log_filename, "Computing Force Constants");
@@ -136,50 +132,6 @@ void output_xml(string filename, const vector<double> &gradient)
     }
 
     outfile << "</varray>" << endl;
-}
-
-/// read all input poscar files, return vector of output filenames
-vector<string> process_displacements()
-{
-    auto get_ext = [](int i) {
-        stringstream ss;
-        ss << setw(3) << setfill('0') << i;
-        return ss.str();
-    };
-
-    vector<string> output_filenames;
-    std::unique_ptr<lammps::system_control_t> sys;
-    for (int i = 1; i < std::numeric_limits<int>::max(); ++i)
-    {
-        string input_file = "POSCAR-" + get_ext(i),
-            output_file = "vasprun.xml-" + get_ext(i);
-
-        structure_t structure;
-        if (!io::file_exists(input_file) ||
-            !io::read_structure(input_file, structure, file_type::POSCAR))
-        {
-            break;
-        }
-
-//        airebo::system_control_t sys;
-        if (i == 1)
-        {
-            sys = std::make_unique<lammps::system_control_t>();
-            sys->init(structure);
-        }
-        else
-        {
-            sys->set_position(structure.positions);
-        }
-
-        sys->update();
-
-        output_xml(output_file, sys->get_gradient());
-
-        output_filenames.push_back(output_file);
-    }
-
-    return output_filenames;
 }
 
 constexpr double kronecker_delta(int a, int b)
@@ -270,10 +222,10 @@ vector<pair<double, double>> calc_raman_spectra(
     return result;
 }
 
-void relax_structure(structure_t &structure, bool add_hydrogen)
+void relax_structure(structure_t &structure, run_settings_t rset)
 {
     // construct system + minimize with default parameters
-    if (add_hydrogen)
+    if (rset.add_hydrogen)
     {
         airebo::system_control_t sys;
         sys.init(structure);
@@ -283,7 +235,7 @@ void relax_structure(structure_t &structure, bool add_hydrogen)
 
 //    airebo::system_control_t sys;
     lammps::system_control_t sys;
-    sys.init(structure);
+    sys.init(structure, rset.lammps_settings);
 
     minimize::acgsd_settings_t settings;
     settings.gradient_tolerance = 1e-5;
@@ -308,10 +260,54 @@ int generate_displacements(phonopy::phonopy_settings_t pset)
     return system("phonopy -d disp.conf");
 }
 
-int generate_force_sets()
+/// read all input poscar files, return vector of output filenames
+vector<string> process_displacements(run_settings_t rset)
+{
+    auto get_ext = [](int i) {
+        stringstream ss;
+        ss << setw(3) << setfill('0') << i;
+        return ss.str();
+    };
+
+    vector<string> output_filenames;
+    std::unique_ptr<lammps::system_control_t> sys;
+    for (int i = 1; i < std::numeric_limits<int>::max(); ++i)
+    {
+        string input_file = "POSCAR-" + get_ext(i),
+            output_file = "vasprun.xml-" + get_ext(i);
+
+        structure_t structure;
+        if (!io::file_exists(input_file) ||
+            !io::read_structure(input_file, structure, file_type::POSCAR))
+        {
+            break;
+        }
+
+//        airebo::system_control_t sys;
+        if (i == 1)
+        {
+            sys = std::make_unique<lammps::system_control_t>();
+            sys->init(structure, rset.lammps_settings);
+        }
+        else
+        {
+            sys->set_position(structure.positions);
+        }
+
+        sys->update();
+
+        output_xml(output_file, sys->get_gradient());
+
+        output_filenames.push_back(output_file);
+    }
+
+    return output_filenames;
+}
+
+int generate_force_sets(run_settings_t rset)
 {
     // process displacements
-    auto force_filenames = process_displacements();
+    auto force_filenames = process_displacements(rset);
 
     // generate force sets, "phonopy -f file1 file2 ..."
     string command = "phonopy -f";
