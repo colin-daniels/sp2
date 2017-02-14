@@ -1,7 +1,7 @@
 #ifndef SP2_JSON_SERIALIZABLE_HPP_HPP
 #define SP2_JSON_SERIALIZABLE_HPP_HPP
 
-#include <json/json-forwards.h>
+#include <json/forwards.h>
 
 namespace sp2 {
 namespace io {

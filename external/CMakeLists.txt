@@ -10,3 +10,4 @@ endif()
 
 add_subdirectory(templ)
 add_subdirectory(jsoncpp)
+add_subdirectory(yaml-cpp)

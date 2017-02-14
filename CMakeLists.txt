@@ -214,7 +214,8 @@ if(SP2_ENABLE_LAMMPS)
 endif()
 
 target_link_libraries(sp2
-        jsoncpp
+        jsoncpp_lib_static
+        yaml-cpp
         templ)
 
 # internal code generation target
