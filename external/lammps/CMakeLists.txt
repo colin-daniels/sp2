@@ -1,7 +1,3 @@
-if(NOT SP2_ENABLE_LAMMPS)
-    return()
-endif()
-
 set(LAMMPS_SOURCE_DIR ${CMAKE_BINARY_DIR}/lammps)
 set(LAMMPS_BUILD_DIR ${LAMMPS_SOURCE_DIR}/lammps)
 

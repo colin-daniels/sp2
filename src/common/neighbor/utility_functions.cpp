@@ -10,7 +10,7 @@
 using namespace std;
 using namespace sp2;
 
-void array_rot(const int axis, double *input,
+void fbc::array_rot(const int axis, double *input,
     double *output, const double theta)
 {
     double ct, st;
@@ -49,14 +49,14 @@ void rotate_lattice(double lattice[3][3], double R[3][3])
     copy_n(lattice[0], 9, temp[0]);
 
     // rotate to get into upper triangular form
-    array_rot(2, I0[0], R[0], -atan2(temp[1][0], temp[0][0]));
-    array_rot(2, temp[0], lattice[0], -atan2(temp[1][0], temp[0][0]));
+    fbc::array_rot(2, I0[0], R[0], -atan2(temp[1][0], temp[0][0]));
+    fbc::array_rot(2, temp[0], lattice[0], -atan2(temp[1][0], temp[0][0]));
 
-    array_rot(1, R[0], I0[0], atan2(lattice[2][0], lattice[0][0]));
-    array_rot(1, lattice[0], temp[0], atan2(lattice[2][0], lattice[0][0]));
+    fbc::array_rot(1, R[0], I0[0], atan2(lattice[2][0], lattice[0][0]));
+    fbc::array_rot(1, lattice[0], temp[0], atan2(lattice[2][0], lattice[0][0]));
 
-    array_rot(0, I0[0], R[0], -atan2(temp[2][1], temp[1][1]));
-    array_rot(0, temp[0], lattice[0], -atan2(temp[2][1], temp[1][1]));
+    fbc::array_rot(0, I0[0], R[0], -atan2(temp[2][1], temp[1][1]));
+    fbc::array_rot(0, temp[0], lattice[0], -atan2(temp[2][1], temp[1][1]));
 
     // prefer positive diagonals
     for (int i = 0; i < 3; ++i)
@@ -102,7 +102,7 @@ void fbc::invert_3x3(const double input[3][3], double inverse[3][3])
 
     if (det == 0)
     {
-        cout << "Error, matrix passed to invert_3x3 has zero determinant."
+        cout << "Error, matrix passed to invert_3x3 is singular."
              << endl;
     }
     else

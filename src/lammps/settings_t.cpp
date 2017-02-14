@@ -2,7 +2,7 @@
 
 using namespace sp2;
 
-bool lammps_settings_t::serialize(Json::Value& output) const
+bool lammps::lammps_settings_t::serialize(Json::Value& output) const
 {
     io::serialize_basic(output,
         "n_tasks", n_tasks,
@@ -13,7 +13,7 @@ bool lammps_settings_t::serialize(Json::Value& output) const
     return true;
 }
 
-bool lammps_settings_t::deserialize(const Json::Value& input)
+bool lammps::lammps_settings_t::deserialize(const Json::Value& input)
 {
     io::deserialize_basic(input,
         "n_tasks", n_tasks,

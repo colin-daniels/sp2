@@ -18,58 +18,100 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 
+#ifdef SP2_ENABLE_LAMMPS
+#include "lammps/lammps_interface.hpp"
+#endif
 
 using namespace std;
 using namespace sp2;
 
+/// read all input poscar files, return vector of output filenames
+vector<string> process_displacements();
 
-int csyscall_fork(string command, char *args[])
+
+double polarization(vector<vec3_t> &eigs, airebo::system_control_t &sys,
+    int A, int B);
+
+vector<pair<double, double>> calc_raman_spectra(
+    vector<pair<double, vector<vec3_t>>> modes,
+    airebo::system_control_t &sys, double temperature, double incident,
+    vec3_t pol_A, vec3_t pol_B);
+
+void relax_structure(structure_t &structure, bool add_hydrogen);
+
+
+int generate_displacements(phonopy::phonopy_settings_t pset);
+int generate_force_sets();
+int generate_bands(phonopy::phonopy_settings_t pset);
+int generate_eigs(phonopy::phonopy_settings_t pset);
+int generate_dos(phonopy::phonopy_settings_t pset);
+
+vector<pair<double, vector<vec3_t>>> read_eigs();
+void repeat_structure(structure_t &structure, int n_times);
+
+
+void plot_modes(string filename, airebo::system_control_t &sys,
+    vector<pair<double, vector<vec3_t>>> modes);
+
+void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
+    airebo::system_control_t &sys, const int *pol_axes, const string &filename);
+
+void write_log(string filename, string desc);
+
+void output_xml(string filename, const vector<double> &gradient);
+
+
+int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 {
-    int pid = fork();
+    auto structure = settings.structure;
+    io::write_structure("input.xyz", structure);
 
-    if (pid == 0)
-    {
-        prctl(PR_SET_PDEATHSIG, SIGKILL);
-        execvp(command.c_str(), args);
+    // relax
+    write_log(settings.log_filename, "Relaxing Structure");
+    relax_structure(structure, settings.add_hydrogen);
 
+    sort_structure_types(structure);
+    io::write_structure("relaxed.xyz", structure);
+
+    io::write_structure("POSCAR", structure, false, file_type::POSCAR);
+
+    write_log(settings.log_filename, "Generating Displacements");
+    if (generate_displacements(settings.phonopy_settings) != 0)
         return EXIT_FAILURE;
-    }
-    else if (pid > 0)
-    {
-        int status = EXIT_FAILURE;
-        waitpid(pid, &status, 0);
 
-        return status;
-    }
-    else
+    write_log(settings.log_filename, "Generating Force Sets");
+
+    if (generate_force_sets() != 0)
+        return EXIT_FAILURE;
+
+    write_log(settings.log_filename, "Computing Force Constants");
+    if (settings.phonopy_settings.calc_bands &&
+        generate_bands(settings.phonopy_settings) != 0)
+        return EXIT_FAILURE;
+
+    if (settings.phonopy_settings.calc_raman)
     {
-        return pid;
+        if (generate_eigs(settings.phonopy_settings) != 0)
+            return EXIT_FAILURE;
+
+        // read eigenmodes/etc
+        auto modes = read_eigs();
+
+        cout << "num modes: " << modes.size() << endl;
+        if (!modes.empty())
+            cout << "num eigs: " << modes[0].second.size() << endl;
+
+        airebo::system_control_t sys;
+        sys.init(structure);
+        plot_modes("modes.dat", sys, modes);
+
+        write_spectra(modes, sys, settings.phonopy_settings.polarization_axes,
+            "spectra.dat");
     }
+
+    return EXIT_SUCCESS;
 }
 
-int syscall_fork(string command, vector<string> args)
-{
-    vector<vector<char>> cargs;
-
-    args.insert(args.begin(), command);
-
-    vector<char*> cargs_actual;
-    for (auto s : args)
-    {
-        cargs.emplace_back();
-        vector<char> &temp = cargs.back();
-        for (auto c : s)
-            temp.push_back(c);
-
-        temp.push_back('\0');
-
-        cargs_actual.push_back(&temp[0]);
-    }
-
-    cargs_actual.push_back(nullptr);
-
-    return csyscall_fork(command, &cargs_actual[0]);
-}
 
 void output_xml(string filename, const vector<double> &gradient)
 {
@@ -106,7 +148,8 @@ vector<string> process_displacements()
     };
 
     vector<string> output_filenames;
-    for (int i = 1; i < 1000; ++i)
+    std::unique_ptr<lammps::system_control_t> sys;
+    for (int i = 1; i < std::numeric_limits<int>::max(); ++i)
     {
         string input_file = "POSCAR-" + get_ext(i),
             output_file = "vasprun.xml-" + get_ext(i);
@@ -118,11 +161,20 @@ vector<string> process_displacements()
             break;
         }
 
-        airebo::system_control_t sys;
-        sys.init(structure);
+//        airebo::system_control_t sys;
+        if (i == 1)
+        {
+            sys = std::make_unique<lammps::system_control_t>();
+            sys->init(structure);
+        }
+        else
+        {
+            sys->set_position(structure.positions);
+        }
 
-        sys.update();
-        output_xml(output_file, sys.get_gradient());
+        sys->update();
+
+        output_xml(output_file, sys->get_gradient());
 
         output_filenames.push_back(output_file);
     }
@@ -130,7 +182,7 @@ vector<string> process_displacements()
     return output_filenames;
 }
 
-constexpr double kronecker_delta(size_t a, size_t b)
+constexpr double kronecker_delta(int a, int b)
 {
     return a == b ? 1 : 0;
 }
@@ -142,7 +194,7 @@ double polarization(vector<vec3_t> &eigs, airebo::system_control_t &sys,
         const2 = 7.55,              // a'|| + 2a'|- in Angstroms^2
         const3 = 2.60;              // a'|| -  a'|- in Angstroms^2
 
-#warning error with get_graph() for repeated bonds across periodic bound
+// TODO: error with get_graph() for repeated bonds across periodic bound
     auto graph = sys.get_bond_control().get_graph();
     auto bonds = dtov3(sys.get_bond_control().get_bond_deltas());
     auto types = sys.get_types();
@@ -161,16 +213,18 @@ double polarization(vector<vec3_t> &eigs, airebo::system_control_t &sys,
             types[bond.b] == atom_type::HYDROGEN)
             continue;
 
-#warning may need to scale with mass
+// TODO: may need to scale with mass
         vec3_t eig = eigs[bond.a],// * (types[bond.a] == atom_type::HYDROGEN ? 1 : 1 / sqrt(12)),
             unit_delta = bonds[bond.id].unit_vector();
 
-        double term1 = (const2 / 3) * dot(unit_delta, eig) * kronecker_delta(A, B),
-            term2 = const3 * (unit_delta[A] * unit_delta[B] - kronecker_delta(A, B) / 3) * dot(unit_delta, eig),
-#warning might be R[A] X[B] PLUS R[B] X[A]
-            term3 = (const1 / len) * (unit_delta[A] * eig[B] + unit_delta[B] * eig[A] - 2 * unit_delta[A] * unit_delta[B] * dot(unit_delta, eig));
-
-        double alternate = term1 + term2 + term3;
+        double term1 = (const2 / 3) * dot(unit_delta, eig)
+                       * kronecker_delta(A, B),
+            term2 = const3 * (unit_delta[A] * unit_delta[B]
+                      - kronecker_delta(A, B) / 3) * dot(unit_delta, eig),
+// TODO: might be R[A] X[B] PLUS R[B] X[A]
+            term3 = (const1 / len)  * (unit_delta[A] * eig[B]
+                    + unit_delta[B] * eig[A]
+                    - 2 * unit_delta[A] * unit_delta[B] * dot(unit_delta, eig));
 
         sum += term1 + term2 + term3;
     }
@@ -197,7 +251,7 @@ vector<pair<double, double>> calc_raman_spectra(
         double n_omega = 1.0 / (exp(hkt * frequency) - 1.0);
         double prefactor = (n_omega + 1) / frequency;
 
-#warning assumes polarization unit vectors are on an axis
+// TODO: assumes polarization unit vectors are on an axis
         double pol = 0;
         for (int i = 0; i < 3; ++i)
             for (int j = 0; j < 3; ++j)
@@ -219,41 +273,22 @@ vector<pair<double, double>> calc_raman_spectra(
 void relax_structure(structure_t &structure, bool add_hydrogen)
 {
     // construct system + minimize with default parameters
-    airebo::system_control_t sys;
-    sys.init(structure);
     if (add_hydrogen)
+    {
+        airebo::system_control_t sys;
+        sys.init(structure);
         sys.add_hydrogen();
+        structure = sys.get_structure();
+    }
+
+//    airebo::system_control_t sys;
+    lammps::system_control_t sys;
+    sys.init(structure);
 
     minimize::acgsd_settings_t settings;
     settings.gradient_tolerance = 1e-5;
 
     minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
-
-//    double min_ptnl = sys.get_value();
-//    auto min_structure = sys.get_structure();
-//    double min_x = 0;
-//
-//    for (double x = 0; x < 0.01; x += 0.000001)
-//    {
-//        double lattice[3][3] = {
-//            {4.254 - x, 0, 0},
-//            {0, 25, 0},
-//            {0, 0, 25}
-//        };
-//        sys.set_lattice(lattice);
-//        sys.update();
-//
-//        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
-//        if (sys.get_value() < min_ptnl)
-//        {
-//            min_ptnl = sys.get_value();
-//            min_structure = sys.get_structure();
-//            min_x = x;
-//        }
-//    }
-//
-//    cout << "min ptnl: " << min_ptnl << ", min lattice: " << min_structure.lattice[0][0]
-//         << ", min x: " << min_x << endl;
 
     structure = sys.get_structure();
 }
@@ -270,7 +305,7 @@ int generate_displacements(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return syscall_fork("phonopy", {"-d", "disp.conf"});
+    return system("phonopy -d disp.conf");
 }
 
 int generate_force_sets()
@@ -279,11 +314,11 @@ int generate_force_sets()
     auto force_filenames = process_displacements();
 
     // generate force sets, "phonopy -f file1 file2 ..."
-    vector<string> args = {"-f"};
-    for (auto file : force_filenames)
-        args.push_back(file);
+    string command = "phonopy -f";
+    for (string file : force_filenames)
+        command += " " + file;
 
-    return syscall_fork("phonopy", args);
+    return system(command.c_str());
 }
 
 int generate_bands(phonopy::phonopy_settings_t pset)
@@ -300,7 +335,8 @@ int generate_bands(phonopy::phonopy_settings_t pset)
 
     outfile << "\n"
             << "BAND_POINTS = " << pset.n_samples << "\n"
-            << "FORCE_CONSTANTS = WRITE\n";
+            << "FORCE_CONSTANTS = "
+                << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n");
 
     outfile.close();
 
@@ -310,7 +346,7 @@ int generate_bands(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return syscall_fork("phonopy", {"band.conf"});
+    return system("phonopy band.conf");
 }
 
 int generate_eigs(phonopy::phonopy_settings_t pset)
@@ -322,12 +358,14 @@ int generate_eigs(phonopy::phonopy_settings_t pset)
                 << ' ' << pset.supercell_dim[2] << '\n'
             << "BAND = 0 0 0   1/2 0 0\n"
             << "BAND_POINTS = 1\n"
-            << "FORCE_CONSTANTS = WRITE\n"
+            << "FORCE_CONSTANTS = "
+                << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n")
             << "EIGENVECTORS = .TRUE.\n";
+
 
     outfile.close();
 
-    return syscall_fork("phonopy", {"eigs.conf"});
+    return system("phonopy eigs.conf");
 }
 
 int generate_dos(phonopy::phonopy_settings_t pset)
@@ -343,7 +381,7 @@ int generate_dos(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return syscall_fork("phonopy", {"dos.conf"});
+    return system("phonopy dos.conf");
 }
 
 vector<pair<double, vector<vec3_t>>> read_eigs()
@@ -408,68 +446,6 @@ vector<pair<double, vector<vec3_t>>> read_eigs()
     return modes;
 }
 
-void remove_overlap(structure_t &structure)
-{
-    auto positions = dtov3(structure.positions);
-    cout << positions.size() << endl;
-
-    vec3_t lattice_vec[3] = {
-        vec3_t(structure.lattice[0]),
-        vec3_t(structure.lattice[1]),
-        vec3_t(structure.lattice[2])
-    };
-
-    auto get_offset = [&lattice_vec](int i, int j, int k) {
-        return i * lattice_vec[0] +
-               j * lattice_vec[1] +
-               k * lattice_vec[2];
-    };
-
-    auto gen_positions = [&](){
-        vector<vec3_t> pos_all;
-        for (auto v : positions)
-            for (int i = -1; i <= 1; ++i)
-                for (int j = -1; j <= 1; ++j)
-                    for (int k = -1; k <= 1; ++k)
-                        if (i != 0 || j != 0 || k != 0)
-                            pos_all.push_back(v + get_offset(i, j, k));
-
-        return pos_all;
-    };
-
-    do {
-        auto pos_all = gen_positions();
-
-        bool ok = true;
-        for (auto it = positions.begin(); it != positions.end(); ++it)
-        {
-            auto pos_a = *it;
-            for (auto pos_b : pos_all)
-            {
-                if ((pos_b - pos_a).mag() < 1e-3)
-                {
-                    ok = false;
-                    break;
-                }
-            }
-
-            if (!ok)
-            {
-                positions.erase(it);
-                break;
-            }
-        }
-
-        if (ok)
-            break;
-
-    } while (true);
-
-    structure.positions = v3tod(positions);
-    structure.types.resize(positions.size());
-    cout << positions.size() << endl;
-}
-
 void repeat_structure(structure_t &structure, int n_times)
 {
     vector<double> new_pos;
@@ -493,62 +469,6 @@ void repeat_structure(structure_t &structure, int n_times)
     structure.types = new_types;
 }
 
-void find_breathing_mode(structure_t structure,
-    vector<pair<double, vector<vec3_t>>> &modes, int last_mode)
-{
-    constexpr double tol = 0.01;
-    constexpr int mode_tol = 5;
-    const int mode_target = last_mode + 10;
-
-    double middle = 3.684072;
-    auto pos = dtov3(structure.positions);
-
-    vec3_t avg;
-    for (auto v : pos)
-        avg += v / pos.size();
-
-    auto fitness_fn = [=](double dy, double ey) {
-        auto m = dy * ey;
-        return m > 0 ? m : 0;
-    };
-
-    double max_sum = -1e9;
-    int id = 0, max_id = 0;
-    pair<double, vector<vec3_t>> breathing_mode;
-
-    for (int id = mode_target - mode_tol; id < mode_target + mode_tol; ++id)
-    {
-        auto &eigs = modes[id].second;
-
-        vec3_t low{},
-            high{};
-        for (int i = 0; i < pos.size(); ++i)
-        {
-            if (structure.types[i] == atom_type::HYDROGEN)
-                continue;
-
-            if (pos[i].y() > avg.y())
-                high += eigs[i];
-            else
-                low += eigs[i];
-        }
-
-        double val = dot(high, -low);
-        if (val > max_sum)
-        {
-            breathing_mode = modes[id];
-            max_sum = val;
-            max_id = id;
-        }
-    }
-
-    ofstream outfile("bm.dat");
-    outfile << max_id << ' ' << breathing_mode.first << ' ' << max_sum << endl;
-    outfile.close();
-
-    cout << max_id << ' ' << breathing_mode.first << ' ' << max_sum << endl;
-}
-
 void plot_modes(string filename, airebo::system_control_t &sys,
     vector<pair<double, vector<vec3_t>>> modes)
 {
@@ -566,14 +486,10 @@ void plot_modes(string filename, airebo::system_control_t &sys,
 
 
             for (int k = 0; k < 3; ++k)
-            {
                 outfile << pos1[k] << ' ';
-            }
 
             for (int k = 0; k < 3; ++k)
-            {
                 outfile << pos2[k] << ' ';
-            }
 
             outfile << endl;
         }
@@ -611,6 +527,9 @@ void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
 
 void write_log(string filename, string desc)
 {
+    if (filename.empty())
+        return;
+
     stringstream ss;
     ss << "{\"status\":\"" << desc << "\"}";
 
@@ -618,64 +537,4 @@ void write_log(string filename, string desc)
     ofstream outfile(filename);
     outfile.write(string.c_str(), string.size());
     outfile.close();
-}
-
-int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm comm)
-{
-    auto structure = settings.structure;
-
-    // relax
-    write_log(settings.log_filename, "Relaxing Structure");
-    relax_structure(structure, settings.add_hydrogen);
-
-    sort_structure_types(structure);
-    io::write_structure("relaxed.xyz", structure);
-
-    // write poscar
-    io::write_structure("POSCAR", structure, false, file_type::POSCAR);
-
-    write_log(settings.log_filename, "Generating Displacements");
-    if (generate_displacements(settings.phonopy_settings) != 0)
-        return EXIT_FAILURE;
-
-    write_log(settings.log_filename, "Generating Force Sets");
-
-    if (generate_force_sets() != 0)
-        return EXIT_FAILURE;
-
-//    generate_eigs(dim)
-
-    write_log(settings.log_filename, "Computing Force Constants");
-    if (generate_bands(settings.phonopy_settings) != 0)
-        return EXIT_FAILURE;
-
-//    // read eigenmodes/etc
-//    auto modes = read_eigs();
-////    find_breathing_mode(structure, modes, last_mode);
-//
-//    cout << "num modes: " << modes.size() << endl;
-//    if (!modes.empty())
-//        cout << "num eigs: " << modes[0].second.size() << endl;
-//
-//    airebo::system_control_t sys;
-//    sys.init(structure);
-//    plot_modes("modes.dat", sys, modes);
-//
-//    int pol_axes[2] = {0, 0};
-//    io::deserialize_array(config["polarization_axes"], &pol_axes[0]);
-//    cout << "pol_axes " << pol_axes[0] << ' ' << pol_axes[1] << endl;
-//
-//    write_spectra(modes, sys, pol_axes, "spectra.dat");
-//
-//
-//    int xx[2] = {0, 0},
-//        yy[2] = {1, 1},
-//        zz[2] = {2, 2},
-//        xy[2] = {0, 1};
-//    write_spectra(modes, sys, xx, "spectra_xx.dat");
-//    write_spectra(modes, sys, yy, "spectra_yy.dat");
-//    write_spectra(modes, sys, zz, "spectra_zz.dat");
-//    write_spectra(modes, sys, xy, "spectra_xy.dat");
-
-    return EXIT_SUCCESS;
 }

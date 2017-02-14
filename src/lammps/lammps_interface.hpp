@@ -7,12 +7,13 @@
 #include "common/util/mpi.hpp"
 #include "lammps/settings_t.hpp"
 #include "common/enums.hpp"
+#include "common/structure_t.hpp"
+#include "common/function_types.hpp"
 
 #include <boost/mpi/communicator.hpp>
 
 #include <vector>
 #include <string>
-#include <common/structure_t.hpp>
 
 // forward declare of LAMMPS, to avoid having to include files here
 /// LAMMPS \cite plimpton1995fast namespace
@@ -39,6 +40,9 @@ private:
     /// lattice vectors
     double lattice[3][3];
 
+    double lattice_orig[3][3],
+        inv_transform[3][3];
+
     /// the only interface into LAMMPS, a pointer to a constructed LAMMPS class
     LAMMPS_NS::LAMMPS *lmp;
 
@@ -47,14 +51,15 @@ private:
 
 public:
     /// constructor, pulls communicator from MPI_COMM_WORLD, constructs lmp object
-    /// \param mpi_group util::mpi_group_t input MPI group information and comms
-    system_control_t(boost::mpi::communicator comm);
+    /// \param boost::mpi::communicator input MPI comm
+    system_control_t(
+        boost::mpi::communicator comm = boost::mpi::communicator());
     /// destructor, automatically destroys the lammps object pointed to by lmp
     ~system_control_t();
 
     /// initialize the system
     void init(const structure_t &info,
-        const lammps_settings_t &lmp_set);
+        const lammps_settings_t &lmp_set = lammps_settings_t());
 
     /// update forces and the total potential, executes a single LAMMPS run
     void update();
@@ -106,6 +111,19 @@ public:
     /// conversion to structure interchange class
     structure_t get_structure() const;
     void set_structure(const structure_t  &input);
+
+    /// construct a differentiable function object tied to this object
+    diff_fn_t get_diff_fn()
+    {
+        return [&](const auto &pos) {
+            auto structure = this->get_structure();
+            structure.positions = pos;
+            this->set_structure(structure);
+
+            this->update();
+            return std::make_pair(this->get_value(), this->get_gradient());
+        };
+    }
 
 private:
     /// disallow copy constructor

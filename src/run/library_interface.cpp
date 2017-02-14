@@ -1,4 +1,4 @@
-#include "sp2.h"
+#include "sp2/sp2.h"
 
 #include "common/io/util.hpp"
 #include "common/io/structure.hpp"

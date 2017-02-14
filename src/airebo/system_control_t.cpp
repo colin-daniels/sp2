@@ -1005,6 +1005,8 @@ diff_fn_t system_control_t::get_diff_fn()
 //
 //}
 //
+
+// TODO: make add_hydrogen potential agnostic
  void airebo::system_control_t::add_hydrogen()
  {
      int num_total = -1;

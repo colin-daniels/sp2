@@ -15,18 +15,20 @@ add_executable(code_generation
         ../util/timing.cpp)
 
 set_target_properties(code_generation PROPERTIES
-        OUTPUT_NAME codegen)
+        OUTPUT_NAME codegen
+        CXX_STANDARD 14
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
 
 target_include_directories(code_generation PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR})
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/src)
 
 # requires templ
 target_link_libraries(code_generation templ)
 
 if(SP2_ENABLE_TESTS)
     add_test(all codegen --test)
-    target_compile_definitions(code_generation PRIVATE
-            SP2_ENABLE_TESTS)
     target_link_libraries(code_generation gtest)
 endif()
 

@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 // check command line flags for special options that bypass normal operation  //
 ////////////////////////////////////////////////////////////////////////////////
 
+    // TODO: parse args better, verbose logging
     map<string, function<int(void)>> run_special;
 
     run_special["--generate-defaults"] = []{
@@ -78,6 +79,7 @@ int run_normal(string config_filename, MPI_Comm comm)
     run_settings_t settings;
     if (!settings.deserialize(config))
         return EXIT_FAILURE;
+
 
     // execute the run (functions are declared in run/run_types.hpp)
     switch (settings.mode)

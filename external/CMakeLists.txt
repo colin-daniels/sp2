@@ -1,7 +1,12 @@
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(SP2_ENABLE_TESTS)
     add_subdirectory(googletest)
+    target_compile_definitions(gtest INTERFACE
+            SP2_ENABLE_TESTS)
 endif()
 
-add_subdirectory(jsoncpp)
-add_subdirectory(lammps)
+if(SP2_ENABLE_LAMMPS)
+    add_subdirectory(lammps)
+endif()
+
 add_subdirectory(templ)
+add_subdirectory(jsoncpp)

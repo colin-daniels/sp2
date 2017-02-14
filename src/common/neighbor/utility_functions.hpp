@@ -18,6 +18,9 @@ int process_lattice(const double lattice[3][3],
 
 void invert_3x3(const double input[3][3], double inverse[3][3]);
 
+void array_rot(const int axis, double *input,
+    double *output, const double theta);
+
 } // namespace fbc
 } // namespace sp2
 

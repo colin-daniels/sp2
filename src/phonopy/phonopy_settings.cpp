@@ -15,7 +15,9 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "n_samples", n_samples,
         "minimize", min_set,
         "displacement_distance", displacement_distance,
-        "log_filename", log_filename,
+        "calc_raman", calc_raman,
+        "polarization_axes", polarization_axes,
+        "calc_bands", calc_bands,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );
@@ -29,7 +31,9 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "n_samples", n_samples,
         "minimize", min_set,
         "displacement_distance", displacement_distance,
-        "log_filename", log_filename,
+        "calc_raman", calc_raman,
+        "polarization_axes", polarization_axes,
+        "calc_bands", calc_bands,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );

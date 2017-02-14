@@ -1,7 +1,18 @@
 cmake_minimum_required(VERSION 3.2)
 project(sp2 CXX)
 
-# support unix only
+################################################################################
+## Options + misc                                                             ##
+################################################################################
+
+option(SP2_ENABLE_MPI             "Enable MPI" ON)
+option(SP2_ENABLE_LAMMPS       "Enable LAMMPS" ON)
+option(SP2_ENABLE_PHONOPY     "Enable Phonopy" ON)
+option(SP2_ENABLE_TESTS   "Enable/build tests" ON)
+
+option(SP2_BUILD_LIB     "Build library instead of binary" OFF)
+option(BUILD_SHARED_LIBS  "Build shared libraries (DLLs)." OFF)
+
 if(NOT UNIX)
     message(FATAL_ERROR "SP2 is supported on unix only." )
 endif()
@@ -27,17 +38,6 @@ include(FindPythonModule)
 
 # enable ctest
 enable_testing()
-
-################################################################################
-## Options                                                                    ##
-################################################################################
-
-option(SP2_ENABLE_MPI       "Enable MPI" ON)
-option(SP2_ENABLE_LAMMPS    "Enable LAMMPS" ON)
-option(SP2_ENABLE_PHONOPY   "Enable Phonopy" ON)
-option(SP2_ENABLE_TESTS     "Enable/build tests" ON)
-
-option(BUILD_SHARED_LIBS    "Build shared libraries (DLLs)." OFF)
 
 ################################################################################
 ## Source files                                                               ##
@@ -147,64 +147,119 @@ set(SOURCE_FILES
         src/run/run_settings_t.cpp
         src/run/run_settings_t.hpp
         src/common/json/json_serializable_t.cpp
-        src/airebo/airebo_util.hpp)
+        src/airebo/airebo_util.hpp
+        src/include/sp2/sp2.h)
 
+# enable/disable inclusion of source files defined in ${SOURCE_FILES}
+# depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
 include(Sp2ParseSources)
 parse_sources(SOURCE_FILES ${SOURCE_FILES})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-include_directories(${CMAKE_BINARY_DIR})
+################################################################################
+## Main targets                                                               ##
+################################################################################
 
-# add subdirectories for external code as well as the code generation target
-add_subdirectory(external)
-add_subdirectory(src/common/codegen)
+if(NOT SP2_BUILD_LIB)
+    # we are building an executable
+    add_executable(sp2
+            src/main.cpp
+            ${SOURCE_FILES})
+else()
+    # we are building a library
+    add_library(sp2
+            src/run/library_interface.cpp
+            ${SOURCE_FILES})
 
-link_libraries(templ)
-link_libraries(jsoncpp)
+    target_include_directories(sp2 PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/include>
+            $<INSTALL_INTERFACE:include>)
 
-if(SP2_ENABLE_LAMMPS)
-    link_libraries(lammps)
+    # install library headers
+    install(DIRECTORY src/include/ DESTINATION include)
 endif()
+
+target_include_directories(sp2 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR})
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
-    add_definitions(-DSP2_DEBUG)
+    target_compile_definitions(sp2 PRIVATE
+            SP2_DEBUG)
 endif()
+
+install(TARGETS sp2
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
+
+set_target_properties(sp2 PROPERTIES
+        CXX_STANDARD 14
+        CXX_STANDARD_REQUIRED ON
+        CXX_EXTENSIONS OFF)
+
+################################################################################
+## Dependencies/external code                                                 ##
+################################################################################
+
+# add subdirectories for external libraries/code
+add_subdirectory(external)
 
 if(SP2_ENABLE_TESTS)
     add_test(all sp2 --test)
-    add_definitions(-DSP2_ENABLE_TESTS)
-    link_libraries(gtest)
+    target_link_libraries(sp2 gtest)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(SP2_ENABLE_LAMMPS)
+    target_link_libraries(sp2 lammps)
+endif()
+
+target_link_libraries(sp2
+        jsoncpp
+        templ)
+
+# internal code generation target
+add_subdirectory(src/common/codegen)
+add_dependencies(sp2 code_generation)
 
 ################################################################################
-## MPI                                                                        ##
+## MPI + boost                                                                ##
 ################################################################################
 
 if(SP2_ENABLE_MPI)
-    find_package(MPI REQUIRED)
+    target_compile_definitions(sp2 PRIVATE
+            SP2_ENABLE_MPI)
 
-    add_definitions(-DSP2_ENABLE_MPI)
+    # System MPI
+    find_package(MPI REQUIRED)
     list(APPEND CMAKE_CXX_COMPILE_FLAGS
             ${MPI_CXX_COMPILE_FLAGS})
-
-    include_directories(${MPI_CXX_INCLUDE_PATH})
 
     set(CMAKE_CXX_LINK_FLAGS
             ${CMAKE_CXX_LINK_FLAGS}
             ${MPI_CXX_LINK_FLAGS})
 
-    link_libraries(boost_mpi
-            boost_serialization
-            ${MPI_CXX_LIBRARIES})
+    # Boost MPI (also requires Boost serialization)
+    if(NOT BUILD_SHARED_LIBS)
+        set(Boost_USE_STATIC_LIBS ON)
+    endif()
+
+    set(Boost_USE_MULTITHREADED ON)
+    find_package(Boost REQUIRED COMPONENTS mpi serialization)
+
+    # update target
+    target_include_directories(sp2 PRIVATE
+            ${MPI_CXX_INCLUDE_PATH}
+            ${Boost_INCLUDE_DIRS})
+
+    target_link_libraries(sp2
+            ${MPI_CXX_LIBRARIES}
+            ${Boost_LIBRARIES})
 else()
     set(THREADS_PREFER_PTHREAD_FLAG ON)
     find_package(Threads REQUIRED)
 
-    link_libraries(Threads::Threads)
+    target_link_libraries(sp2
+            Threads::Threads)
 endif()
 
 ################################################################################
@@ -228,43 +283,18 @@ function(find_phonopy version)
     endif()
 endfunction(find_phonopy)
 
-if(SP2_ENABLE_PHONOPY AND NOT PYMOD_PHONOPY_LOCATION)
-    # first we try to find the python 3+ version of phonopy
-    find_phonopy(3)
-    # then if that fails, fall back to 2.7
-    if(NOT PYMOD_PHONOPY_FOUND)
-        find_phonopy(2.7)
-    endif()
+if(SP2_ENABLE_PHONOPY)
+    target_compile_definitions(sp2 PRIVATE
+            SP2_ENABLE_PHONOPY)
 
-    add_definitions(-DSP2_ENABLE_PHONOPY)
+    if(NOT PYMOD_PHONOPY_LOCATION)
+        # first we try to find the python 3+ version of phonopy
+        find_phonopy(3)
+        # then if that fails, fall back to 2.7
+        if(NOT PYMOD_PHONOPY_FOUND)
+            find_phonopy(2.7)
+        endif()
+    endif()
 endif()
 
-################################################################################
-## Main targets                                                               ##
-################################################################################
-
-# sp2 executable (sp2)
-add_executable(sp2-bin
-        src/main.cpp
-        ${SOURCE_FILES})
-
-# explicitly set executable filename to 'sp2'
-set_target_properties(sp2-bin PROPERTIES
-        OUTPUT_NAME sp2)
-
-# sp2 library (libsp2.a/so)
-add_library(sp2-lib
-        src/run/lib/library_interface.cpp
-        ${SOURCE_FILES})
-
-# explicitly set library filename to libsp2.so/libsp2.a
-# additionally, stop the library from being made by default
-set_target_properties(sp2-lib PROPERTIES
-        OUTPUT_NAME sp2
-        EXCLUDE_FROM_ALL 1
-        EXCLUDE_FROM_DEFAULT_BUILD 1)
-
-# code generation dependencies
-add_dependencies(sp2-bin code_generation)
-add_dependencies(sp2-lib code_generation)
 

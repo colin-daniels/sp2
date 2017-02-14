@@ -34,12 +34,14 @@ struct phonopy_settings_t : public io::json_serializable_t
     int supercell_dim[3] = {1, 1, 1};
     double displacement_distance = 0.01;
 
+    bool calc_raman = false;
+    int polarization_axes[2] = {0, 0};
+
+    bool calc_bands = true;
     std::vector<qpoint_t> qpoints = {
         qpoint_t("\u0393", 0, 0, 0),
         qpoint_t("X", 0.5, 0, 0)
     };
-
-    std::string log_filename = "progress.log";
 
     minimize::acgsd_settings_t min_set;
 

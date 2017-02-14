@@ -8,6 +8,7 @@
 
 #include <string>
 #include <fstream>
+#include <common/vec3_t.hpp>
 
 using namespace std;
 using namespace sp2;
@@ -184,6 +185,9 @@ bool io::write_poscar(std::string filename, const structure_t &input)
         outfile << "H C\n" << n_hydrogen << ' ' << n_carbon << '\n';
 
     double inv_lattice[3][3];
+
+    // x = L^T x'
+    // (L^T)^-1 x = x'
     fbc::invert_3x3(input.lattice, inv_lattice);
     outfile << "Direct\n";
 
@@ -193,7 +197,7 @@ bool io::write_poscar(std::string filename, const structure_t &input)
         {
             double val = 0;
             for (int k = 0; k < 3; ++k)
-                val += positions[i + k] * inv_lattice[j][k];
+                val += positions[i + k] * inv_lattice[k][j];
 
             outfile << val << ' ';
         }

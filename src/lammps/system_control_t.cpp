@@ -15,11 +15,86 @@
 #include <boost/mpi/communicator.hpp>
 #include <common/util/blas.hpp>
 #include <common/io/util.hpp>
+#include <common/vec3_t.hpp>
+#include "common/neighbor/utility_functions.hpp"
 
 using namespace LAMMPS_NS;
 
 using namespace std;
 using namespace sp2;
+
+void transform_input(std::vector<double> &pos, double lattice[3][3],
+    double inv_rotation[3][3])
+{
+    vec3_t lat[3] = {
+        vec3_t(lattice[0]),
+        vec3_t(lattice[1]),
+        vec3_t(lattice[2])
+    };
+
+    if (dot(cross(lat[0], lat[1]), lat[2]) < 0)
+    {
+        // not a right-handed basis
+        // swap rows to fix
+        std::swap(lat[0], lat[1]);
+        for (int i = 0; i < 3; ++i)
+            std::swap(lattice[0][i], lattice[1][i]);
+    }
+
+    double a = lat[0].mag(),
+        b = lat[1].mag(),
+        c = lat[2].mag();
+
+    for (auto &v : lat)
+        v.normalize();
+
+    double cos_alpha = dot(lat[1], lat[2]), // b/c
+        cos_beta = dot(lat[0], lat[2]),     // a/c
+        cos_gamma = dot(lat[0], lat[1]);    // a/b
+
+    // http://lammps.sandia.gov/doc/Section_howto.html#howto-12
+    double lx = a,
+        xy = b * cos_gamma,
+        xz = c * cos_beta,
+        ly = sqrt(b * b - xy * xy),
+        yz = (b * c * cos_alpha - xy * xz) / ly,
+        lz = sqrt(c * c - xz * xz - yz * yz);
+
+    double new_lattice[3][3] = {
+        {lx,  0,  0},
+        {xy, ly,  0},
+        {xz, yz, lz}
+    };
+
+    // get rotation matrix R via solving
+    //     L R = N
+    double inv_lattice[3][3] = {};
+    fbc::invert_3x3(lattice, inv_lattice);
+
+    // rotation matrix should be its transpose, because we are going to use it
+    // to rotate all of the vectors next
+    double rotation[3][3] = {};
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            for (int k = 0; k < 3; ++k)
+                rotation[j][i] += inv_lattice[i][k] * new_lattice[k][j];
+
+    // copy lattice to output
+    std::copy_n(new_lattice[0], 9, lattice[0]);
+
+    // copy transpose rotation to inv_rotation
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            inv_rotation[i][j] = rotation[j][i];
+
+    // transform positions
+    for (std::size_t i = 0; i < pos.size() / 3; ++i)
+    {
+        sp2::vec3_t new_pos = vec3_t(&pos[i * 3]).mul_3x3(rotation);
+        for (int j = 0; j < 3; ++j)
+            pos[i * 3 + j] = new_pos[j];
+    }
+}
 
 lammps::system_control_t::system_control_t(boost::mpi::communicator comm) :
     na(0), nb(0), total_potential(0), lmp(nullptr),
@@ -51,15 +126,29 @@ void lammps::system_control_t::set_structure(const structure_t  &input)
 {
     type = input.types;
     position = input.positions;
-    for (int i = 0; i < 9; ++i)
-    {
-        if (input.lattice[i/3][i%3] == lattice[i/3][i%3])
-            continue;
 
-        copy_n(input.lattice[0], 9, lattice[0]);
+    bool eq = true;
+    for (int i = 0; i < 9; ++i)
+        eq &= input.lattice[i%3][i/3] == lattice_orig[i%3][i/3];
+
+    if (!eq)
+    {
+        std::copy_n(input.lattice[0], 9, lattice_orig[0]);
+        transform_input(position, lattice, inv_transform);
         update_boundaries(false);
-        break;
     }
+}
+
+structure_t lammps::system_control_t::get_structure() const
+{
+    structure_t structure;
+
+    structure.types = type;
+    structure.positions = position;
+
+    copy_n(lattice[0], 9, structure.lattice[0]);
+
+    return structure;
 }
 
 void lammps::system_control_t::init(const structure_t &info,
@@ -74,11 +163,9 @@ void lammps::system_control_t::init(const structure_t &info,
     position = info.positions;
     force.resize(na * 3, 0);
 
-//    if (!sp2::io::file_exists("CH.airebo"))
-//    {
-//        cerr << "CH.airebo is missing, cannot use LAMMPS, aborting..." << endl;
-//        abort();
-//    }
+    // transform to triclinic
+    std::copy_n(lattice[0], 9, lattice_orig[0]);
+    transform_input(position, lattice, inv_transform);
 
     delete lmp;
 
@@ -202,18 +289,6 @@ void lammps::system_control_t::update_atoms()
         update_boundaries(false /* not initial */, false /* shrink-wrap */);
     }
 }
-
-structure_t lammps::system_control_t::get_structure() const
-{
-    structure_t structure;
-
-    structure.types = type;
-    structure.positions = position;
-    copy_n(lattice[0], 9, structure.lattice[0]);
-
-    return structure;
-}
-
 void lammps::system_control_t::write_output(std::string filename)
 {
     if (comm.rank() == 0)
@@ -341,7 +416,8 @@ void lammps::system_control_t::update_boundaries(bool initial, bool fixed)
 
     for (int i = 0; i < 3; ++i)
     {
-        // non-periodic
+        // non-periodic?
+        // TODO: fix for triclinic
         if (lattice[i][i] == 0)
             periodicity_cmd += (fixed ? " f" : " s");
         else
@@ -355,38 +431,42 @@ void lammps::system_control_t::update_boundaries(bool initial, bool fixed)
         }
     }
 
+#warning TEMP
+
     // tell lammps what directions are periodic
     exec_command(periodicity_cmd);
+
+    std::ostringstream ss;
+    for (int i = 0; i < 3; ++i)
+        ss << "0 " << lattice[i][i] << ' ';
+
+    // if triclinic
+    ss << lattice[1][0] << ' ' << lattice[2][0] << ' ' << lattice[2][1];
 
     if (initial)
     {
         exec_command(
+            "box tilt large",
             // define the extents of the simulation box
-            "region sim block  "
-            + to_string(min_max[0][0]) + " "
-            + to_string(min_max[0][1]) + " "
-            + to_string(min_max[1][0]) + " "
-            + to_string(min_max[1][1]) + " "
-            + to_string(min_max[2][0]) + " "
-            + to_string(min_max[2][1]),
+            "region sim prism " + ss.str(),
             // create the simulation box
             "create_box 2 sim" // note the 2 is because there are 2 atom types
         );
     }
     else
     {
-        // modify simulation box extents
-        exec_command(
-            "change_box all x final "
-            + to_string(min_max[0][0]) + " "
-            + to_string(min_max[0][1]),
-            "change_box all y final "
-            + to_string(min_max[1][0]) + " "
-            + to_string(min_max[1][1]),
-            "change_box all z final "
-            + to_string(min_max[2][0]) + " "
-            + to_string(min_max[2][1])
-        );
+//        // modify simulation box extents
+//        exec_command(
+//            "change_box all x final "
+//            + to_string(min_max[0][0]) + " "
+//            + to_string(min_max[0][1]),
+//            "change_box all y final "
+//            + to_string(min_max[1][0]) + " "
+//            + to_string(min_max[1][1]),
+//            "change_box all z final "
+//            + to_string(min_max[2][0]) + " "
+//            + to_string(min_max[2][1])
+//        );
     }
 }
 
@@ -399,9 +479,8 @@ TEST(lammps, all) {
     sp2::structure_t input;
     io::read_structure("graphene.xyz", input);
 
-    boost::mpi::communicator comm;
-    lammps::system_control_t sys(comm);
-    sys.init(input, lammps_settings_t{});
+    lammps::system_control_t sys;
+    sys.init(input);
 
     sys.update();
 

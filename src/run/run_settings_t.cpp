@@ -45,6 +45,9 @@ bool run_settings_t::serialize(Json::Value &output) const
         "log_filename", log_filename,
         "symm", symm_settings,
         "atac", atac_settings,
+#ifdef SP2_ENABLE_LAMMPS
+        "lammps", lammps_settings,
+#endif // SP2_ENABLE_LAMMPS
 #ifdef SP2_ENABLE_PHONOPY
         "phonopy", phonopy_settings,
 #endif // SP2_ENABLE_PHONOPY
@@ -76,6 +79,9 @@ bool run_settings_t::deserialize(const Json::Value &input)
         "log_filename", log_filename,
         "symm", symm_settings,
         "atac", atac_settings,
+#ifdef SP2_ENABLE_LAMMPS
+        "lammps", lammps_settings,
+#endif // SP2_ENABLE_LAMMPS
 #ifdef SP2_ENABLE_PHONOPY
         "phonopy", phonopy_settings,
 #endif // SP2_ENABLE_PHONOPY
