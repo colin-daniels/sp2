@@ -292,7 +292,7 @@ if(SP2_ENABLE_PHONOPY)
         find_phonopy(3)
         # then if that fails, fall back to 2.7
         if(NOT PYMOD_PHONOPY_FOUND)
-            find_phonopy(2.7)
+            find_phonopy(2.7 REQUIRED)
         endif()
     endif()
 endif()

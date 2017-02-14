@@ -81,10 +81,6 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
         return EXIT_FAILURE;
 
     write_log(settings.log_filename, "Computing Force Constants");
-    if (settings.phonopy_settings.calc_bands &&
-        generate_bands(settings.phonopy_settings) != 0)
-        return EXIT_FAILURE;
-
     if (settings.phonopy_settings.calc_raman)
     {
         if (generate_eigs(settings.phonopy_settings) != 0)
@@ -104,6 +100,10 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
         write_spectra(modes, sys, settings.phonopy_settings.polarization_axes,
             "spectra.dat");
     }
+
+    if (settings.phonopy_settings.calc_bands &&
+        generate_bands(settings.phonopy_settings) != 0)
+        return EXIT_FAILURE;
 
     return EXIT_SUCCESS;
 }

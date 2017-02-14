@@ -122,11 +122,11 @@ constexpr bond_types get_bond_type(atom_types a, atom_types b)
 }
 
 static_assert(get_bond_type(
-    atom_types::CARBON, atom_types::CARBON) == bond_types::CC);
+    atom_types::CARBON, atom_types::CARBON) == bond_types::CC, "");
 static_assert(get_bond_type(
-    atom_types::HYDROGEN, atom_types::CARBON) == bond_types::HC);
+    atom_types::HYDROGEN, atom_types::CARBON) == bond_types::HC, "");
 static_assert(get_bond_type(
-    atom_types::HYDROGEN, atom_types::HYDROGEN) == bond_types::HH);
+    atom_types::HYDROGEN, atom_types::HYDROGEN) == bond_types::HH, "");
 
 namespace detail {
 
