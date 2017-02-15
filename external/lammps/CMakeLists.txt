@@ -1,4 +1,4 @@
-set(LAMMPS_SOURCE_DIR ${CMAKE_BINARY_DIR}/lammps)
+set(LAMMPS_SOURCE_DIR ${CMAKE_BINARY_DIR}/lammps-build)
 set(LAMMPS_BUILD_DIR ${LAMMPS_SOURCE_DIR}/lammps)
 
 # make output dir
@@ -14,11 +14,10 @@ else()
 endif()
 
 ExternalProject_Add(lammps_external
-        URL ${CMAKE_CURRENT_SOURCE_DIR}/lammps.tar.gz
-        URL_HASH SHA1=4d9ad513c1ed9eef78a524f4ee7408b75c610b0f
-        SOURCE_DIR ${LAMMPS_SOURCE_DIR}
+        URL http://lammps.sandia.gov/tars/lammps-stable.tar.gz
+        SOURCE_DIR "${LAMMPS_SOURCE_DIR}"
         CONFIGURE_COMMAND ""
-        BINARY_DIR ${LAMMPS_BUILD_DIR}
+        BINARY_DIR "${LAMMPS_BUILD_DIR}"
         # we use $(MAKE) to propagate -jN
         BUILD_COMMAND $(MAKE) --silent ${LAMMPS_BUILD_MODE}
         INSTALL_COMMAND ""
@@ -26,6 +25,8 @@ ExternalProject_Add(lammps_external
 
 # custom config step to patch lammps
 ExternalProject_Add_Step(lammps_external pre_config
+        COMMAND ${CMAKE_COMMAND} -E rename "${LAMMPS_SOURCE_DIR}/src"
+            "${LAMMPS_BUILD_DIR}"
         COMMAND ${CMAKE_COMMAND} -E copy
             "${CMAKE_CURRENT_SOURCE_DIR}/CH.airebo.hpp"
             "${LAMMPS_BUILD_DIR}/"
@@ -34,7 +35,8 @@ ExternalProject_Add_Step(lammps_external pre_config
             "${LAMMPS_BUILD_DIR}/"
         DEPENDERS configure
         DEPENDEES patch
-        DEPENDS CH.airebo.hpp pair_airebo.cpp)
+        DEPENDS CH.airebo.hpp pair_airebo.cpp
+        WORKING_DIRECTORY "${LAMMPS_SOURCE_DIR}")
 
 # create imported library representing lammps, its location, and headers
 if(BUILD_SHARED_LIBS)

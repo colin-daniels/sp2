@@ -206,14 +206,14 @@ add_subdirectory(external)
 
 if(SP2_ENABLE_TESTS)
     add_test(all sp2 --test)
-    target_link_libraries(sp2 gtest)
+    target_link_libraries(sp2 PRIVATE gtest)
 endif()
 
 if(SP2_ENABLE_LAMMPS)
-    target_link_libraries(sp2 lammps)
+    target_link_libraries(sp2 PRIVATE lammps)
 endif()
 
-target_link_libraries(sp2
+target_link_libraries(sp2 PRIVATE
         jsoncpp_lib_static
         yaml-cpp
         templ)
@@ -252,7 +252,7 @@ if(SP2_ENABLE_MPI)
             ${MPI_CXX_INCLUDE_PATH}
             ${Boost_INCLUDE_DIRS})
 
-    target_link_libraries(sp2
+    target_link_libraries(sp2 PUBLIC
             ${MPI_CXX_LIBRARIES}
             ${Boost_LIBRARIES})
 else()
