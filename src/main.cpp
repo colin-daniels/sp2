@@ -84,9 +84,9 @@ int run_normal(string config_filename, MPI_Comm comm)
     // execute the run (functions are declared in run/run_types.hpp)
     switch (settings.mode)
     {
-    case run_type::MINIMIZE:
+    case run_type::RELAX:
         // just minimize/relax the structure and nothing else
-//        return run_minimize(settings, comm);
+        return run_relaxation(settings, comm);
     case run_type::ATAC:
         // run ATAC
 //        return run_atac(settings, comm);

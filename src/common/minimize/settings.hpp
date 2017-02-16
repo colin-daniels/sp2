@@ -51,7 +51,7 @@ struct acgsd_settings_t : public io::json_serializable_t
 
     /// number of iterations in a row that must
     /// fail the target ratio exit condition
-    /// test before minimizaiton is aborted,
+    /// test before minimization is aborted,
     /// 0 to disable
     int target_exit_min = 0;
 

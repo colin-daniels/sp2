@@ -6,6 +6,7 @@
 #define SP2_RUN_SETTINGS_T_HPP
 
 #include "atac/settings_t.hpp"
+#include "relaxation/relaxation_settings.hpp"
 #ifdef SP2_ENABLE_PHONOPY
 #include "phonopy/phonopy_settings.hpp"
 #endif // SP2_ENABLE_PHONOPY
@@ -25,6 +26,8 @@ namespace sp2 {
 struct run_settings_t : public io::json_serializable_t
 {
     run_type mode = run_type::NONE;
+    potential_type potential = potential_type::LAMMPS;
+
     structure_t structure;
 
     bool add_hydrogen = false;
@@ -39,7 +42,8 @@ struct run_settings_t : public io::json_serializable_t
 #ifdef SP2_ENABLE_PHONOPY
     phonopy::phonopy_settings_t phonopy_settings;
 #endif // SP2_ENABLE_PHONOPY
-    minimize::acgsd_settings_t minimize_settings;
+
+    relaxation_settings_t relaxation_settings;
 
     bool serialize(Json::Value &output) const;
     bool deserialize(const Json::Value &input);

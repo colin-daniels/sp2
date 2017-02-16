@@ -24,11 +24,11 @@ enum class bond_type : int
 /// primary program task
 enum class run_type : int
 {
-    NONE     = 0,
-    MINIMIZE = 1,
-    ATAC     = 2,
-    SYMM     = 3,
-    PHONOPY  = 4
+    NONE    = 0,
+    RELAX   = 1,
+    ATAC    = 2,
+    SYMM    = 3,
+    PHONOPY = 4
 };
 
 /// class of potential to use for force/energy calculation

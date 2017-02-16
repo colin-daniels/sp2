@@ -15,7 +15,7 @@ namespace sp2 {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// execute energy minimization run/structural relaxation
-int run_minimize(const run_settings_t &config, MPI_Comm comm);
+int run_relaxation(const run_settings_t &config, MPI_Comm comm);
 
 /// execute a run of ATAC
 int run_atac(const run_settings_t &config, MPI_Comm comm);

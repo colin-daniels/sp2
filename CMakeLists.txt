@@ -148,7 +148,10 @@ set(SOURCE_FILES
         src/run/run_settings_t.hpp
         src/common/json/json_serializable_t.cpp
         src/airebo/airebo_util.hpp
-        src/include/sp2/sp2.h)
+        src/include/sp2/sp2.h
+        src/run/run_relaxation.cpp
+        src/relaxation/relaxation_settings.cpp
+        src/relaxation/relaxation_settings.hpp)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
