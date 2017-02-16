@@ -37,6 +37,8 @@ struct phonopy_settings_t : public io::json_serializable_t
     bool calc_raman = false;
     int polarization_axes[2] = {0, 0};
 
+    bool calc_displacements = true;
+    bool calc_force_sets = true;
     bool calc_bands = true;
     std::vector<qpoint_t> qpoints = {
         qpoint_t("\u0393", 0, 0, 0),

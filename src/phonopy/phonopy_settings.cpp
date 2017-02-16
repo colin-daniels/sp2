@@ -18,6 +18,8 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "calc_raman", calc_raman,
         "polarization_axes", polarization_axes,
         "calc_bands", calc_bands,
+        "calc_displacements", calc_displacements,
+        "calc_force_sets", calc_force_sets,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );
@@ -34,6 +36,8 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "calc_raman", calc_raman,
         "polarization_axes", polarization_axes,
         "calc_bands", calc_bands,
+        "calc_displacements", calc_displacements,
+        "calc_force_sets", calc_force_sets,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );

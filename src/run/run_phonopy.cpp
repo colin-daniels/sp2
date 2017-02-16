@@ -71,14 +71,19 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 
     io::write_structure("POSCAR", structure, false, file_type::POSCAR);
 
-    write_log(settings.log_filename, "Generating Displacements");
-    if (generate_displacements(settings.phonopy_settings) != 0)
-        return EXIT_FAILURE;
+    if (settings.phonopy_settings.calc_displacements)
+    {
+        write_log(settings.log_filename, "Generating Displacements");
+        if (generate_displacements(settings.phonopy_settings) != 0)
+            return EXIT_FAILURE;
+    }
 
-    write_log(settings.log_filename, "Generating Force Sets");
-
-    if (generate_force_sets(settings) != 0)
-        return EXIT_FAILURE;
+    if (settings.phonopy_settings.calc_force_sets)
+    {
+        write_log(settings.log_filename, "Generating Force Sets");
+        if (generate_force_sets(settings) != 0)
+            return EXIT_FAILURE;
+    }
 
     write_log(settings.log_filename, "Computing Force Constants");
     if (settings.phonopy_settings.calc_raman)
