@@ -233,7 +233,8 @@ template<typename T>
 bool deserialize_basic(const Json::Value &input,
     const std::string &key, T&& value)
 {
-    return get_json_as_type(input[key], std::forward<T>(value));
+    return input.isMember(key) &&
+        get_json_as_type(input[key], std::forward<T>(value));
 }
 
 template<typename T, typename ...Args>
