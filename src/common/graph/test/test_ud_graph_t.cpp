@@ -1,4 +1,3 @@
-#ifdef SP2_DEBUG
 #include "common/graph/ud_graph_t.hpp"
 
 #include <gtest/gtest.h>
@@ -282,5 +281,3 @@ vector<pair<int, int>> a_not_in_b(ud_graph_t &graph_a, ud_graph_t &graph_b)
 //
 //    ASSERT_EQ(graph_a, graph_b);
 //}
-
-#endif // SP2_DEBUG

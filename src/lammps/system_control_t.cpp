@@ -470,7 +470,7 @@ void lammps::system_control_t::update_boundaries(bool initial, bool fixed)
     }
 }
 
-#ifdef SP2_DEBUG
+#ifdef SP2_ENABLE_TESTS
 
 #include <gtest/gtest.h>
 #include "common/io/structure.hpp"
@@ -487,4 +487,4 @@ TEST(lammps, all) {
     EXPECT_NE(sys.get_value(), 0.0);
 }
 
-#endif // SP2_DEBUG
+#endif // SP2_ENABLE_TESTS

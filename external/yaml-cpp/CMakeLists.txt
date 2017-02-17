@@ -4,6 +4,6 @@ download_project(PROJ yaml-cpp
         UPDATE_DISCONNECTED 1
         QUIET)
 
-set(YAML_CPP_BUILD_TOOLS OFF)
+option(YAML_CPP_BUILD_TOOLS "" OFF)
 add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR}
         EXCLUDE_FROM_ALL)

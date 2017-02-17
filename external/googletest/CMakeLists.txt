@@ -4,7 +4,7 @@ download_project(PROJ googletest
         UPDATE_DISCONNECTED 1
         QUIET)
 
-set(BUILD_GTEST ON)
-set(BUILD_GMOCK ON)
+option(BUILD_GTEST "" ON)
+option(BUILD_GMOCK "" OFF)
 add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR}
         EXCLUDE_FROM_ALL)

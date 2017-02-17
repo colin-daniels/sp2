@@ -8,7 +8,7 @@ project(sp2 CXX)
 option(SP2_ENABLE_MPI             "Enable MPI" ON)
 option(SP2_ENABLE_LAMMPS       "Enable LAMMPS" ON)
 option(SP2_ENABLE_PHONOPY     "Enable Phonopy" ON)
-option(SP2_ENABLE_TESTS   "Enable/build tests" ON)
+option(SP2_ENABLE_TESTS   "Enable/build tests" OFF)
 
 option(SP2_BUILD_LIB     "Build library instead of binary" OFF)
 option(BUILD_SHARED_LIBS  "Build shared libraries (DLLs)." OFF)
@@ -112,13 +112,13 @@ set(SOURCE_FILES
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.cpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.hpp
 ################################################################################
+        IF_TESTS_ENABLED src/common/graph/test/test_ud_graph_t.cpp
         src/common/graph/ud_graph_t.cpp
         src/common/graph/ud_graph_t.hpp
         src/common/graph/permutation_t.cpp
         src/common/graph/permutation_t.hpp
         src/common/graph/graph.cpp
         src/common/graph/graph.hpp
-        src/common/graph/test/test_ud_graph_t.cpp
         src/common/neighbor/utility_functions.cpp
         src/common/neighbor/utility_functions.hpp
         src/common/neighbor/periodic_cell_t.hpp

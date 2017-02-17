@@ -4,6 +4,6 @@ download_project(PROJ templ
     UPDATE_DISCONNECTED 1
     QUIET)
 
-set(TEMPL_ENABLE_INSTALL OFF)
-set(TEMPL_ENABLE_TESTS OFF)
+option(TEMPL_ENABLE_INSTALL "" OFF)
+option(TEMPL_ENABLE_TESTS "" OFF)
 add_subdirectory(${templ_SOURCE_DIR} ${templ_BINARY_DIR})
