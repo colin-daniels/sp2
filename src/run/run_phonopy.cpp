@@ -75,14 +75,22 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
     {
         write_log(settings.log_filename, "Generating Displacements");
         if (generate_displacements(settings.phonopy_settings) != 0)
+        {
+            std::cout << "Failed to generate displacements using phonopy."
+                      << std::endl;
             return EXIT_FAILURE;
+        }
     }
 
     if (settings.phonopy_settings.calc_force_sets)
     {
         write_log(settings.log_filename, "Generating Force Sets");
         if (generate_force_sets(settings) != 0)
+        {
+            std::cout << "Failed to generate force sets using phonopy."
+                      << std::endl;
             return EXIT_FAILURE;
+        }
     }
 
     write_log(settings.log_filename, "Computing Force Constants");
@@ -108,7 +116,11 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 
     if (settings.phonopy_settings.calc_bands &&
         generate_bands(settings.phonopy_settings) != 0)
+    {
+        std::cout << "Failed to generate phonon band structure using phonopy."
+                  << std::endl;
         return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }

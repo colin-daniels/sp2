@@ -78,7 +78,11 @@ int run_normal(string config_filename, MPI_Comm comm)
     // try to read all the settings from the config
     run_settings_t settings;
     if (!settings.deserialize(config))
+    {
+        std::cout << "Failed to deserialize json configuration file \""
+                  << config_filename << "\"" << std::endl;
         return EXIT_FAILURE;
+    }
 
 
     // execute the run (functions are declared in run/run_types.hpp)

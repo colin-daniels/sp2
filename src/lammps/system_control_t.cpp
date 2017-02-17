@@ -18,28 +18,23 @@
 #include <common/vec3_t.hpp>
 #include "common/neighbor/utility_functions.hpp"
 
+#ifdef SP2_ENABLE_TESTS
+#include <gtest/gtest.h>
+#endif // SP2_ENABLE_TESTS
+
 using namespace LAMMPS_NS;
 
 using namespace std;
 using namespace sp2;
 
-void transform_input(std::vector<double> &pos, double lattice[3][3],
-    double inv_rotation[3][3])
+void transform_lattice(const double lattice[3][3],
+    double new_lattice[3][3], double transform[3][3])
 {
     vec3_t lat[3] = {
         vec3_t(lattice[0]),
         vec3_t(lattice[1]),
         vec3_t(lattice[2])
     };
-
-    if (dot(cross(lat[0], lat[1]), lat[2]) < 0)
-    {
-        // not a right-handed basis
-        // swap rows to fix
-        std::swap(lat[0], lat[1]);
-        for (int i = 0; i < 3; ++i)
-            std::swap(lattice[0][i], lattice[1][i]);
-    }
 
     double a = lat[0].mag(),
         b = lat[1].mag(),
@@ -56,43 +51,35 @@ void transform_input(std::vector<double> &pos, double lattice[3][3],
     double lx = a,
         xy = b * cos_gamma,
         xz = c * cos_beta,
-        ly = sqrt(b * b - xy * xy),
+        ly = std::sqrt(b * b - xy * xy),
         yz = (b * c * cos_alpha - xy * xz) / ly,
-        lz = sqrt(c * c - xz * xz - yz * yz);
+        lz = std::sqrt(c * c - xz * xz - yz * yz);
 
-    double new_lattice[3][3] = {
+    double temp[3][3] = {
         {lx,  0,  0},
         {xy, ly,  0},
         {xz, yz, lz}
     };
 
-    // get rotation matrix R via solving
-    //     L R = N
+    // copy new lattice to output
+    std::copy_n(temp[0], 9, new_lattice[0]);
+
+    // get rotation matrix Transform via solving
+    //     [Old] [Transform] = [New]
     double inv_lattice[3][3] = {};
     fbc::invert_3x3(lattice, inv_lattice);
 
-    // rotation matrix should be its transpose, because we are going to use it
-    // to rotate all of the vectors next
-    double rotation[3][3] = {};
+    // transformation matrix should be its own transpose, because we need to
+    // rotate the old vectors into the new basis
+    //     x' = ([Old]^-1 [New])^T x
     for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            for (int k = 0; k < 3; ++k)
-                rotation[j][i] += inv_lattice[i][k] * new_lattice[k][j];
-
-    // copy lattice to output
-    std::copy_n(new_lattice[0], 9, lattice[0]);
-
-    // copy transpose rotation to inv_rotation
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            inv_rotation[i][j] = rotation[j][i];
-
-    // transform positions
-    for (std::size_t i = 0; i < pos.size() / 3; ++i)
     {
-        sp2::vec3_t new_pos = vec3_t(&pos[i * 3]).mul_3x3(rotation);
         for (int j = 0; j < 3; ++j)
-            pos[i * 3 + j] = new_pos[j];
+        {
+            transform[j][i] = 0;
+            for (int k = 0; k < 3; ++k)
+                transform[j][i] += inv_lattice[i][k] * new_lattice[k][j];
+        }
     }
 }
 
@@ -109,32 +96,45 @@ double lammps::system_control_t::get_value() const {
 size_t lammps::system_control_t::size() const {
     return position.size();}
 
-vector<double> lammps::system_control_t::get_position() const {
-    return position;}
+vector<double> lammps::system_control_t::get_position() const
+{
+    auto temp = position;
+    transform_output(temp);
+    return temp;
+}
 
 vector<double> lammps::system_control_t::get_gradient() const
 {
     vector<double> grad(force);
     sp2::vscal(-1.0, grad);
+
+    // need to transform gradient output as well
+    transform_output(grad);
     return grad;
 }
 
-void lammps::system_control_t::set_position(const vector<double> &input) {
-    position = input;}
+void lammps::system_control_t::set_position(const vector<double> &input)
+{
+    position = input;
+    transform_input(position);
+}
 
 void lammps::system_control_t::set_structure(const structure_t  &input)
 {
     type = input.types;
     position = input.positions;
 
-    bool eq = true;
-    for (int i = 0; i < 9; ++i)
-        eq &= input.lattice[i%3][i/3] == lattice_orig[i%3][i/3];
-
-    if (!eq)
+    if (std::equal(lattice_orig[0], lattice_orig[3], input.lattice[0]))
+        transform_input(position);
+    else
     {
+        // process the new lattice
         std::copy_n(input.lattice[0], 9, lattice_orig[0]);
-        transform_input(position, lattice, inv_transform);
+        transform_lattice(lattice_orig, lattice, transform);
+
+        // transform positions into new representation
+        transform_input(position);
+
         update_boundaries(false);
     }
 }
@@ -146,7 +146,8 @@ structure_t lammps::system_control_t::get_structure() const
     structure.types = type;
     structure.positions = position;
 
-    copy_n(lattice[0], 9, structure.lattice[0]);
+    transform_output(structure.positions);
+    copy_n(lattice_orig[0], 9, structure.lattice[0]);
 
     return structure;
 }
@@ -154,7 +155,7 @@ structure_t lammps::system_control_t::get_structure() const
 void lammps::system_control_t::init(const structure_t &info,
     const lammps_settings_t &lmp_set)
 {
-    copy_n(info.lattice[0], 9, lattice[0]);
+    std::copy_n(info.lattice[0], 9, lattice_orig[0]);
 
     // number of atoms
     na = info.types.size();
@@ -164,8 +165,8 @@ void lammps::system_control_t::init(const structure_t &info,
     force.resize(na * 3, 0);
 
     // transform to triclinic
-    std::copy_n(lattice[0], 9, lattice_orig[0]);
-    transform_input(position, lattice, inv_transform);
+    transform_lattice(lattice_orig, lattice, transform);
+    transform_input(position);
 
     delete lmp;
 
@@ -303,12 +304,14 @@ void lammps::system_control_t::append_output(std::string filename)
 
 void lammps::system_control_t::add_atom(atom_type type_in, const double *pos)
 {
+    vec3_t transformed_pos = vec3_t(pos).mul_3x3(transform);
+
     stringstream ss;
     ss << "create_atoms " << (int)type_in + 1 << " single";
     for (int i = 0; i < 3; ++i)
     {
         // write the addition command
-        ss << ' ' << pos[i];
+        ss << ' ' << transformed_pos[i];
 
         // resize vectors/record input
         position.push_back(pos[i]);
@@ -437,43 +440,95 @@ void lammps::system_control_t::update_boundaries(bool initial, bool fixed)
     exec_command(periodicity_cmd);
 
     std::ostringstream ss;
+    ss.precision(15);
     for (int i = 0; i < 3; ++i)
         ss << "0 " << lattice[i][i] << ' ';
 
     // if triclinic
-    ss << lattice[1][0] << ' ' << lattice[2][0] << ' ' << lattice[2][1];
+    bool triclinic = (lattice[1][0] != 0 ||
+        lattice[2][0] != 0 ||
+        lattice[2][1] != 0);
+
+    if (triclinic)
+        ss << lattice[1][0] << ' ' << lattice[2][0] << ' ' << lattice[2][1];
 
     if (initial)
     {
-        exec_command(
-            "box tilt large",
-            // define the extents of the simulation box
-            "region sim prism " + ss.str(),
-            // create the simulation box
-            "create_box 2 sim" // note the 2 is because there are 2 atom types
-        );
+        if (!triclinic)
+            exec_command("region sim block " + ss.str());
+        else
+        {
+            exec_command(
+                "box tilt large",
+                // define the extents of the simulation box
+                "region sim prism " + ss.str()
+            );
+        }
+
+        // create the simulation box, note the 2 is because there are
+        // 2 atom types
+        exec_command("create_box 2 sim");
     }
     else
     {
-//        // modify simulation box extents
-//        exec_command(
-//            "change_box all x final "
-//            + to_string(min_max[0][0]) + " "
-//            + to_string(min_max[0][1]),
-//            "change_box all y final "
-//            + to_string(min_max[1][0]) + " "
-//            + to_string(min_max[1][1]),
-//            "change_box all z final "
-//            + to_string(min_max[2][0]) + " "
-//            + to_string(min_max[2][1])
-//        );
+        // std::to_string has some issues with precision, so we just use the
+        // same stringstream here to convert doubles to strings
+        auto ss_to_str = [&](auto v) {
+            ss.str(std::string());
+            ss.clear();
+
+            ss << v;
+            return ss.str();
+        };
+
+        // modify simulation box extents
+        exec_command(
+            "change_box all x final "
+            + ss_to_str(min_max[0][0]) + " "
+            + ss_to_str(min_max[0][1]),
+            "change_box all y final "
+            + ss_to_str(min_max[1][0]) + " "
+            + ss_to_str(min_max[1][1]),
+            "change_box all z final "
+            + ss_to_str(min_max[2][0]) + " "
+            + ss_to_str(min_max[2][1])
+        );
+
+        if (triclinic)
+        {
+            exec_command(
+                "change_box all xy final " + ss_to_str(lattice[1][0]),
+                "change_box all xz final " + ss_to_str(lattice[2][0]),
+                "change_box all yz final " + ss_to_str(lattice[2][1])
+            );
+        }
     }
 }
 
-#ifdef SP2_ENABLE_TESTS
+void lammps::system_control_t::transform_input(std::vector<double> &pos) const
+{
+    std::vector<vec3_t> input = sp2::dtov3(pos);
+    for (auto &p : input)
+        p = p.mul_3x3(transform);
 
-#include <gtest/gtest.h>
-#include "common/io/structure.hpp"
+    pos = sp2::v3tod(input);
+}
+
+void lammps::system_control_t::transform_output(std::vector<double> &pos) const
+{
+    // inverse transform is just the transpose of the transform matrix
+    double inv_transform[3][3] = {};
+    for (int i = 0; i < 9; ++i)
+        inv_transform[i/3][i%3] = transform[i%3][i/3];
+
+    std::vector<vec3_t> output = sp2::dtov3(pos);
+    for (auto &p : output)
+        p = p.mul_3x3(inv_transform);
+
+    pos = sp2::v3tod(output);
+}
+
+#ifdef SP2_ENABLE_TESTS
 
 TEST(lammps, all) {
     sp2::structure_t input;

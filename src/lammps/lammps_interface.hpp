@@ -38,10 +38,9 @@ private:
         force;                    ///< atom force vector
 
     /// lattice vectors
-    double lattice[3][3];
-
     double lattice_orig[3][3],
-        inv_transform[3][3];
+        lattice[3][3],   ///< lattice vectors in LAMMPS preferred format
+        transform[3][3]; ///< transform from original lattice vectors to actual
 
     /// the only interface into LAMMPS, a pointer to a constructed LAMMPS class
     LAMMPS_NS::LAMMPS *lmp;
@@ -134,6 +133,11 @@ private:
 
     /// update periodic boundary conditions
     void update_boundaries(bool initial, bool fixed = false);
+
+    /// transform input positions to positions we send to lammps
+    void transform_input(std::vector<double> &pos) const;
+    /// transform lammps positions to output positions (aka from lattice_orig)
+    void transform_output(std::vector<double> &pos) const;
 };
 
 } // namespace lammps
