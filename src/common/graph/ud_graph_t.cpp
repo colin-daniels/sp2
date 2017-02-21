@@ -230,7 +230,7 @@ void graph::ud_graph_t::remove_directed(int a, int b)
         --offsets[i];
 }
 
-#ifdef SP2_DEBUG
+#ifdef SP2_ENABLE_TESTS
 bool graph::ud_graph_t::offsets_ok()
 {
     for (int i = 0; i < nv; ++i)
@@ -264,5 +264,5 @@ bool graph::ud_graph_t::edges_are_duplicated()
                    adjacent(p.first, p.second);
     });
 }
-#endif // SP2_DEBUG
+#endif // SP2_ENABLE_TESTS
 

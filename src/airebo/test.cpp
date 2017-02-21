@@ -2,7 +2,10 @@
 #include <common/graph/ud_graph_t.hpp>
 #include "airebo/test.hpp"
 
+#include <cstdint>
 #include <templ/algorithm.hpp>
+#include <gtest/gtest.h>
+#include <bitset>
 
 struct airebo_atom_t
 {
@@ -94,6 +97,17 @@ void airebo_system_t::update()
     }
 }
 
+constexpr std::uint32_t elem_hash(const char* name)
+{
+    return  static_cast<std::uint32_t>(name[0]) |
+        static_cast<std::uint32_t>(name[1]) << CHAR_BIT;
+}
+
+enum class test_enum : std::uint32_t
+{
+    C = elem_hash("C")
+};
+
 void testfn()
 {
     double val, deriv;
@@ -102,4 +116,98 @@ void testfn()
         val,
         deriv
     ) = ptnl::attractive_potential<ptnl::bond_types::HH>(10);
+
+    const char *input = "He";
+
+    switch(elem_hash(input))
+    {
+    case elem_hash("H"):
+        return;
+    }
 }
+
+#ifdef SP2_ENABLE_TESTS
+
+constexpr uint64_t next_f(int n)
+{
+    uint64_t res = 1;
+    for (int i = 1; i < n; ++i)
+        res = (res << 1) | 1;
+
+    return res;
+}
+#include "common/atom_types.hpp"
+
+TEST(testcpp, all)
+{
+    using itype = uint16_t;
+    constexpr int isize = 8 * sizeof(itype);
+
+    constexpr int n_elem = 500;//118;
+    std::vector<itype> atypes{1},
+        btypes{};
+
+    std::vector<itype> temp;
+
+
+    int nbits = 1;
+
+    itype v = 2; // current permutation of bits
+
+    while (nbits != isize)
+    {
+        while (nbits != isize)
+        {
+            temp.clear();
+            for (auto a : atypes)
+                temp.push_back(v ^ a);
+
+            auto loc = std::find_first_of(btypes.begin(), btypes.end(),
+                temp.begin(), temp.end());
+
+
+            itype t = v | (v - 1); // t gets v's least significant 0 bits set to 1
+            // Next set to 1 the most significant bit to change,
+            // set to 0 the least significant ones, and add the necessary 1 bits.
+            itype w = (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctz(v) + 1));
+
+            t = v;
+
+            if (w < v)
+                v = next_f(++nbits);
+            else
+                v = w;
+
+            if (loc == btypes.end())
+            {
+                btypes.insert(btypes.end(),
+                    temp.begin(), temp.end());
+
+                atypes.push_back(t);
+                break;
+            }
+        }
+
+        std::cout << std::bitset<isize>(atypes.back()) << '\t'
+                  << atypes.size() << '\t' << atypes.back() << std::endl;
+    }
+
+    std::sort(atypes.begin(), atypes.end());
+
+    std::set<itype> check;
+    for (auto i = 0u; i < atypes.size(); ++i)
+    {
+        std::cout << std::bitset<isize>(atypes[i]) << '\t' << i + 1 << '\t'
+                  << atypes[i] << std::endl;
+
+        for (auto j = i + 1; j < atypes.size(); ++j)
+        {
+            auto val = atypes[i] ^ atypes[j];
+            EXPECT_EQ(check.count(val), 0);
+
+            check.emplace(val);
+        }
+    }
+}
+
+#endif // SP2_ENABLE_TESTS

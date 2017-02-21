@@ -170,7 +170,7 @@ struct alignas(16) vec3_t
     { return *this / mag(); }
 
     /// multiply a 3x3 matrix by this vector
-    vec3_t mul_3x3(const double mat[3][3]) const
+    vec3_t mul_3x3(const double (&mat)[3][3]) const
     {
         return vec3_t(
                 x() * mat[0][0] + y() * mat[0][1] + z() * mat[0][2],

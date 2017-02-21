@@ -115,11 +115,11 @@ public:
 
     void bcast(const boost::mpi::communicator &comm, int root);
 
-#ifdef SP2_DEBUG
+#ifdef SP2_ENABLE_TESTS
     bool offsets_ok();
     bool edges_are_sorted();
     bool edges_are_duplicated();
-#endif // SP2_DEBUG
+#endif // SP2_ENABLE_TESTS
 
 private:
     edge_iterator_t get_iter(std::size_t vertex) const
