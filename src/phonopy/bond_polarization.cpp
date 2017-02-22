@@ -97,12 +97,12 @@ std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra(
         double frequency = mode.first;
         const auto &eigs = mode.second;
 
-        // frequency is in Hz so we need to convert to cm^-1
-        double wavenumber = frequency * 33.35641e-12,
-            intensity = raman_intensity(incident, scattered,
+        // calculate raman intensity for given the incident/scattered light
+        // polarization directions and the current eigenmode
+        double intensity = raman_intensity(incident, scattered,
                 eigs, bond_graph, bond_deltas, types);
 
-        result.emplace_back(wavenumber, intensity);
+        result.emplace_back(frequency, intensity);
     }
 
     // note that we don't normalize to unity, the user must
