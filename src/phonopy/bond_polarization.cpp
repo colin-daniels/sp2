@@ -2,49 +2,32 @@
 #include <common/vec3_t.hpp>
 #include "bond_polarization.hpp"
 
-namespace sp2 {
+#include "common/mat3x3_t.hpp"
 
-struct mat3x3_t
-{
-    double data[3][3];
-
-    constexpr double const (&operator[](int i) const)[3]
-    {
-        return data[i];
-    }
-
-    constexpr double (&operator[](int i))[3]
-    {
-        return data[i];
-    }
-
-    operator const decltype(data)&()
-    {
-        return data;
-    }
-};
-
-mat3x3_t raman_tensor(const std::vector<sp2::vec3_t> eigs,
-    const sp2::graph::ud_graph_t &bond_graph,
-    const std::vector<sp2::vec3_t> &bonds);
-
-double raman_intensity(vec3_t incident, vec3_t scattered,
-    const std::vector<sp2::vec3_t> eigs,
-    const sp2::graph::ud_graph_t &bond_graph,
-    const std::vector<sp2::vec3_t> &bonds
+double sp2::phonopy::raman_intensity(
+    vec3_t incident, vec3_t scattered,
+    const std::vector<vec3_t> &eigs,
+    const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds,
+    const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants
 )
 {
-    mat3x3_t tensor = raman_tensor(eigs, bond_graph, bonds);
+    mat3x3_t tensor = raman_tensor(
+        eigs, bond_graph, bonds, types, pol_constants
+    );
+
     double sum = dot(incident, scattered.mul_3x3(tensor));
     return sum * sum;
 }
 
-
-} // namespace sp2
-
-sp2::mat3x3_t sp2::raman_tensor(const std::vector<sp2::vec3_t> eigs,
-    const sp2::graph::ud_graph_t &bond_graph,
-    const std::vector<sp2::vec3_t> &bonds)
+sp2::mat3x3_t sp2::phonopy::raman_tensor(
+    const std::vector<vec3_t> &eigs,
+    const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds,
+    const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants
+)
 {
     // kronecker delta value
     constexpr double kdelta[3][3] = {
@@ -53,22 +36,22 @@ sp2::mat3x3_t sp2::raman_tensor(const std::vector<sp2::vec3_t> eigs,
         {0, 0, 1}
     };
 
-    double const_one = 0.32, // a || -   a |-
-          dconst_one = 2.60, // a'|| -   a'|-
-          dconst_two = 7.55; // a'|| + 2 a'|-
-
     mat3x3_t tensor{};
     for (auto edge : bond_graph.edges())
     {
-        const int atom_id = edge.a,
-            bond_id = edge.id;
+        const int bond_id = edge.id;
 
         // phonon eigenvector for this atom
-        const vec3_t &eig = eigs[atom_id];
+        const vec3_t &eig = eigs[edge.a];
 
         // unit bond vector and length, used later
         const double len = bonds[bond_id].mag();
         const vec3_t rhat = bonds[bond_id] / len;
+
+        const auto &pc = pol_constants.at(btype(types[edge.a], types[edge.b]));
+        double const_one = pc.c1, // a || -   a |-
+              dconst_one = pc.c2, // a'|| -   a'|-
+              dconst_two = pc.c3; // a'|| + 2 a'|-
 
         for (int i = 0; i < 3; ++i)
         {

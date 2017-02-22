@@ -2,8 +2,73 @@
 #define SP2_ENUMS_HPP
 
 #include <string>
+#include <unordered_map>
 
 namespace sp2 {
+
+template<class E>
+using enum_map_t = std::pair<E, const char*>[];
+
+/// variable template used for converting enums to/from strings, each new enum
+/// that needs string conversion should explicitly specialize this
+template<class E>
+constexpr enum_map_t<E> enum_map = {};
+// usage:
+// enum class color {RED, BLUE};
+//
+// template<>
+// constexpr enum_map_t<color>
+//      enum_map<color> = {{color::RED, "red"}, {color::BLUE, "blue"}};
+
+inline namespace {
+/// convert enumeration E to string using enum_map<E>
+template<class E>
+std::string enum_to_str(E val);
+
+/// convert const char* to enumeration E using enum_map<E> and default value
+template<class E>
+E enum_from_str(const char* str, E default_value = static_cast<E>(0));
+
+/// convert std::string to enumeration E using enum_map<E> and default value
+template<class E>
+E enum_from_str(const std::string &str, E default_value = static_cast<E>(0));
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementations                                                            //
+////////////////////////////////////////////////////////////////////////////////
+
+template<class E>
+std::string enum_to_str(E val)
+{
+    const static auto map = std::unordered_map<E, std::string>(
+        std::begin(enum_map<E>), std::end(enum_map<E>));
+
+    return map.at(val);
+}
+
+template<class E>
+E enum_from_str(const char* str, E default_value)
+{
+    const static auto map = []{
+        auto result = std::unordered_map<const char*, E>{};
+        for (auto v : enum_map<E>)
+            result.emplace(v.second, v.first);
+
+        return result;
+    }();
+
+    const auto loc = map.find(str);
+    return loc == map.end() ? default_value : loc->second;
+}
+
+template<class E>
+E enum_from_str(const std::string &str, E default_value)
+{
+    return enum_from_str(str.c_str(), default_value);
+}
+
+} // anonymous namespace
+
 ////////////////////////////////////////////////////////////////////////////////
 // Basic enum types used throughout the code                                  //
 ////////////////////////////////////////////////////////////////////////////////
@@ -12,6 +77,12 @@ enum class atom_type : int
 {
     HYDROGEN = 0,
     CARBON   = 1
+};
+
+template<>
+constexpr enum_map_t<atom_type> enum_map<atom_type> = {
+    {atom_type::CARBON,   "C"},
+    {atom_type::HYDROGEN, "H"}
 };
 
 enum class bond_type : int
@@ -31,12 +102,26 @@ enum class run_type : int
     PHONOPY = 4
 };
 
+template<>
+constexpr enum_map_t<run_type> enum_map<run_type> = {
+    {run_type::RELAX,   "relax"},
+    {run_type::ATAC,    "atac"},
+    {run_type::SYMM,    "symm"},
+    {run_type::PHONOPY, "phonopy"}
+};
+
 /// class of potential to use for force/energy calculation
 enum class potential_type : int
 {
     NONE   = 0,
     REBO   = 1,
     LAMMPS = 2
+};
+
+template<>
+constexpr enum_map_t<potential_type> enum_map<potential_type> = {
+    {potential_type::REBO,   "rebo"},
+    {potential_type::LAMMPS, "lammps"}
 };
 
 /// atom types for electrodes/transport
@@ -48,21 +133,6 @@ enum class el_type : int
     CONTACT_2_PL1 = 3,
     CONTACT_2_PL2 = 4
 };
-
-////////////////////////////////////////////////////////////////////////////////
-// Enum conversions/misc                                                      //
-////////////////////////////////////////////////////////////////////////////////
-
-template<class T>
-std::string enum_to_str(T val);
-
-template<class T>
-T enum_from_str(std::string str);
-
-#ifndef BASIC_ENUMS_HPP_IMPL
-extern template atom_type enum_from_str(std::string);
-extern template std::string enum_to_str(atom_type);
-#endif // BASIC_ENUMS_HPP_IMPL
 
 /// get bond type from atom types
 static inline bond_type get_bond_type(const atom_type a, const atom_type b)
