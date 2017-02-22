@@ -3,6 +3,7 @@
 
 #include "common/mat3x3_t.hpp"
 #include "common/atom_types.hpp"
+#include "common/structure_t.hpp"
 
 #include <unordered_map>
 
@@ -36,6 +37,19 @@ double raman_intensity(
             {btype(atype::C, atype::C), pol_constant_t{}},
             {btype(atype::C, atype::H), pol_constant_t{}}
         }
+);
+
+/// calculate raman spectra for a given system
+/// \param incident polarization direction unit vector for the incident light
+/// \param scattered polarization direction unit vector for the scattered light
+/// \param modes vector of {frequency, mass-normalized eigenvectors} pairs
+/// \param structure input structure
+/// \return vector of pairs of {frequency [cm^-1], intensity [arb units]}
+///         note: not normalized to maximum intensity
+std::vector<std::pair<double, double>> raman_spectra(
+    vec3_t incident, vec3_t scattered,
+    const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const structure_t &structure
 );
 
 } // namespace phonopy

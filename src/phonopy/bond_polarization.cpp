@@ -1,5 +1,6 @@
 #include <common/graph/ud_graph_t.hpp>
 #include <common/vec3_t.hpp>
+#include <airebo/system_control_t.hpp>
 #include "bond_polarization.hpp"
 
 #include "common/mat3x3_t.hpp"
@@ -69,4 +70,41 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
     }
 
     return tensor;
+}
+
+std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra(
+    vec3_t incident, vec3_t scattered,
+    const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const structure_t &structure
+)
+{
+    sp2::airebo::system_control_t sys;
+    sys.init(structure);
+    sys.update();
+
+    auto bond_graph = sys.get_bond_control().get_graph();
+    auto bond_deltas = dtov3(sys.get_bond_control().get_bond_deltas());
+
+    // convert from old to new types for now
+    std::vector<atom_types> types;
+    for (auto t : structure.types)
+        types.push_back(t == atom_type::CARBON ? atype::C : atype::H);
+
+    std::vector<std::pair<double, double>> result;
+
+    for (auto mode : modes)
+    {
+        double frequency = mode.first;
+        const auto &eigs = mode.second;
+
+        // frequency is in Hz so we need to convert to cm^-1
+        double wavenumber = frequency * 33.35641e-12,
+            intensity = raman_intensity(incident, scattered,
+                eigs, bond_graph, bond_deltas, types);
+
+        result.emplace_back(wavenumber, intensity);
+    }
+
+    // note that we don't normalize to unity, the user must
+    return result;
 }

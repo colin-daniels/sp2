@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <phonopy/bond_polarization.hpp>
 
 #ifdef SP2_ENABLE_LAMMPS
 #include "lammps/lammps_interface.hpp"
@@ -50,7 +51,7 @@ void plot_modes(string filename, airebo::system_control_t &sys,
     vector<pair<double, vector<vec3_t>>> modes);
 
 void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
-    airebo::system_control_t &sys, const int *pol_axes, const string &filename);
+    structure_t structure, const int *pol_axes, const string &filename);
 
 void write_log(string filename, string desc);
 
@@ -115,8 +116,8 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
         sys.init(structure);
         plot_modes("modes.dat", sys, modes);
 
-        write_spectra(modes, sys, settings.phonopy_settings.polarization_axes,
-            "spectra.dat");
+        write_spectra(modes, structure,
+            settings.phonopy_settings.polarization_axes, "spectra.dat");
     }
 
     if (settings.phonopy_settings.calc_bands &&
@@ -154,94 +155,6 @@ void output_xml(string filename, const vector<double> &gradient)
     }
 
     outfile << "</varray>" << endl;
-}
-
-constexpr double kronecker_delta(int a, int b)
-{
-    return a == b ? 1 : 0;
-}
-
-double polarization(vector<vec3_t> &eigs, airebo::system_control_t &sys,
-    int A, int B)
-{
-    constexpr double const1 = 0.32, //  a|| -   a|- in Angstroms^3
-        const2 = 7.55,              // a'|| + 2a'|- in Angstroms^2
-        const3 = 2.60;              // a'|| -  a'|- in Angstroms^2
-
-// TODO: error with get_graph() for repeated bonds across periodic bound
-    auto graph = sys.get_bond_control().get_graph();
-    auto bonds = dtov3(sys.get_bond_control().get_bond_deltas());
-    auto types = sys.get_types();
-
-    double test_sum = 0;
-    for (auto e1 : eigs)
-        test_sum += dot(e1, e1);
-
-//    cout << "eigs dot: " << test_sum << endl;
-
-    double sum = 0;
-    for (graph::ud_edge_t bond : graph.edges())
-    {
-        double len = bonds[bond.id].mag();
-        if (types[bond.a] == atom_type::HYDROGEN ||
-            types[bond.b] == atom_type::HYDROGEN)
-            continue;
-
-// TODO: may need to scale with mass
-        vec3_t eig = eigs[bond.a],// * (types[bond.a] == atom_type::HYDROGEN ? 1 : 1 / sqrt(12)),
-            unit_delta = bonds[bond.id].unit_vector();
-
-        double term1 = (const2 / 3) * dot(unit_delta, eig)
-                       * kronecker_delta(A, B),
-            term2 = const3 * (unit_delta[A] * unit_delta[B]
-                      - kronecker_delta(A, B) / 3) * dot(unit_delta, eig),
-// TODO: might be R[A] X[B] PLUS R[B] X[A]
-            term3 = (const1 / len)  * (unit_delta[A] * eig[B]
-                    + unit_delta[B] * eig[A]
-                    - 2 * unit_delta[A] * unit_delta[B] * dot(unit_delta, eig));
-
-        sum += term1 + term2 + term3;
-    }
-
-    return -sum;
-}
-
-vector<pair<double, double>> calc_raman_spectra(
-    vector<pair<double, vector<vec3_t>>> modes,
-    airebo::system_control_t &sys, double temperature, double incident,
-    vec3_t pol_A, vec3_t pol_B)
-{
-    vector<pair<double, double>> result;
-
-    for (auto mode : modes)
-    {
-        double frequency = mode.first;
-        vector<vec3_t> &eigs = mode.second;
-
-        // hbar / k_b = 7.63823×10^-12 s K
-        const double hkt = 7.63823e-12 / temperature;
-        // thermal average occupation number for this mode/temperature
-        // <n(omega_f)> = [exp(hbar omega_f / k_b T) - 1]^-1
-        double n_omega = 1.0 / (exp(hkt * frequency) - 1.0);
-        double prefactor = (n_omega + 1) / frequency;
-
-// TODO: assumes polarization unit vectors are on an axis
-        double pol = 0;
-        for (int i = 0; i < 3; ++i)
-            for (int j = 0; j < 3; ++j)
-                pol += pol_A[i] * pol_B[j] *
-                    polarization(eigs, sys, i, j);
-
-        const double scattered = incident - frequency;
-        double intensity = /*incident * (scattered * scattered * scattered)
-             * prefactor  */ (pol * pol);
-
-        // frequency is in Hz so we need to convert to cm^-1
-        double wavenumber = frequency * 33.35641e-12;
-        result.emplace_back(wavenumber, intensity);
-    }
-
-    return result;
 }
 
 void relax_structure(structure_t &structure, run_settings_t rset)
@@ -462,8 +375,8 @@ vector<pair<double, vector<vec3_t>>> read_eigs()
             stringstream ss(line);
             ss >> frequency;
 
-            // phonopy outputs frequency in terahertz
-            frequency *= 1e12;
+            // phonopy outputs frequency in terahertz, convert to [cm^-1]
+            frequency *= 33.35641;
 
             modes.emplace_back(frequency, vector<vec3_t>{});
             reading_mode = true;
@@ -564,7 +477,7 @@ void plot_modes(string filename, airebo::system_control_t &sys,
 
 
 void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
-    airebo::system_control_t &sys, const int *pol_axes, const string &filename)
+    structure_t structure, const int *pol_axes, const string &filename)
 {
     double incident_freq = 2.818e14, // 1064 nm
         temperature = 293;
@@ -575,8 +488,8 @@ void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
         {0, 0, 1}
     };
 
-    auto spectra = calc_raman_spectra(modes, sys, temperature, incident_freq,
-        pol_vecs[pol_axes[0]], pol_vecs[pol_axes[1]]);
+    auto spectra = sp2::phonopy::raman_spectra(
+        pol_vecs[pol_axes[0]], pol_vecs[pol_axes[1]], modes, structure);
 
     double maxi = 0;
     for (auto mode : spectra)

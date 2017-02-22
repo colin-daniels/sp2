@@ -153,7 +153,8 @@ set(SOURCE_FILES
         src/relaxation/relaxation_settings.hpp
         src/phonopy/bond_polarization.cpp
         src/phonopy/bond_polarization.hpp
-        src/common/atom_types.hpp src/common/mat3x3_t.hpp)
+        src/common/atom_types.hpp
+        src/common/mat3x3_t.hpp)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
