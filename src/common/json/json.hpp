@@ -211,38 +211,28 @@ void get_type_as_json(const T (&arr)[N][M], Json::Value &obj)
 
 ////////////////////
 // serialization
-template<typename T>
-void serialize_basic(Json::Value &output,
-    const std::string &key, T&& value)
-{
-    get_type_as_json(std::forward<T>(value), output[key]);
-}
+inline void serialize_basic(Json::Value &output) {}
 
 template<typename T, typename ...Args>
 void serialize_basic(Json::Value &output,
     const std::string &key, T&& value,
     Args &&...args_left)
 {
-    serialize_basic(output, key, std::forward<T>(value));
+    get_type_as_json(std::forward<T>(value), output[key]);
     serialize_basic(output, std::forward<Args>(args_left)...);
 }
 
 ////////////////////
 // deserialization
-template<typename T>
-bool deserialize_basic(const Json::Value &input,
-    const std::string &key, T&& value)
-{
-    return input.isMember(key) &&
-        get_json_as_type(input[key], std::forward<T>(value));
-}
+inline bool deserialize_basic(const Json::Value &input) {return true;}
 
 template<typename T, typename ...Args>
 bool deserialize_basic(const Json::Value &input,
-    const std::string &key, T&& value,
-    Args &&...args_left)
+    const std::string &key, T&& value, Args &&...args_left)
 {
-    bool a = deserialize_basic(input, key, std::forward<T>(value));
+    bool a = input.isMember(key) &&
+             get_json_as_type(input[key], std::forward<T>(value));
+
     bool b = deserialize_basic(input, std::forward<Args>(args_left)...);
 
     return a && b;

@@ -154,7 +154,7 @@ set(SOURCE_FILES
         src/phonopy/bond_polarization.cpp
         src/phonopy/bond_polarization.hpp
         src/common/atom_types.hpp
-        src/common/mat3x3_t.hpp)
+        src/common/mat3x3_t.hpp src/common/graph/directed_graph_t.cpp src/common/graph/directed_graph_t.hpp)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
