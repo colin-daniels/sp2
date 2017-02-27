@@ -5,29 +5,6 @@
 #include <unordered_set>
 
 namespace sp2 {
-
-template<class IterBegin, class IterEnd>
-struct range_wrapper_t
-{
-    IterBegin it_begin;
-    IterEnd it_end;
-
-    decltype(auto) begin() const { return it_begin; }
-    decltype(auto) begin()       { return it_begin; }
-
-    decltype(auto) end() const { return it_end; }
-    decltype(auto) end()       { return it_end; }
-};
-
-template<class IterBegin, class IterEnd>
-inline auto make_range(IterBegin &&begin, IterEnd &&end)
-{
-    return range_wrapper_t<IterBegin, IterEnd>{
-        std::forward<IterBegin>(begin),
-        std::forward<IterEnd>(end)
-    };
-}
-
 namespace graph {
 
 /// directed graph type, designed for fast construction and access, but

@@ -125,7 +125,8 @@ constexpr enum_map_t<atom_types> enum_map<atom_types> = {
 };
 
 /// opaque bond type enum, determined by sp2::btype(atom_type, atom_type),
-/// not explicitly listed due to 118^2 being a lot of enums to have in source
+/// not all are explicitly listed due to 118^2 being a lot of enums to have
+/// in source, only commonly used bonds should appear
 enum class bond_types : std::uint32_t;
 
 /// determine bond type from two atom types
@@ -136,6 +137,20 @@ constexpr bond_types btype(atom_types a, atom_types b)
         static_cast<ut>(a) ^ static_cast<ut>(b)
     );
 }
+
+namespace detail {
+constexpr auto btype_ut(atom_types a, atom_types b)
+{
+    using ut = std::underlying_type_t<bond_types>;
+    return static_cast<ut>(btype(a, b));
+}
+} // namespace detail
+
+enum class bond_types : std::uint32_t
+{
+    C_C = detail::btype_ut(atype::C, atype::C),
+    C_H = detail::btype_ut(atype::C, atype::H)
+};
 
 } // namespace sp2
 

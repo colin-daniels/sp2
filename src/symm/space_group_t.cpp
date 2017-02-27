@@ -108,7 +108,7 @@ bool parse_transform(string line, array<double, 16> &output)
 
     // helper lambda for getting matches in the form of a range
     auto matches = [](const std::string &str, const std::regex &reg) {
-        return range(
+        return make_range(
             sregex_iterator(str.begin(), str.end(), reg),
             sregex_iterator()
         );

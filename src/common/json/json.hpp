@@ -230,6 +230,7 @@ template<typename T, typename ...Args>
 bool deserialize_basic(const Json::Value &input,
     const std::string &key, T&& value, Args &&...args_left)
 {
+    // TODO: Output warning when failing to deserialize a present field
     bool a = input.isMember(key) &&
              get_json_as_type(input[key], std::forward<T>(value));
 

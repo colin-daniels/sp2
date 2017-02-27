@@ -89,11 +89,29 @@ public:
     std::size_t n_vertices() const {return nv;}
     std::size_t n_edges() const {return edge_pairs.size();}
 
-    range_wrap_t<id_iter_t> vertices() const {
-        return range_wrap_t<id_iter_t>(0, nv);}
+    auto vertices() const { return id_range(0, nv); }
 
-    range_wrap_t<edge_iterator_t> edges() const;
-    range_wrap_t<edge_iterator_t> edges(int vert) const;
+    auto edge(std::size_t vert, std::size_t edge_num) const
+    {
+        auto edge_id = std::distance(edge_pairs.begin(), offsets[vert])
+                       + edge_num;
+
+        return ud_edge_t{
+            static_cast<int>(edge_id),
+            static_cast<int>(vert),
+            edge_pairs[edge_id].second
+        };
+    }
+
+    auto edges() const
+    {
+        return make_range(get_iter(0), get_iter(nv));
+    }
+
+    auto edges(std::size_t vert) const
+    {
+        return make_range(get_iter(vert), get_iter(vert + 1));
+    }
 
     int degree(int vert) const;
     bool adjacent(int a, int b) const;
@@ -137,14 +155,6 @@ private:
     void add_directed(int a, int b);
     void remove_directed(int a, int b);
 };
-
-inline range_wrap_t<ud_graph_t::edge_iterator_t>
-ud_graph_t::edges() const {
-    return {get_iter(0), get_iter(nv)};}
-
-inline range_wrap_t<ud_graph_t::edge_iterator_t>
-ud_graph_t::edges(int vert) const {
-    return {get_iter(vert), get_iter(vert + 1)};}
 
 inline int ud_graph_t::degree(int vert) const {
     return static_cast<int>(std::distance(offsets[vert], offsets[vert + 1]));}

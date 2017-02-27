@@ -18,6 +18,7 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <phonopy/bond_polarization.hpp>
+#include "common/util/modeling.hpp"
 
 #ifdef SP2_ENABLE_LAMMPS
 #include "lammps/lammps_interface.hpp"
@@ -44,7 +45,7 @@ int generate_eigs(phonopy::phonopy_settings_t pset);
 int generate_dos(phonopy::phonopy_settings_t pset);
 
 vector<pair<double, vector<vec3_t>>> read_eigs();
-structure_t construct_supercell(const structure_t &input, int supercell_dim[3]);
+
 
 
 void plot_modes(string filename, airebo::system_control_t &sys,
@@ -159,7 +160,7 @@ void output_xml(string filename, const vector<double> &gradient)
 
 void relax_structure(structure_t &structure, run_settings_t rset)
 {
-    auto supercell = construct_supercell(structure,
+    auto supercell = util::construct_supercell(structure,
         rset.phonopy_settings.supercell_dim);
 
     // construct system + minimize with default parameters
@@ -384,66 +385,6 @@ vector<pair<double, vector<vec3_t>>> read_eigs()
     }
 
     return modes;
-}
-
-structure_t construct_supercell(const structure_t &input, int supercell_dim[3])
-{
-    int n_rep = supercell_dim[0]
-        * supercell_dim[1]
-        * supercell_dim[2];
-
-    structure_t supercell = input;
-
-    // lengthen lattice vectors
-    for (int i = 0; i < 3; ++i)
-        for (int j = 0; j < 3; ++j)
-            supercell.lattice[i][j] *= supercell_dim[i];
-
-    // get repeated types
-    supercell.types.reserve(n_rep * input.types.size());
-    for (int i = 1; i < n_rep; ++i)
-    {
-        supercell.types.insert(
-            supercell.types.end(),
-            input.types.begin(),
-            input.types.end()
-        );
-    }
-
-    // repeat positions
-    vec3_t lattice[3] = {
-        vec3_t(input.lattice[0]),
-        vec3_t(input.lattice[1]),
-        vec3_t(input.lattice[2])
-    };
-
-    auto original_pos = sp2::dtov3(input.positions),
-        new_pos = std::vector<vec3_t>();
-
-    auto add_new = [&](int i, int j, int k) {
-        auto to_add = original_pos;
-
-        for (auto &v : to_add)
-            v += i * lattice[0] +
-                 j * lattice[1] +
-                 k * lattice[2];
-
-        new_pos.insert(
-            new_pos.end(),
-            to_add.begin(),
-            to_add.end()
-        );
-    };
-
-    for (int i = 0; i < supercell_dim[0]; ++i)
-        for (int j = 0; j < supercell_dim[1]; ++j)
-            for (int k = 0; k < supercell_dim[2]; ++k)
-                add_new(i, j, k);
-
-
-    supercell.positions = sp2::v3tod(new_pos);
-
-    return supercell;
 }
 
 void plot_modes(string filename, airebo::system_control_t &sys,

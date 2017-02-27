@@ -9,63 +9,77 @@
 namespace sp2 {
 
 template<class T>
-struct not_implemented;
+struct ni;
 
-template<class T>
-struct range_wrap_t
+template<class IterBegin, class IterEnd>
+struct range_wrapper_t
 {
-    T const it_begin;
-    T const it_end;
+    IterBegin it_begin;
+    IterEnd it_end;
 
-    range_wrap_t(T input_begin, T input_end) :
-        it_begin(input_begin), it_end(input_end) {}
+    decltype(auto) begin() const { return it_begin; }
+    decltype(auto) begin()       { return it_begin; }
 
-    const T& begin() const {return it_begin;}
-    const T& end() const {return it_end;}
+    decltype(auto) end() const { return it_end; }
+    decltype(auto) end()       { return it_end; }
 };
 
-template<class T>
-range_wrap_t<T> range(T const first, T const last) {
-    return {first, last};}
+template<class IterBegin, class IterEnd>
+inline auto make_range(IterBegin &&begin, IterEnd &&end)
+{
+    return range_wrapper_t<IterBegin, IterEnd>{
+        std::forward<IterBegin>(begin),
+        std::forward<IterEnd>(end)
+    };
+}
 
+template<class T = std::size_t>
 struct id_iter_t
 {
-    std::size_t i;
+    T current,
+        max;
 
-    id_iter_t(std::size_t inp) : i(inp) {}
-
-    std::size_t operator*() const {return i;}
-    id_iter_t& operator++() {++i; return *this;}
-    bool operator!=(const id_iter_t &other) const {
-        return i != other.i;}
+    constexpr T operator*() const { return current; }
+    constexpr id_iter_t& operator++() { ++current; return *this; }
+    constexpr bool operator!=(const id_iter_t&) const {
+        return current != max; }
 };
 
 template<class T>
-range_wrap_t<id_iter_t> id_range(const T &container)
+auto id_range(const T &container)
 {
-    return range_wrap_t<id_iter_t>(
-        id_iter_t(0),
-        id_iter_t(container.size())
+    using size_type = decltype(container.size());
+    return make_range(
+        id_iter_t<size_type>{0, container.size()},
+        id_iter_t<size_type>{}
+    );
+}
+
+inline auto id_range(std::size_t begin, std::size_t end)
+{
+    return make_range(
+        id_iter_t<>{begin, end},
+        id_iter_t<>{}
     );
 }
 
 template<class T, std::size_t N>
-range_wrap_t<id_iter_t> id_range(const T (&)[N])
+auto id_range(const T (&)[N])
 {
-    return range_wrap_t<id_iter_t>(
-        id_iter_t(0),
-        id_iter_t(N)
+    return make_range(
+        id_iter_t<std::size_t>{0, N},
+        id_iter_t<std::size_t>{}
     );
 }
 
-// TODO: fix reverse_range
+// TODO: fix reverse_range (what's wrong with it?)
 template<class T>
 auto reverse_range(const T &container)
 {
-    return range_wrap_t<decltype(container.rbegin())>{
+    return make_range(
         container.rbegin(),
         container.rend()
-    };
+    );
 }
 
 /// makes a vector of length n via std::generate and the provided generator

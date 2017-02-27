@@ -46,11 +46,12 @@ std::string enum_to_str(E val)
     return map.at(val);
 }
 
+
 template<class E>
-E enum_from_str(const char* str, E default_value)
+E enum_from_str(const std::string &str, E default_value)
 {
     const static auto map = []{
-        auto result = std::unordered_map<const char*, E>{};
+        auto result = std::unordered_map<std::string, E>{};
         for (auto v : enum_map<E>)
             result.emplace(v.second, v.first);
 
@@ -62,9 +63,9 @@ E enum_from_str(const char* str, E default_value)
 }
 
 template<class E>
-E enum_from_str(const std::string &str, E default_value)
+E enum_from_str(const char* str, E default_value)
 {
-    return enum_from_str(str.c_str(), default_value);
+    return enum_from_str<E>(std::string(str), default_value);
 }
 
 } // anonymous namespace
