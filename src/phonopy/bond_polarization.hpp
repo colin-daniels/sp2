@@ -27,6 +27,7 @@ mat3x3_t raman_tensor(
 );
 
 double raman_intensity(
+    double frequency, double temperature,
     vec3_t incident, vec3_t scattered,
     const std::vector<vec3_t> &eigs,
     const graph::ud_graph_t &bond_graph,
@@ -47,7 +48,7 @@ double raman_intensity(
 /// \return vector of pairs of {frequency [cm^-1], intensity [arb units]}
 ///         note: not normalized to maximum intensity
 std::vector<std::pair<double, double>> raman_spectra(
-    vec3_t incident, vec3_t scattered,
+    vec3_t incident, vec3_t scattered, double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
     const structure_t &structure
 );

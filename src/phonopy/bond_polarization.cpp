@@ -6,6 +6,7 @@
 #include "common/mat3x3_t.hpp"
 
 double sp2::phonopy::raman_intensity(
+    double frequency, double temperature,
     vec3_t incident, vec3_t scattered,
     const std::vector<vec3_t> &eigs,
     const graph::ud_graph_t &bond_graph,
@@ -14,12 +15,18 @@ double sp2::phonopy::raman_intensity(
     const std::unordered_map<bond_types, pol_constant_t> &pol_constants
 )
 {
+    constexpr double hk = 0.228988; // hbar / k_b in [K][cm]
+
+    double distribution = 0;
+    if (temperature != 0)
+        distribution = 1 / (std::exp(hk * frequency / temperature) - 1);
+
     mat3x3_t tensor = raman_tensor(
         eigs, bond_graph, bonds, types, pol_constants
     );
+    const double sum = dot(incident, scattered.mul_3x3(tensor));
 
-    double sum = dot(incident, scattered.mul_3x3(tensor));
-    return sum * sum;
+    return ((distribution + 1) / frequency) * (sum * sum);
 }
 
 sp2::mat3x3_t sp2::phonopy::raman_tensor(
@@ -73,7 +80,7 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
 }
 
 std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra(
-    vec3_t incident, vec3_t scattered,
+    vec3_t incident, vec3_t scattered, double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
     const structure_t &structure
 )
@@ -91,7 +98,6 @@ std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra(
         types.push_back(t == atom_type::CARBON ? atype::C : atype::H);
 
     std::vector<std::pair<double, double>> result;
-
     for (auto mode : modes)
     {
         double frequency = mode.first;
@@ -99,8 +105,8 @@ std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra(
 
         // calculate raman intensity for given the incident/scattered light
         // polarization directions and the current eigenmode
-        double intensity = raman_intensity(incident, scattered,
-                eigs, bond_graph, bond_deltas, types);
+        double intensity = raman_intensity(frequency, temperature,
+            incident, scattered, eigs, bond_graph, bond_deltas, types);
 
         result.emplace_back(frequency, intensity);
     }

@@ -27,14 +27,6 @@
 using namespace std;
 using namespace sp2;
 
-double polarization(vector<vec3_t> &eigs, airebo::system_control_t &sys,
-    int A, int B);
-
-vector<pair<double, double>> calc_raman_spectra(
-    vector<pair<double, vector<vec3_t>>> modes,
-    airebo::system_control_t &sys, double temperature, double incident,
-    vec3_t pol_A, vec3_t pol_B);
-
 void relax_structure(structure_t &structure, run_settings_t rset);
 
 int generate_displacements(phonopy::phonopy_settings_t pset);
@@ -421,7 +413,7 @@ void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
     structure_t structure, const int *pol_axes, const string &filename)
 {
     double incident_freq = 2.818e14, // 1064 nm
-        temperature = 293;
+        temperature = 0;//293;
 
     vec3_t pol_vecs[3] = {
         {1, 0, 0},
@@ -429,8 +421,8 @@ void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
         {0, 0, 1}
     };
 
-    auto spectra = sp2::phonopy::raman_spectra(
-        pol_vecs[pol_axes[0]], pol_vecs[pol_axes[1]], modes, structure);
+    auto spectra = sp2::phonopy::raman_spectra(pol_vecs[pol_axes[0]],
+        pol_vecs[pol_axes[1]], temperature, modes, structure);
 
     double maxi = 0;
     for (auto mode : spectra)
