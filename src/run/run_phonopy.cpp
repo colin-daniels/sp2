@@ -43,7 +43,7 @@ vector<pair<double, vector<vec3_t>>> read_eigs();
 void plot_modes(string filename, airebo::system_control_t &sys,
     vector<pair<double, vector<vec3_t>>> modes);
 
-void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
+void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
     structure_t structure, const int *pol_axes, const string &filename);
 
 void write_log(string filename, string desc);
@@ -111,6 +111,15 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 
         write_spectra(modes, structure,
             settings.phonopy_settings.polarization_axes, "spectra.dat");
+
+        int xx[2] = {0, 0},
+            yy[2] = {1, 1},
+            zz[2] = {2, 2},
+            xy[2] = {0, 1};
+        write_spectra(modes, structure, xx, "spectra_xx.dat");
+        write_spectra(modes, structure, yy, "spectra_yy.dat");
+        write_spectra(modes, structure, zz, "spectra_zz.dat");
+        write_spectra(modes, structure, xy, "spectra_xy.dat");
     }
 
     if (settings.phonopy_settings.calc_bands &&
@@ -409,11 +418,22 @@ void plot_modes(string filename, airebo::system_control_t &sys,
 }
 
 
-void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
+void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
     structure_t structure, const int *pol_axes, const string &filename)
 {
-    double incident_freq = 2.818e14, // 1064 nm
-        temperature = 0;//293;
+    constexpr double temperature = 293.15; // room temp
+#warning temporary
+    auto gaussian = [](double x, double peak)
+    {
+        // full width at half maximum for gaussian broadening
+        constexpr double fwhm = 10;
+
+        constexpr double sigma = fwhm / std::sqrt(std::log(256)),
+            prefactor = 1 / (sigma * std::sqrt(2 * M_PI)),
+            exp_denom = (2 * sigma * sigma);
+
+        return prefactor * std::exp(-(x - peak) * (x - peak) / exp_denom);
+    };
 
     vec3_t pol_vecs[3] = {
         {1, 0, 0},
@@ -421,18 +441,51 @@ void write_spectra(const vector<pair<double, vector<vec3_t>>> &modes,
         {0, 0, 1}
     };
 
+    // phonopy outputs non-mass-normalized eigenvectors, so we
+    // need to normalize them
+    for (auto &mode : modes)
+    {
+        auto na = structure.types.size();
+        for (std::size_t i = 0; i < na; ++i)
+            if (structure.types[i] == atom_type::CARBON)
+                mode.second[i] /= std::sqrt(12);
+    }
+
     auto spectra = sp2::phonopy::raman_spectra(pol_vecs[pol_axes[0]],
         pol_vecs[pol_axes[1]], temperature, modes, structure);
 
-    double maxi = 0;
+    double maxi = 0,
+        maxf = 0;
     for (auto mode : spectra)
-        maxi = max(mode.second, maxi);
+    {
+        maxi = std::max(mode.second, maxi);
+        maxf = std::max(mode.first,  maxf);
+    }
+
+    constexpr int n_bins = 1200;
+    const double bin_max = 1.1 * maxf,
+        bin_step = bin_max / n_bins;
+    std::vector<double> bins(n_bins, 0);
 
     ofstream outfile(filename);
     for (auto &shift : spectra)
+    {
         outfile << shift.first << ' '
                 << shift.second / maxi << ' '
                 << shift.second << endl;
+
+        for (std::size_t i = 0; i < bins.size(); ++i)
+            bins[i] += gaussian(i * bin_step, shift.first) * shift.second;
+    }
+    outfile.close();
+
+    outfile.open("gauss_" + filename);
+    double max_bin = *std::max_element(bins.begin(), bins.end());
+    for (std::size_t i = 0; i < bins.size(); ++i)
+        outfile << (i * bin_step) << ' '
+                << bins[i] / max_bin << std::endl;
+
+    outfile.close();
 }
 
 void write_log(string filename, string desc)

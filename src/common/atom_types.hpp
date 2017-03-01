@@ -8,10 +8,34 @@
 
 namespace sp2 {
 
+/// atom type enum, uses special ids to ensure (atom_type::A ^ atom_type::B)
+/// is unique, which is how bond types are calculated
+enum class atom_types : std::uint32_t;
+
+/// convenience using-declaration for referencing atom types
+using atype = atom_types;
+
+/// get atomic number from input atom type
+constexpr unsigned int atomic_number(atom_types type);
+
+
+/// (mostly) opaque bond type enum, underlying value calculated by
+///     sp2::btype(atom_type, atom_type)
+/// only commonly used bond types are explicitly listed due to 118^2 being a
+/// lot of enums to have in source
+enum class bond_types : std::uint32_t;
+
+/// determine bond type from two atom types, order does not matter
+constexpr bond_types btype(atom_types a, atom_types b);
+
+////////////////////////////////////////////////////////////////////////////////
+// Implementation details                                                     //
+////////////////////////////////////////////////////////////////////////////////
+
 namespace detail {
-/// ids such that (id[i] ^ id[j]) is unique for all i and j, do not depend
-/// on these values being constant throughout versions
-constexpr std::uint32_t xor_ids[] = {
+/// ids such that for all i and j, (id[i] ^ id[j]) is unique && id[i] < 2^16,
+/// do not depend on these values being constant throughout versions
+constexpr std::uint16_t xor_ids[] = {
         0,     1,     2,     4,     8,    15,    16,    32,    51,    64,
        85,   106,   128,   150,   171,   219,   237,   247,   256,   279,
       297,   455,   512,   537,   557,   594,   643,   803,   863,   998,
@@ -26,7 +50,8 @@ constexpr std::uint32_t xor_ids[] = {
     22633, 23200, 24167, 25700, 26360, 26591, 26776, 28443, 28905, 29577,
     32705, 32768, 32844, 32949, 33042, 33251, 33354, 33582, 33930, 34082,
     34583, 34933, 35379, 36604, 36686, 37304, 37492, 39816, 39894, 39936,
-    40542, 42236, 42731, 43283, 45004, 45762, 46146, 48698, 50969, 51520
+    40542, 42236, 42731, 43283, 45004, 45762, 46146, 48698, 50969, 51520,
+    54582, 55959, 56663, 57422, 60693, 61593, 62498
 };
 } // namespace detail
 
@@ -35,8 +60,6 @@ constexpr std::uint32_t xor_ids[] = {
 /// be used elsewhere
 using detail::xor_ids;
 
-/// atom type enum, uses special ids to ensure (atom_type::A ^ atom_type::B)
-/// is unique, which is how bond types are calculated
 enum class atom_types : std::uint32_t
 {
     NONE = 0,
@@ -83,8 +106,6 @@ enum class atom_types : std::uint32_t
     Og = xor_ids[118]
 };
 
-/// convenience using-declaration for referencing atom types
-using atype = atom_types;
 
 /// specialization of enum_map<> template variable to enable to/from string
 /// conversions for atom_types
@@ -124,12 +145,28 @@ constexpr enum_map_t<atom_types> enum_map<atom_types> = {
     {atype::Ts, "Ts"}, {atype::Og, "Og"}
 };
 
-/// opaque bond type enum, determined by sp2::btype(atom_type, atom_type),
-/// not all are explicitly listed due to 118^2 being a lot of enums to have
-/// in source, only commonly used bonds should appear
-enum class bond_types : std::uint32_t;
+constexpr unsigned int atomic_number(atom_types type)
+{
+    using ut = std::underlying_type_t<atom_types>;
+    auto xor_id = static_cast<ut>(type);
 
-/// determine bond type from two atom types
+    std::size_t low = 0,
+        high = std::extent<decltype(detail::xor_ids)>::value;
+
+    while (low < high)
+    {
+        auto mid = (high + low) / 2;
+        if (xor_id < detail::xor_ids[mid])
+            high = mid;
+        else if (xor_id > detail::xor_ids[mid])
+            low = mid + 1;
+        else
+            return static_cast<unsigned int>(mid);
+    }
+
+    return 0;
+}
+
 constexpr bond_types btype(atom_types a, atom_types b)
 {
     using ut = std::underlying_type_t<atom_types>;
@@ -148,8 +185,10 @@ constexpr auto btype_ut(atom_types a, atom_types b)
 
 enum class bond_types : std::uint32_t
 {
-    C_C = detail::btype_ut(atype::C, atype::C),
-    C_H = detail::btype_ut(atype::C, atype::H)
+    // common bond types listed for convenience
+    NONE = detail::btype_ut(atype::NONE, atype::NONE),
+    CC =   detail::btype_ut(atype::C, atype::C),
+    CH =   detail::btype_ut(atype::C, atype::H)
 };
 
 } // namespace sp2
