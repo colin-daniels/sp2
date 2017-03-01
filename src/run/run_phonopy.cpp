@@ -120,6 +120,8 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
         write_spectra(modes, structure, yy, "spectra_yy.dat");
         write_spectra(modes, structure, zz, "spectra_zz.dat");
         write_spectra(modes, structure, xy, "spectra_xy.dat");
+
+        write_spectra(modes, structure, nullptr, "spectra_avg.dat");
     }
 
     if (settings.phonopy_settings.calc_bands &&
@@ -426,7 +428,7 @@ void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
     auto gaussian = [](double x, double peak)
     {
         // full width at half maximum for gaussian broadening
-        constexpr double fwhm = 10;
+        constexpr double fwhm = 14;
 
         constexpr double sigma = fwhm / std::sqrt(std::log(256)),
             prefactor = 1 / (sigma * std::sqrt(2 * M_PI)),
@@ -451,8 +453,17 @@ void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
                 mode.second[i] /= std::sqrt(12);
     }
 
-    auto spectra = sp2::phonopy::raman_spectra(pol_vecs[pol_axes[0]],
-        pol_vecs[pol_axes[1]], temperature, modes, structure);
+    std::vector<std::pair<double, double>> spectra;
+    if (pol_axes != nullptr)
+    {
+        spectra = sp2::phonopy::raman_spectra(pol_vecs[pol_axes[0]],
+            pol_vecs[pol_axes[1]], temperature, modes, structure);
+    }
+    else
+    {
+        spectra = sp2::phonopy::raman_spectra_avg(true, temperature,
+            modes, structure);
+    }
 
     double maxi = 0,
         maxf = 0;

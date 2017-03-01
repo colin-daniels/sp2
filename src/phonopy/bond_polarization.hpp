@@ -40,6 +40,20 @@ double raman_intensity(
         }
 );
 
+double raman_intensity_avg(
+    bool backscatter,
+    double frequency, double temperature,
+    const std::vector<vec3_t> &eigs,
+    const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds,
+    const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t>
+        &pol_constants = {
+            {btype(atype::C, atype::C), pol_constant_t{}},
+            {btype(atype::C, atype::H), pol_constant_t{}}
+        }
+);
+
 /// calculate raman spectra for a given system
 /// \param incident polarization direction unit vector for the incident light
 /// \param scattered polarization direction unit vector for the scattered light
@@ -49,6 +63,14 @@ double raman_intensity(
 ///         note: not normalized to maximum intensity
 std::vector<std::pair<double, double>> raman_spectra(
     vec3_t incident, vec3_t scattered, double temperature,
+    const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const structure_t &structure
+);
+
+
+std::vector<std::pair<double, double>> raman_spectra_avg(
+    bool backscatter,
+    double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
     const structure_t &structure
 );
