@@ -243,7 +243,7 @@ private:
         switch (n_non_zero)
         {
         case 0: lat_vec[0] = vec3_t(1, 0, 0);
-        case 1: lat_vec[1] = unit_normal(lat_vec[0]);
+        case 1: lat_vec[1] = unit_normal_to(lat_vec[0]);
         case 2: lat_vec[2] = cross(lat_vec[0], lat_vec[1]);
         case 3:
         default:

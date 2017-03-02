@@ -1074,7 +1074,7 @@ diff_fn_t system_control_t::get_diff_fn()
 
              if (len == 0)
              {
-                 auto avg_v = unit_normal(vec3_t(&deltas[b_id_a * 3]));
+                 auto avg_v = unit_normal_to(vec3_t(&deltas[b_id_a * 3]));
                  for (int k = 0; k < 3; ++k)
                      avg[k] = avg_v[k];
 
@@ -1090,7 +1090,7 @@ diff_fn_t system_control_t::get_diff_fn()
          else if (nbonds == 1)
          {
              vec3_t bond_ref(&deltas[added_ids[0] * 3]);
-             vec3_t axis = unit_normal(bond_ref);
+             vec3_t axis = unit_normal_to(bond_ref);
 
              double rot[3][3] = {};
              const double pi = atan2(0, -1);

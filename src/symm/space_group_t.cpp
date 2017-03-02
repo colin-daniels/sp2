@@ -37,9 +37,9 @@ std::vector<vec3_t> symm::space_group_t::apply_symm(
         {
             auto new_vec = vec3_t();
             for (auto i = 0; i < 3; ++i)
-                new_vec[i] = mat[i * 4] * vec.x()
-                             + mat[i * 4 + 1] * vec.y()
-                             + mat[i * 4 + 2] * vec.z()
+                new_vec[i] = mat[i * 4] * vec.x
+                             + mat[i * 4 + 1] * vec.y
+                             + mat[i * 4 + 2] * vec.z
                              + mat[i * 4 + 3];
 
             output.push_back(new_vec);

@@ -107,12 +107,12 @@ void util::gen_rotation(vec3_t axis, double theta, double output[3][3])
 void util::gen_rand_rotation(double output[3][3])
 {
     auto current_dir = vec3_t(0, 0, 1),
-            new_dir  = vec3_t().randomize().normalize(),
-            rot_axis = unit_normal(current_dir, new_dir);
+            new_dir  = random_vec3(),
+            rot_axis = unit_normal_to(current_dir, new_dir);
 
     double rot1[3][3] = {},
             rot2[3][3] = {},
-            theta1 = 2.0 * atan2(0, -1) * rand() / (RAND_MAX + 1.0),
+            theta1 = 2.0 * M_PI * rand() / (RAND_MAX + 1.0),
             theta2 = angle(current_dir, new_dir);
 
     // first rotate about z
