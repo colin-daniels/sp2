@@ -6,23 +6,14 @@
 #include "common/minimize/minimize.hpp"
 #include "common/vec3_t.hpp"
 #include "common/json/json.hpp"
-
-#include <cstdlib>
-#include <sstream>
-#include <fstream>
-#include <iomanip>
-#include <common/vec3_t.hpp>
-#include <iostream>
-#include <cstdlib>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
-#include <phonopy/bond_polarization.hpp>
+#include "phonopy/bond_polarization.hpp"
 #include "common/util/modeling.hpp"
 
 #ifdef SP2_ENABLE_LAMMPS
 #include "lammps/lammps_interface.hpp"
 #endif
+
+#include <fstream>
 
 using namespace std;
 using namespace sp2;

@@ -136,6 +136,7 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
     for (auto edge : bond_graph.edges())
     {
         const int bond_id = edge.id;
+        const auto bond_type = btype(types[edge.a], types[edge.b]);
 
         // phonon eigenvector for this atom
         const vec3_t &eig = eigs[edge.a];
@@ -144,7 +145,14 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
         const double len = bonds[bond_id].mag();
         const vec3_t rhat = bonds[bond_id] / len;
 
-        const auto &pc = pol_constants.at(btype(types[edge.a], types[edge.b]));
+        // ignore bonds which have no corresponding polarization constants
+        // specified in the input map
+        if (!pol_constants.count(bond_type))
+            throw std::runtime_error("No polarization constants specified "
+                "for bond type " + enum_to_str(types[edge.a])
+                                 + enum_to_str(types[edge.b]));
+
+        const auto& pc = pol_constants.at(bond_type);
         double const_one = pc.c1, // a || -   a |-
               dconst_one = pc.c2, // a'|| -   a'|-
               dconst_two = pc.c3; // a'|| + 2 a'|-
@@ -204,7 +212,7 @@ std::vector<std::pair<double, double>> raman_spectra_impl(
         else
         {
             intensity = sp2::phonopy::raman_intensity_avg(backscatter,
-                temperature, frequency, eigs, bond_graph, bond_deltas, types);
+                frequency, temperature, eigs, bond_graph, bond_deltas, types);
         }
 
         result.emplace_back(frequency, intensity);

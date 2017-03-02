@@ -12,11 +12,23 @@ namespace phonopy {
 
 struct pol_constant_t
 {
-    // default values are for C-C bonds
-    double c1 = 0.32, // a || -   a |-
-        c2 = 2.60,    // a'|| -   a'|-
-        c3 = 7.55;    // a'|| + 2 a'|-
+    double c1 = 0, ///< a || -   a |-
+           c2 = 0, ///< a'|| -   a'|-
+           c3 = 0; ///< a'|| + 2 a'|-
+
+    pol_constant_t() = default;
+
+    constexpr bool zero() const {
+        return (c1 == 0 && c2 == 0 && c3 == 0);
+    }
 };
+
+template<bond_types>
+constexpr pol_constant_t pol_const;
+
+template<>
+constexpr auto pol_const<bond_types::CC> =
+    pol_constant_t{0.32, 2.60, 7.55};
 
 mat3x3_t raman_tensor(
     const std::vector<vec3_t> &eigs,
@@ -35,8 +47,8 @@ double raman_intensity(
     const std::vector<atom_types> &types,
     const std::unordered_map<bond_types, pol_constant_t>
         &pol_constants = {
-            {btype(atype::C, atype::C), pol_constant_t{}},
-            {btype(atype::C, atype::H), pol_constant_t{}}
+            {bond_types::CC, pol_const<bond_types::CC>},
+            {bond_types::CH, pol_const<bond_types::CC>}
         }
 );
 
@@ -49,8 +61,8 @@ double raman_intensity_avg(
     const std::vector<atom_types> &types,
     const std::unordered_map<bond_types, pol_constant_t>
         &pol_constants = {
-            {btype(atype::C, atype::C), pol_constant_t{}},
-            {btype(atype::C, atype::H), pol_constant_t{}}
+            {bond_types::CC, pol_const<bond_types::CC>},
+            {bond_types::CH, pol_const<bond_types::CC>}
         }
 );
 
