@@ -4,7 +4,7 @@
 
 #include <stdexcept>
 
-#include "common/util/math.hpp"
+#include "misc.hpp"
 #include "common/util/templates.hpp"
 
 // for k = 1 ... min(m,n):

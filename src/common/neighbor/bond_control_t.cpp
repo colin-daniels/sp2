@@ -1,12 +1,12 @@
 #include "common/neighbor/bond_control_t.hpp"
 #include "common/neighbor/utility_functions.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 
 #include <cmath>
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
-#include <common/vec3_t.hpp>
+#include <common/math/vec3_t.hpp>
 
 using namespace std;
 using namespace sp2::fbc;

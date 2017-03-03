@@ -5,8 +5,9 @@
 #include <stdexcept>
 #include <algorithm>
 
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
 #include "common/graph/ud_graph_t.hpp"
+#include "common/math/vec3_util.hpp"
 
 namespace sp2 {
 namespace nc {

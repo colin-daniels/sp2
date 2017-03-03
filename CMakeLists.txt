@@ -44,23 +44,26 @@ enable_testing()
 ################################################################################
 
 set(SOURCE_FILES
-        src/common/vec3_t.hpp
-        src/common/vec3_t.cpp
         src/common/function_types.hpp
         src/common/function_types.cpp
         src/common/structure_t.cpp
         src/common/structure_t.hpp
-        src/common/util/rotations.cpp
-        src/common/util/rotations.hpp
-        src/common/util/blas.hpp
+        src/common/atom_types.hpp
+        src/common/math/vec3_t.hpp
+        src/common/math/rotations.cpp
+        src/common/math/rotations.hpp
+        src/common/math/blas.hpp
+        src/common/math/numerical_diff.hpp
+        src/common/math/interpolate.cpp
+        src/common/math/misc.hpp
+        src/common/math/mat3x3_t.hpp
         src/common/util/random.cpp
         src/common/util/random.hpp
         src/common/util/templates.hpp
-        src/common/util/numerical_diff.hpp
-        src/common/util/interpolate.cpp
-        src/common/util/math.hpp
         src/common/util/timing.hpp
         src/common/util/timing.cpp
+        src/common/util/modeling.cpp
+        src/common/util/modeling.hpp
         src/common/io/structure.cpp
         src/common/io/structure.hpp
         src/common/io/util.cpp
@@ -74,6 +77,7 @@ set(SOURCE_FILES
         src/common/json/json.cpp
         src/common/json/json.hpp
         src/common/json/json_serializable_t.hpp
+        src/common/json/json_serializable_t.cpp
         src/common/minimize/minimize.hpp
         src/common/minimize/settings.cpp
         src/common/minimize/settings.hpp
@@ -111,6 +115,8 @@ set(SOURCE_FILES
         IF_PHONOPY_ENABLED src/run/run_phonopy.cpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.cpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.hpp
+        IF_PHONOPY_ENABLED src/phonopy/bond_polarization.cpp
+        IF_PHONOPY_ENABLED src/phonopy/bond_polarization.hpp
 ################################################################################
         IF_TESTS_ENABLED src/common/graph/test/test_ud_graph_t.cpp
         src/common/graph/ud_graph_t.cpp
@@ -119,6 +125,8 @@ set(SOURCE_FILES
         src/common/graph/permutation_t.hpp
         src/common/graph/graph.cpp
         src/common/graph/graph.hpp
+        src/common/graph/directed_graph_t.cpp
+        src/common/graph/directed_graph_t.hpp
         src/common/neighbor/utility_functions.cpp
         src/common/neighbor/utility_functions.hpp
         src/common/neighbor/periodic_cell_t.hpp
@@ -135,30 +143,20 @@ set(SOURCE_FILES
         src/airebo/utility_functions.hpp
         src/airebo/test.hpp
         src/airebo/test.cpp
+        src/airebo/airebo_util.hpp
         # src/atac/system_control_t.cpp
         # src/atac/system_control_t.hpp
         src/atac/settings_t.hpp
         src/atac/settings_t.cpp
         src/run/common.cpp
-        # src/run/run_relaxation.cpp
-        # src/run/run_atac.cpp
         src/run/run_types.hpp
         src/run/run_settings_t.cpp
         src/run/run_settings_t.hpp
-        src/common/json/json_serializable_t.cpp
-        src/airebo/airebo_util.hpp
-        src/include/sp2/sp2.h
         src/run/run_relaxation.cpp
+        # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/phonopy/bond_polarization.cpp
-        src/phonopy/bond_polarization.hpp
-        src/common/atom_types.hpp
-        src/common/mat3x3_t.hpp
-        src/common/graph/directed_graph_t.cpp
-        src/common/graph/directed_graph_t.hpp
-        src/common/util/modeling.cpp
-        src/common/util/modeling.hpp)
+        src/include/sp2/sp2.h src/common/math/vec3_util.hpp)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)

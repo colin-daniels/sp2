@@ -2,9 +2,10 @@
 #include "common/io/util.hpp"
 #include "common/io/structure.hpp"
 #include "airebo/system_control_t.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 #include "common/minimize/minimize.hpp"
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
+#include "common/math/vec3_util.hpp"
 #include "common/json/json.hpp"
 #include "phonopy/bond_polarization.hpp"
 #include "common/util/modeling.hpp"
@@ -14,6 +15,8 @@
 #endif
 
 #include <fstream>
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 using namespace sp2;
@@ -134,22 +137,22 @@ void output_xml(string filename, const vector<double> &gradient)
         return;
 
     outfile.precision(15);
-    vector<double> forces = gradient;
-    vscal(-1.0, forces);
-
     outfile << "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n"
-            << "<varray name=\"forces\" >\n";
+               "<modeling>\n"
+               " <generator>\n"
+               "  <i name=\"program\" type=\"string\">vasp</i>\n"
+               "  <i name=\"version\" type=\"string\">5.4.1</i>\n"
+               " </generator>\n"
+               " <calculation>\n"
+               "  <varray name=\"forces\">\n";
 
-    for (int i = 0; i < forces.size(); i += 3)
-    {
-        outfile << "<v> ";
-        for (int j = 0; j < 3; ++j)
-            outfile << forces[i + j] << " ";
+    // we want forces, so -gradient
+    for (auto v : sp2::dtov3(gradient))
+        outfile << "<v>" << -v.x << ' ' << -v.y << ' ' << -v.z << "</v>\n";
 
-        outfile << "</v>\n";
-    }
-
-    outfile << "</varray>" << endl;
+    outfile << "  </varray>\n"
+               " </calculation>\n"
+               "</modeling>\n";
 }
 
 void relax_structure(structure_t &structure, run_settings_t rset)

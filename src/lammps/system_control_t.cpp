@@ -13,10 +13,11 @@
 #include <lammps/library.h>
 
 #include <boost/mpi/communicator.hpp>
-#include <common/util/blas.hpp>
+#include <common/math/blas.hpp>
 #include <common/io/util.hpp>
-#include <common/vec3_t.hpp>
+#include <common/math/vec3_t.hpp>
 #include "common/neighbor/utility_functions.hpp"
+#include "common/math/vec3_util.hpp"
 
 #ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>

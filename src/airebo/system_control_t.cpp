@@ -5,14 +5,15 @@
 
 #include "common/io/util.hpp"
 #include "common/io/structure.hpp"
-#include "common/util/rotations.hpp"
+#include "common/math/rotations.hpp"
 #include "common/structure_t.hpp"
+#include "common/math/vec3_t.hpp"
+#include "common/math/vec3_util.hpp"
 
 #include <iostream>
 #include <algorithm>
 #include <cmath>
 #include <queue>
-#include <common/vec3_t.hpp>
 
 using namespace std;
 using namespace sp2;

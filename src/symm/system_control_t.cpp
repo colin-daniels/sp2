@@ -1,5 +1,6 @@
 #include "symm/system_control_t.hpp"
 #include "symm/util.hpp"
+#include "common/math/vec3_util.hpp"
 
 #include <queue>
 

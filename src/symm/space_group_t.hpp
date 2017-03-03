@@ -7,7 +7,7 @@
 #include <fstream>
 #include <map>
 
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
 
 namespace sp2 {
 namespace symm {

@@ -1,5 +1,5 @@
 #include "common/function_types.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 
 using namespace std;
 using namespace sp2;

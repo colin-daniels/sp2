@@ -11,7 +11,7 @@
 
 #include "common/structure_t.hpp"
 #include "common/neighbor/bond_control_t.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 #include "common/function_types.hpp"
 
 #include <vector>

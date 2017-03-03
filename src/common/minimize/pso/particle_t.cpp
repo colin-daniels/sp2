@@ -1,5 +1,5 @@
 #include "particle_t.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 
 #include <stdexcept>
 

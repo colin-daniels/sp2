@@ -1,7 +1,7 @@
 #include "swarm_t.hpp"
 
 #include "common/util/templates.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 #include "common/util/mpi.hpp"
 
 #include <algorithm>

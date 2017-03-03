@@ -1,10 +1,11 @@
 #include <common/graph/ud_graph_t.hpp>
-#include <common/vec3_t.hpp>
+#include <common/math/vec3_t.hpp>
 #include <airebo/system_control_t.hpp>
 #include <common/util/random.hpp>
 #include "bond_polarization.hpp"
 
-#include "common/mat3x3_t.hpp"
+#include "common/math/mat3x3_t.hpp"
+#include "common/math/vec3_util.hpp"
 
 double raman_prefactor(double frequency, double temperature)
 {

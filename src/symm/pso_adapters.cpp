@@ -1,5 +1,6 @@
 #include "symm/pso_adapters.hpp"
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
+#include "common/math/vec3_util.hpp"
 
 #include <cmath>
 #include <algorithm>

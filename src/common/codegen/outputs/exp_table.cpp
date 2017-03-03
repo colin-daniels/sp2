@@ -2,7 +2,7 @@
 #include "util/stream_io.hpp"
 #include "util/lookup_table.hpp"
 
-#include "common/util/math.hpp"
+#include "common/math/misc.hpp"
 #include "common/util/timing.hpp"
 #include "common/util/random.hpp"
 

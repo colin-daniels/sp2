@@ -1,6 +1,7 @@
 #include <common/neighbor/bond_control_t.hpp>
 #include "modeling.hpp"
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
+#include "common/math/vec3_util.hpp"
 
 sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
     int supercell_dim[3])

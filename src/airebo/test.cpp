@@ -1,4 +1,4 @@
-#include <common/vec3_t.hpp>
+#include <common/math/vec3_t.hpp>
 #include <common/graph/ud_graph_t.hpp>
 #include "airebo/test.hpp"
 

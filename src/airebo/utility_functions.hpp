@@ -4,7 +4,7 @@
 /// \file rebo_util.hpp
 /// \brief Utility header with bond potential and force calculation functions for scpp::rebo::system_control_t
 
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 
 namespace sp2 {
 namespace airebo {

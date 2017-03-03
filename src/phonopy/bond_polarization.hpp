@@ -1,7 +1,7 @@
 #ifndef SP2_BOND_POLARIZATION_HPP
 #define SP2_BOND_POLARIZATION_HPP
 
-#include "common/mat3x3_t.hpp"
+#include "common/math/mat3x3_t.hpp"
 #include "common/atom_types.hpp"
 #include "common/structure_t.hpp"
 

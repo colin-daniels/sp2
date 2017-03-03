@@ -1,5 +1,5 @@
 #include "common/minimize/minimize.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 
 #include <iostream>
 #include <cmath>

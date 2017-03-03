@@ -8,7 +8,7 @@
 
 #include <string>
 #include <fstream>
-#include <common/vec3_t.hpp>
+#include <common/math/vec3_t.hpp>
 
 using namespace std;
 using namespace sp2;

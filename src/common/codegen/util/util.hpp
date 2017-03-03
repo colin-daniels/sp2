@@ -48,7 +48,7 @@ constexpr std::size_t ceil_pow2(std::size_t input)
 
 
 
-/// convert obeject to unsigned integer, preserving its bitwise representation
+/// convert object to unsigned integer, preserving its bitwise representation
 template<
     class T,
     // select int type based on size of input type

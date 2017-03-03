@@ -3,7 +3,7 @@
 
 
 #include "common/structure_t.hpp"
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
 #include "airebo/system_control_t.hpp"
 #include "common/neighbor/bond_control_t.hpp"
 #include "symm/space_group_t.hpp"

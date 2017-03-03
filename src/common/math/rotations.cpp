@@ -1,4 +1,5 @@
-#include "common/util/rotations.hpp"
+#include "rotations.hpp"
+#include "common/math/vec3_util.hpp"
 #include <cmath>
 
 using namespace std;

@@ -2,7 +2,6 @@
 #define SP2_MAT3X3_T_HPP
 
 #include <utility>
-#include <gtest/gtest.h>
 
 namespace sp2 {
 
@@ -118,6 +117,35 @@ public:
     }
 };
 
+static_assert(std::is_trivial<mat3x3_t>::value, "");
+
 } // namespace sp2
+
+
+#ifdef SP2_ENABLE_MPI
+
+#include <boost/mpi/datatype_fwd.hpp>
+#include <boost/mpl/bool.hpp>
+#include <boost/serialization/is_bitwise_serializable.hpp>
+
+// similar to sp2::vec3_t, we need to tell boost that mat3x3_t is trivial
+// as well as an mpi datatype
+namespace boost {
+
+namespace serialization {
+template<>
+struct is_bitwise_serializable<sp2::mat3x3_t> :
+    mpl::true_ {};
+} // namespace serialization
+
+namespace mpi {
+template<>
+struct is_mpi_datatype<sp2::mat3x3_t> :
+    mpl::true_ {};
+} // namespace mpi
+
+} // namespace boost
+
+#endif // SP2_ENABLE_MPI
 
 #endif // SP2_MAT3X3_T_HPP

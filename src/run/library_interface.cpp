@@ -3,9 +3,9 @@
 #include "common/io/util.hpp"
 #include "common/io/structure.hpp"
 #include "airebo/system_control_t.hpp"
-#include "common/util/blas.hpp"
+#include "common/math/blas.hpp"
 #include "common/minimize/minimize.hpp"
-#include "common/vec3_t.hpp"
+#include "common/math/vec3_t.hpp"
 #include "common/json/json.hpp"
 
 using namespace sp2;
