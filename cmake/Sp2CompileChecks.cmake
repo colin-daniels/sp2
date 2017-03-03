@@ -7,12 +7,12 @@ set(CMAKE_REQUIRED_FLAGS
 
 set(CMAKE_REQUIRED_INCLUDES
         ${CMAKE_REQUIRED_INCLUDES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/include)
+        ${PROJECT_SOURCE_DIR}/sp2)
 
 check_cxx_source_compiles("
     #include <unordered_map>
-    enum class e : int {};
-    std::unordered_map<e, int> m;
+    enum class E : int {};
+    std::unordered_map<E, int> m;
 
     int main() {}
 " SP2_CAN_HASH_ENUM)

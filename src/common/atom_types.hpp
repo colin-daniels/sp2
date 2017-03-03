@@ -193,4 +193,7 @@ enum class bond_types : std::uint32_t
 
 } // namespace sp2
 
+SPECIALIZE_ENUM_HASH(sp2::atom_types)
+SPECIALIZE_ENUM_HASH(sp2::bond_types)
+
 #endif // SP2_ATOM_TYPES_HPP

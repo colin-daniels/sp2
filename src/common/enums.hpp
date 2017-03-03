@@ -2,13 +2,25 @@
 #define SP2_ENUMS_HPP
 
 #include <string>
+#include <unordered_map>
 
 #ifdef SP2_CAN_HASH_ENUM
-#include <unordered_map>
-#define SP2_ENUM_TO_STR_MAP std::unordered_map
+#define SPECIALIZE_ENUM_HASH(E)
 #else
-#include <map>
-#define SP2_ENUM_TO_STR_MAP std::map
+#define SPECIALIZE_ENUM_HASH(E)                                                \
+namespace std {                                                                \
+template<>                                                                     \
+struct hash<E>                                                                 \
+{                                                                              \
+    typedef E argument_type;                                                   \
+    typedef std::size_t result_type;                                           \
+    result_type operator()(argument_type const& s) const                       \
+    {                                                                          \
+        using ut = std::underlying_type_t<E>;                                  \
+        return std::hash<ut>{}(static_cast<ut>(s));                            \
+    }                                                                          \
+};                                                                             \
+} // namespace std
 #endif // SP2_CAN_HASH_ENUM
 
 namespace sp2 {
@@ -47,7 +59,7 @@ E enum_from_str(const std::string &str, E default_value = static_cast<E>(0));
 template<class E>
 std::string enum_to_str(E val)
 {
-    const static auto map = SP2_ENUM_TO_STR_MAP<E, std::string>(
+    const static auto map = std::unordered_map<E, std::string>(
         std::begin(enum_map<E>), std::end(enum_map<E>));
 
     return map.at(val);
@@ -58,7 +70,7 @@ template<class E>
 E enum_from_str(const std::string &str, E default_value)
 {
     const static auto map = []{
-        auto result = SP2_ENUM_TO_STR_MAP<std::string, E>{};
+        auto result = std::unordered_map<std::string, E>{};
         for (auto v : enum_map<E>)
             result.emplace(v.second, v.first);
 
