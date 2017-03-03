@@ -205,6 +205,8 @@ set_target_properties(sp2 PROPERTIES
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF)
 
+include(Sp2CompileChecks)
+
 ################################################################################
 ## Dependencies/external code                                                 ##
 ################################################################################

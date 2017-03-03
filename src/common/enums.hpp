@@ -2,7 +2,14 @@
 #define SP2_ENUMS_HPP
 
 #include <string>
+
+#ifdef SP2_CAN_HASH_ENUM
 #include <unordered_map>
+#define SP2_ENUM_TO_STR_MAP std::unordered_map
+#else
+#include <map>
+#define SP2_ENUM_TO_STR_MAP std::map
+#endif // SP2_CAN_HASH_ENUM
 
 namespace sp2 {
 
@@ -40,7 +47,7 @@ E enum_from_str(const std::string &str, E default_value = static_cast<E>(0));
 template<class E>
 std::string enum_to_str(E val)
 {
-    const static auto map = std::unordered_map<E, std::string>(
+    const static auto map = SP2_ENUM_TO_STR_MAP<E, std::string>(
         std::begin(enum_map<E>), std::end(enum_map<E>));
 
     return map.at(val);
@@ -51,7 +58,7 @@ template<class E>
 E enum_from_str(const std::string &str, E default_value)
 {
     const static auto map = []{
-        auto result = std::unordered_map<std::string, E>{};
+        auto result = SP2_ENUM_TO_STR_MAP<std::string, E>{};
         for (auto v : enum_map<E>)
             result.emplace(v.second, v.first);
 
