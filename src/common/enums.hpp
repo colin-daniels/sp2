@@ -165,4 +165,8 @@ static inline bond_type get_bond_type(const atom_type a, const atom_type b)
 
 } // namespace sp2
 
+SPECIALIZE_ENUM_HASH(sp2::atom_type)
+SPECIALIZE_ENUM_HASH(sp2::run_type)
+SPECIALIZE_ENUM_HASH(sp2::potential_type)
+
 #endif // SP2_ENUMS_HPP
