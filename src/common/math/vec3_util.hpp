@@ -4,6 +4,7 @@
 #include "common/math/vec3_t.hpp"
 
 #include <vector>
+#include <limits>
 
 namespace sp2 {
 
@@ -36,10 +37,13 @@ inline vec3_t min_elem(const vec3_t &a, const vec3_t &b);
 /// get maximum elements of two vectors
 inline vec3_t max_elem(const vec3_t &a, const vec3_t &b);
 
+/// get the bounds of a set of vec3_t's (aka min/max x, y, z)
+inline std::pair<vec3_t, vec3_t> get_bounds(const std::vector<vec3_t> &input);
+
 /// convert vector of vec3_t into doubles (x1, y1, z1, x2, y2, z2, ...)
-std::vector<double> v3tod(const std::vector<vec3_t> &input);
+inline std::vector<double> v3tod(const std::vector<vec3_t> &input);
 /// convert vector of doubles (x1, y1, z1, x2, y2, z2, ...) to vec3_t
-std::vector<vec3_t> dtov3(const std::vector<double> &input);
+inline std::vector<vec3_t> dtov3(const std::vector<double> &input);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Implementations                                                            //
@@ -93,6 +97,21 @@ inline vec3_t max_elem(const vec3_t &a, const vec3_t &b)
         std::max(a.y, b.y),
         std::max(a.z, b.z)
     );
+}
+
+inline std::pair<vec3_t, vec3_t> get_bounds(const std::vector<vec3_t> &input)
+{
+    using nl = std::numeric_limits<double>;
+    auto result = std::make_pair(
+        vec3_t{   nl::max(),    nl::max(),    nl::max()}, // min
+        vec3_t{nl::lowest(), nl::lowest(), nl::lowest()}  // max
+    );
+
+    for (const auto& v : input)
+        result = {min_elem(result.first, v),
+                  max_elem(result.second, v)};
+
+    return result;
 }
 
 template<class URBG>

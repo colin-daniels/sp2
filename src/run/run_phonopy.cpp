@@ -157,17 +157,19 @@ void output_xml(string filename, const vector<double> &gradient)
 
 void relax_structure(structure_t &structure, run_settings_t rset)
 {
-    auto supercell = util::construct_supercell(structure,
-        rset.phonopy_settings.supercell_dim);
-
     // construct system + minimize with default parameters
     if (rset.add_hydrogen)
     {
         airebo::system_control_t sys;
-        sys.init(supercell);
+        sys.init(structure);
         sys.add_hydrogen();
-        supercell = sys.get_structure();
+        structure = sys.get_structure();
     }
+
+    auto supercell = util::construct_supercell(structure,
+        rset.phonopy_settings.supercell_dim[0],
+        rset.phonopy_settings.supercell_dim[1],
+        rset.phonopy_settings.supercell_dim[2]);
 
 //    airebo::system_control_t sys;
     lammps::system_control_t sys;

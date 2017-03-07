@@ -4,20 +4,19 @@
 #include "common/math/vec3_util.hpp"
 
 sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
-    int supercell_dim[3])
+    int na, int nb, int nc)
 {
-    int n_rep = supercell_dim[0]
-                * supercell_dim[1]
-                * supercell_dim[2];
+    int n_rep = na * nb * nc;
 
     structure_t supercell = input;
 
     // lengthen lattice vectors
+    int dim[3] = {na, nb, nc};
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
-            supercell.lattice[i][j] *= supercell_dim[i];
+            supercell.lattice[i][j] *= dim[i];
 
-    // get repeated types
+    // get repeated types, starts at 1 because types is not empty
     supercell.types.reserve(n_rep * input.types.size());
     for (int i = 1; i < n_rep; ++i)
     {
@@ -35,27 +34,23 @@ sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
         vec3_t(input.lattice[2])
     };
 
-    auto original_pos = sp2::dtov3(input.positions),
-        new_pos = std::vector<vec3_t>();
+    const auto original_pos = sp2::dtov3(input.positions);
+    auto new_pos = std::vector<vec3_t>();
+
+    new_pos.reserve(n_rep * original_pos.size());
 
     auto add_new = [&](int i, int j, int k) {
-        auto to_add = original_pos;
-
-        for (auto &v : to_add)
-            v += i * lattice[0] +
-                 j * lattice[1] +
-                 k * lattice[2];
-
-        new_pos.insert(
-            new_pos.end(),
-            to_add.begin(),
-            to_add.end()
-        );
+        for (std::size_t m = 0; m < original_pos.size(); ++m)
+            new_pos.push_back(original_pos[m]
+                + i * lattice[0]
+                + j * lattice[1]
+                + k * lattice[2]);
     };
 
-    for (int i = 0; i < supercell_dim[0]; ++i)
-        for (int j = 0; j < supercell_dim[1]; ++j)
-            for (int k = 0; k < supercell_dim[2]; ++k)
+    // starts at 0 because new_pos is empty
+    for (int i = 0; i < na; ++i)
+        for (int j = 0; j < nb; ++j)
+            for (int k = 0; k < nc; ++k)
                 add_new(i, j, k);
 
 
@@ -64,11 +59,41 @@ sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
     return supercell;
 }
 
-sp2::structure_t sp2::util::construct_graphene(int m, int n, bool x_aligned)
+sp2::structure_t sp2::util::graphene_unit_cell()
 {
+    // output structure
+    structure_t graphene;
 
+    // lattice vectors
+    constexpr double lattice_spacing = 2.456047;
 
-    return sp2::structure_t();
+    const vec3_t lattice[3] = {
+        lattice_spacing * vec3_t{1, 0, 0}, // a1
+        lattice_spacing * vec3_t{0.5, std::sqrt(3) / 2, 0}, // a2
+        {0, 0, 15} // c, chosen so no vdW interactions
+    };
+
+    // copy the lattice
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            graphene.lattice[i][j] = lattice[i][j];
+
+    // atoms
+    constexpr double bond_distance = 1.418;
+    const vec3_t pos[2] = {
+        vec3_t{0, 0, 0},
+        vec3_t{std::sqrt(3) / 2, 0.5, 0} * bond_distance
+    };
+
+    // set the types
+    graphene.types.resize(2, atom_type::CARBON);
+
+    // insert the positions
+    for (auto atom : pos)
+        for (auto coord : atom)
+            graphene.positions.push_back(coord);
+
+    return graphene;
 }
 
 sp2::structure_t sp2::util::make_hydrogen_terminated(
@@ -237,4 +262,97 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
 //        update();
 
     return sp2::structure_t();
+}
+
+sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length)
+{
+    using namespace sp2;
+
+    constexpr double vacuum_sep = 15;
+    double lattice[3][3] = {
+        {4.254, 0, 0},
+        {0, 2.456, 0},
+        {0, 0, 0}
+    };
+
+    if (zigzag)
+        std::swap(lattice[0][0], lattice[1][1]);
+
+    std::vector<atom_type> types(4, atom_type::CARBON);
+    std::vector<vec3_t> pos;
+
+    if (zigzag)
+    {
+        pos = {
+            vec3_t{1.228024, 0.000, 0},
+            vec3_t{0.000000, 0.709, 0},
+            vec3_t{0.000000, 2.127, 0},
+            vec3_t{1.228024, 2.836, 0}
+        };
+    }
+    else
+    {
+        pos = {
+            vec3_t{0.709000, 0.000000, 0},
+            vec3_t{2.127000, 0.000000, 0},
+            vec3_t{0.000000, 1.228024, 0},
+            vec3_t{2.836000, 1.228024, 0}
+        };
+    }
+
+    structure_t unit_cell;
+    std::copy_n(lattice[0], 9, unit_cell.lattice[0]);
+    unit_cell.types = types;
+    unit_cell.positions = sp2::v3tod(pos);
+
+    // repeat the cell in the x direction (width)
+    auto supercell = sp2::util::construct_supercell(unit_cell,
+        1, (width + 1) / 2);
+
+    // add vacuum separation to y/z
+    for (int i = 1; i < 3; ++i)
+        supercell.lattice[i][i] += vacuum_sep;
+
+    // remove extra atoms depending on width
+    if (width % 2 == 1)
+    {
+        supercell.types.resize(supercell.types.size() - 2);
+        supercell.positions.resize(supercell.positions.size() - 6);
+
+        // update the lattice (note: technically would make atoms overlap in
+        // the armchair gnr case, but since we have vacuum separation it
+        // doesn't matter)
+        supercell.lattice[1][1] -= lattice[1][1] / 2;
+    }
+
+    // repeat the cell in the x direction (length)
+    supercell = sp2::util::construct_supercell(supercell, length);
+
+    // center the gnr in the cell
+    auto v3pos = sp2::dtov3(supercell.positions);
+    vec3_t avg_pos = {};
+    for (auto &v : v3pos)
+        avg_pos += v;
+
+    avg_pos /= v3pos.size();
+
+    // (max - min) / 2
+    auto &sl = supercell.lattice;
+    auto offset = vec3_t(sl[0][0], sl[1][1], sl[2][2]) / 2 - avg_pos;
+
+    for (auto &v : v3pos)
+        v += offset;
+
+    supercell.positions = sp2::v3tod(v3pos);
+    return supercell;
+}
+
+sp2::structure_t sp2::util::construct_zz_gnr(int width, int length)
+{
+    return construct_gnr_impl(true, width, length);
+}
+
+sp2::structure_t sp2::util::construct_arm_gnr(int width, int length)
+{
+    return construct_gnr_impl(false, width, length);;
 }

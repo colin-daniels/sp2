@@ -10,12 +10,20 @@ namespace util {
 /// vectors
 /// \param input input primitive cell that is repeated along it's lattice
 ///        vectors to create a supercell
-/// \param supercell_dim supercell dimensions, aka how many times to repeat the
-///        input structure in each periodic direction
+/// \param na number of times to repeat the structure in the direction of the a
+///        lattice vector
+/// \param nb number of times to repeat the structure in the direction of the b
+///        lattice vector
+/// \param nc number of times to repeat the structure in the direction of the c
+///        lattice vector
 /// \return constructed supercell
-structure_t construct_supercell(const structure_t &input, int supercell_dim[3]);
+structure_t construct_supercell(const structure_t &input,
+    int na, int nb = 1, int nc = 1);
 
-structure_t construct_graphene(int m, int n, bool x_aligned = false);
+structure_t graphene_unit_cell();
+
+structure_t construct_arm_gnr(int width, int length);
+structure_t construct_zz_gnr(int width, int length);
 
 structure_t make_hydrogen_terminated(const structure_t &input);
 
