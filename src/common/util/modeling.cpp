@@ -264,7 +264,8 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
     return sp2::structure_t();
 }
 
-sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length)
+sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length,
+    bool periodic)
 {
     using namespace sp2;
 
@@ -309,10 +310,6 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length)
     auto supercell = sp2::util::construct_supercell(unit_cell,
         1, (width + 1) / 2);
 
-    // add vacuum separation to y/z
-    for (int i = 1; i < 3; ++i)
-        supercell.lattice[i][i] += vacuum_sep;
-
     // remove extra atoms depending on width
     if (width % 2 == 1)
     {
@@ -327,6 +324,10 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length)
 
     // repeat the cell in the x direction (length)
     supercell = sp2::util::construct_supercell(supercell, length);
+
+    // add vacuum separation to (x/)y/z
+    for (int i = periodic ? 1 : 0; i < 3; ++i)
+        supercell.lattice[i][i] += vacuum_sep;
 
     // center the gnr in the cell
     auto v3pos = sp2::dtov3(supercell.positions);
@@ -347,12 +348,14 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length)
     return supercell;
 }
 
-sp2::structure_t sp2::util::construct_zz_gnr(int width, int length)
+sp2::structure_t sp2::util::construct_zz_gnr(int width, int length,
+    bool periodic)
 {
-    return construct_gnr_impl(true, width, length);
+    return construct_gnr_impl(true, width, length, periodic);
 }
 
-sp2::structure_t sp2::util::construct_arm_gnr(int width, int length)
+sp2::structure_t sp2::util::construct_arm_gnr(int width, int length,
+    bool periodic)
 {
-    return construct_gnr_impl(false, width, length);;
+    return construct_gnr_impl(false, width, length, periodic);
 }

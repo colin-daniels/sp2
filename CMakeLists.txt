@@ -156,7 +156,7 @@ set(SOURCE_FILES
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/include/sp2/sp2.h src/common/math/vec3_util.hpp)
+        src/include/sp2/sp2.h src/common/math/vec3_util.hpp src/phonopy/phonopy_io.cpp src/phonopy/phonopy_io.hpp)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)

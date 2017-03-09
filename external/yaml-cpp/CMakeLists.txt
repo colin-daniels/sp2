@@ -7,3 +7,6 @@ download_project(PROJ yaml-cpp
 option(YAML_CPP_BUILD_TOOLS "" OFF)
 add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR}
         EXCLUDE_FROM_ALL)
+
+target_include_directories(yaml-cpp INTERFACE
+        "$<BUILD_INTERFACE:${yaml-cpp_SOURCE_DIR}/include>")

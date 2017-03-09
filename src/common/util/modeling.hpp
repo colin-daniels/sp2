@@ -22,8 +22,8 @@ structure_t construct_supercell(const structure_t &input,
 
 structure_t graphene_unit_cell();
 
-structure_t construct_arm_gnr(int width, int length);
-structure_t construct_zz_gnr(int width, int length);
+structure_t construct_arm_gnr(int width, int length, bool periodic = true);
+structure_t construct_zz_gnr(int width, int length, bool periodic = true);
 
 structure_t make_hydrogen_terminated(const structure_t &input);
 

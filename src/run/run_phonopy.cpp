@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <phonopy/phonopy_io.hpp>
 
 using namespace std;
 using namespace sp2;
@@ -26,6 +27,7 @@ void relax_structure(structure_t &structure, run_settings_t rset);
 int generate_displacements(phonopy::phonopy_settings_t pset);
 int generate_force_sets(run_settings_t rset);
 
+int write_irreps(phonopy::phonopy_settings_t pset);
 int generate_bands(phonopy::phonopy_settings_t pset);
 int generate_eigs(phonopy::phonopy_settings_t pset);
 int generate_dos(phonopy::phonopy_settings_t pset);
@@ -89,7 +91,8 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
     write_log(settings.log_filename, "Computing Force Constants");
     if (settings.phonopy_settings.calc_raman)
     {
-        if (generate_eigs(settings.phonopy_settings) != 0)
+        if (generate_eigs(settings.phonopy_settings) != 0 ||
+            write_irreps(settings.phonopy_settings) != 0)
             return EXIT_FAILURE;
 
         // read eigenmodes/etc
@@ -289,6 +292,19 @@ int generate_bands(phonopy::phonopy_settings_t pset)
     return system("phonopy band.conf");
 }
 
+int write_irreps(phonopy::phonopy_settings_t pset)
+{
+    ofstream outfile("irreps.conf");
+    outfile << "DIM = " << pset.supercell_dim[0]
+            << ' ' << pset.supercell_dim[1]
+            << ' ' << pset.supercell_dim[2] << '\n'
+            << "IRREPS = 0 0 0 1e-3\n";
+
+    outfile.close();
+
+    return system("phonopy irreps.conf");
+}
+
 int generate_eigs(phonopy::phonopy_settings_t pset)
 {
     ofstream outfile("eigs.conf");
@@ -474,15 +490,19 @@ void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
         bin_step = bin_max / n_bins;
     std::vector<double> bins(n_bins, 0);
 
+    auto irrep_labels = sp2::phonopy::read_irreps();
+
     ofstream outfile(filename);
-    for (auto &shift : spectra)
+    for (unsigned int i = 0; i < spectra.size(); ++i)
     {
+        auto &shift = spectra[i];
         outfile << shift.first << ' '
                 << shift.second / maxi << ' '
-                << shift.second << endl;
+                << shift.second << ' '
+                << irrep_labels[i] << endl;
 
-        for (std::size_t i = 0; i < bins.size(); ++i)
-            bins[i] += gaussian(i * bin_step, shift.first) * shift.second;
+        for (std::size_t j = 0; j < bins.size(); ++j)
+            bins[j] += gaussian(j * bin_step, shift.first) * shift.second;
     }
     outfile.close();
 
