@@ -34,12 +34,18 @@ struct phonopy_settings_t : public io::json_serializable_t
     int supercell_dim[3] = {1, 1, 1};
     double displacement_distance = 0.01;
 
-    bool calc_raman = false;
+    bool calc_raman = false,
+        calc_raman_backscatter_avg = false,
+        write_raman_active_anim = false;
+
+    // TODO: serialize
+    double raman_active_anim_cutoff = 1e-3;
     int polarization_axes[2] = {0, 0};
 
     bool calc_displacements = true;
     bool calc_force_sets = true;
     bool calc_bands = true;
+
     std::vector<qpoint_t> qpoints = {
         qpoint_t("\u0393", 0, 0, 0),
         qpoint_t("X", 0.5, 0, 0)

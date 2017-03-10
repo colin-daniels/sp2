@@ -31,6 +31,8 @@ int write_irreps(phonopy::phonopy_settings_t pset);
 int generate_bands(phonopy::phonopy_settings_t pset);
 int generate_eigs(phonopy::phonopy_settings_t pset);
 int generate_dos(phonopy::phonopy_settings_t pset);
+/// write xyz animation file anim.xyz for the specified band_id (1 indexed)
+int write_anim(phonopy::phonopy_settings_t pset, int mode_id);
 
 vector<pair<double, vector<vec3_t>>> read_eigs();
 
@@ -39,8 +41,12 @@ vector<pair<double, vector<vec3_t>>> read_eigs();
 void plot_modes(string filename, airebo::system_control_t &sys,
     vector<pair<double, vector<vec3_t>>> modes);
 
-void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
-    structure_t structure, const int *pol_axes, const string &filename);
+int write_spectra(sp2::phonopy::phonopy_settings_t pset,
+    vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
+    const string &filename);
+
+int write_raman_active_anim(sp2::phonopy::phonopy_settings_t pset,
+    const std::vector<std::pair<double, double>> &spectra);
 
 void write_log(string filename, string desc);
 
@@ -106,19 +112,8 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
         sys.init(structure);
         plot_modes("modes.dat", sys, modes);
 
-        write_spectra(modes, structure,
-            settings.phonopy_settings.polarization_axes, "spectra.dat");
-
-        int xx[2] = {0, 0},
-            yy[2] = {1, 1},
-            zz[2] = {2, 2},
-            xy[2] = {0, 1};
-        write_spectra(modes, structure, xx, "spectra_xx.dat");
-        write_spectra(modes, structure, yy, "spectra_yy.dat");
-        write_spectra(modes, structure, zz, "spectra_zz.dat");
-        write_spectra(modes, structure, xy, "spectra_xy.dat");
-
-        write_spectra(modes, structure, nullptr, "spectra_avg.dat");
+        write_spectra(settings.phonopy_settings, modes, structure,
+            "spectra.dat");
     }
 
     if (settings.phonopy_settings.calc_bands &&
@@ -340,6 +335,23 @@ int generate_dos(phonopy::phonopy_settings_t pset)
     return system("phonopy dos.conf");
 }
 
+int write_anim(phonopy::phonopy_settings_t pset, int mode_id)
+{
+    ofstream outfile("anim.conf");
+
+    outfile << "DIM = " << pset.supercell_dim[0]
+            << ' ' << pset.supercell_dim[1]
+            << ' ' << pset.supercell_dim[2] << '\n'
+            << "FORCE_CONSTANTS = "
+            << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n")
+            << "ANIME_TYPE = XYZ\n"
+            << "ANIME = " << mode_id << " 5 20\n";
+
+
+    outfile.close();
+    return system("phonopy anim.conf");
+}
+
 vector<pair<double, vector<vec3_t>>> read_eigs()
 {
     ifstream infile("band.yaml");
@@ -432,8 +444,9 @@ void plot_modes(string filename, airebo::system_control_t &sys,
 }
 
 
-void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
-    structure_t structure, const int *pol_axes, const string &filename)
+int write_spectra(sp2::phonopy::phonopy_settings_t pset,
+    vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
+    const string &filename)
 {
     constexpr double temperature = 293.15; // room temp
 #warning temporary
@@ -466,15 +479,18 @@ void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
     }
 
     std::vector<std::pair<double, double>> spectra;
-    if (pol_axes != nullptr)
-    {
-        spectra = sp2::phonopy::raman_spectra(pol_vecs[pol_axes[0]],
-            pol_vecs[pol_axes[1]], temperature, modes, structure);
-    }
-    else
+    if (pset.calc_raman_backscatter_avg)
     {
         spectra = sp2::phonopy::raman_spectra_avg(true, temperature,
             modes, structure);
+    }
+    else
+    {
+        spectra = sp2::phonopy::raman_spectra(
+            pol_vecs[pset.polarization_axes[0]],
+            pol_vecs[pset.polarization_axes[1]],
+            temperature, modes, structure
+        );
     }
 
     double maxi = 0,
@@ -496,9 +512,11 @@ void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
     for (unsigned int i = 0; i < spectra.size(); ++i)
     {
         auto &shift = spectra[i];
+        shift.second /= maxi;
+
         outfile << shift.first << ' '
-                << shift.second / maxi << ' '
                 << shift.second << ' '
+                << shift.second * maxi << ' '
                 << irrep_labels[i] << endl;
 
         for (std::size_t j = 0; j < bins.size(); ++j)
@@ -513,6 +531,12 @@ void write_spectra(vector<pair<double, vector<vec3_t>>> modes,
                 << bins[i] / max_bin << std::endl;
 
     outfile.close();
+
+    // write animation files
+    if (pset.write_raman_active_anim)
+        return write_raman_active_anim(pset, spectra);
+
+    return EXIT_SUCCESS;
 }
 
 void write_log(string filename, string desc)
@@ -527,4 +551,31 @@ void write_log(string filename, string desc)
     ofstream outfile(filename);
     outfile.write(string.c_str(), string.size());
     outfile.close();
+}
+
+int write_raman_active_anim(sp2::phonopy::phonopy_settings_t pset,
+    const std::vector<std::pair<double, double>> &spectra)
+{
+    std::vector<unsigned int> raman_active_ids;
+    for (auto i = 0u; i < spectra.size(); ++i)
+    {
+        if (spectra[i].second < pset.raman_active_anim_cutoff)
+            continue;
+
+        // phonopy starts counting bands at 1
+        int mode_id = i + 1;
+
+        // phonopy counts bands starting at 1
+        if (write_anim(pset, mode_id) != 0 || !io::file_exists("anime.xyz"))
+        {
+            std::cerr << "Phonopy failed to write animation file for mode id "
+                      << mode_id << ", quitting." << std::endl;
+
+            return EXIT_FAILURE;
+        }
+
+        io::copy_file("anime.xyz", "anim_" + std::to_string(mode_id) + ".xyz");
+    }
+
+    return EXIT_SUCCESS;
 }

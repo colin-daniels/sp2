@@ -3,6 +3,41 @@
 #include "common/math/vec3_t.hpp"
 #include "common/math/vec3_util.hpp"
 
+#include <airebo/system_control_t.hpp>
+#include <common/minimize/minimize.hpp>
+#include <common/io/structure.hpp>
+
+void make_agnr_set()
+{
+    using namespace sp2;
+
+    auto generate = [](int width, int length) {
+        std::string filename = std::to_string(width) + "agnr";
+        bool periodic = (length == 1);
+        if (!periodic)
+            filename += "_l" + std::to_string(length);
+
+        filename += ".vasp";
+
+        airebo::system_control_t sys;
+        sys.init(util::construct_arm_gnr(width, length, periodic));
+        sys.add_hydrogen();
+
+        minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
+            minimize::acgsd_settings_t{});
+
+        io::write_structure(filename, sys.get_structure());
+    };
+
+    for (int width = 7; width < 32; ++width)
+    {
+        generate(width, 1);
+
+        for (int length = width / 2; length < width * 5; ++length)
+            generate(width, length);
+    }
+}
+
 sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
     int na, int nb, int nc)
 {

@@ -9,6 +9,14 @@
 
 using namespace std;
 
+std::string check_pol_axes(const Json::Value &input)
+{
+    if (!input || !input.isString())
+        return "";
+
+    return input.asString();
+}
+
 bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
@@ -20,6 +28,7 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "calc_bands", calc_bands,
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
+        "write_raman_active_anim", write_raman_active_anim,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );
@@ -29,6 +38,13 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
 
 bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
 {
+    // TODO: make this not a hack, add to serialize()
+    auto pol_str = check_pol_axes(input["polarization_axes"]);
+    if (pol_str == "backscatter_avg")
+    {
+        calc_raman_backscatter_avg = true;
+    }
+
     io::deserialize_basic(input,
         "n_samples", n_samples,
         "minimize", min_set,
@@ -38,6 +54,7 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "calc_bands", calc_bands,
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
+        "write_raman_active_anim", write_raman_active_anim,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );
