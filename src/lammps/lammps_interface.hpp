@@ -53,6 +53,12 @@ public:
     /// \param boost::mpi::communicator input MPI comm
     system_control_t(
         boost::mpi::communicator comm = boost::mpi::communicator());
+
+    system_control_t(const structure_t &info,
+        const lammps_settings_t &lmp_set = lammps_settings_t(),
+        boost::mpi::communicator comm = boost::mpi::communicator()
+    ) : system_control_t(comm) {init(info, lmp_set);}
+
     /// destructor, automatically destroys the lammps object pointed to by lmp
     ~system_control_t();
 

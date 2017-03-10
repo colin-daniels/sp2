@@ -75,6 +75,15 @@ public:
     system_control_t(const system_control_t &) = delete;
     system_control_t& operator=(const system_control_t&) = delete;
 
+    system_control_t(const structure_t &structure) :
+        system_control_t() { init(structure); }
+
+    system_control_t(
+        const double lattice[3][3],
+        const std::vector<double> &position_in,
+        const std::vector<atom_type> &types_in
+    ) : system_control_t() { init(lattice, position_in, types_in); }
+
     /// \brief initialization function
     /// \param lattice double[3][3] input lattice vector matrix (rows) to designate periodicity, rows with all elements zero are assumed non-periodic
     /// \param position_in std::vector<double> input positions

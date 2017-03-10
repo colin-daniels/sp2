@@ -4,6 +4,7 @@
 #include "common/math/vec3_util.hpp"
 
 #include <airebo/system_control_t.hpp>
+#include <lammps/lammps_interface.hpp>
 #include <common/minimize/minimize.hpp>
 #include <common/io/structure.hpp>
 
@@ -19,17 +20,41 @@ void make_agnr_set()
 
         filename += ".vasp";
 
-        airebo::system_control_t sys;
-        sys.init(util::construct_arm_gnr(width, length, periodic));
-        sys.add_hydrogen();
+        auto mset = minimize::acgsd_settings_t{};
+        mset.output_level = 0;
 
-        minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
-            minimize::acgsd_settings_t{});
+        sp2::structure_t supercell;
+        {
+            airebo::system_control_t sys;
+            sys.init(util::construct_arm_gnr(width, length, periodic));
+            sys.add_hydrogen();
 
-        io::write_structure(filename, sys.get_structure());
+            minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset);
+            supercell = util::construct_supercell(sys.get_structure(), 5, 1, 1);
+        }
+
+        auto lset = lammps::lammps_settings_t{};
+        lset.compute_lj = false;
+        lammps::system_control_t sys(supercell, lset);
+
+        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset);
+        auto structure = sys.get_structure();
+        auto pos = dtov3(structure.positions);
+
+        double min = std::numeric_limits<double>::max(), max = std::numeric_limits<double>::lowest();
+        for (int i = 0; i < structure.types.size(); ++i)
+        {
+            if (structure.types[i] == atom_type::HYDROGEN)
+                continue;
+
+            min = std::min(min, pos[i].y);
+            max = std::max(max, pos[i].y);
+        }
+
+        std::cout << width << " " << (max - min) << std::endl;
     };
 
-    for (int width = 7; width < 32; ++width)
+    for (int width = 3; width < 128; ++width)
     {
         generate(width, 1);
 

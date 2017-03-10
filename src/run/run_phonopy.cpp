@@ -169,16 +169,25 @@ void relax_structure(structure_t &structure, run_settings_t rset)
         rset.phonopy_settings.supercell_dim[1],
         rset.phonopy_settings.supercell_dim[2]);
 
-//    airebo::system_control_t sys;
-    lammps::system_control_t sys;
-    sys.init(supercell, rset.lammps_settings);
-
     minimize::acgsd_settings_t settings;
     settings.gradient_tolerance = 1e-5;
 
-    minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
+    auto minimize = [&](auto &&sys) {
+        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
+        supercell = sys.get_structure();
+    };
 
-    supercell = sys.get_structure();
+    switch (rset.potential)
+    {
+    case potential_type::LAMMPS:
+        minimize(lammps::system_control_t(supercell, rset.lammps_settings));
+        break;
+    case potential_type::REBO:
+        minimize(airebo::system_control_t(supercell));
+        break;
+    default:
+        return;
+    }
 
     // just get the positions from the first primitive cell of the
     // supercell and pass it back out
@@ -212,7 +221,11 @@ vector<string> process_displacements(run_settings_t rset)
     };
 
     vector<string> output_filenames;
-    std::unique_ptr<lammps::system_control_t> sys;
+
+    std::unique_ptr<lammps::system_control_t> sys_lammps;
+    std::unique_ptr<airebo::system_control_t> sys_rebo;
+
+    std::function<std::vector<double>(void)> get_gradient;
     for (int i = 1; i < std::numeric_limits<int>::max(); ++i)
     {
         string input_file = "POSCAR-" + get_ext(i),
@@ -225,21 +238,33 @@ vector<string> process_displacements(run_settings_t rset)
             break;
         }
 
-//        airebo::system_control_t sys;
-        if (i == 1)
+        if (!get_gradient)
         {
-            sys = std::make_unique<lammps::system_control_t>();
-            sys->init(structure, rset.lammps_settings);
+            auto grad_fn = [&](auto &&sys) -> std::vector<double> {
+                sys.set_position(structure.positions);
+                sys.update();
+                return sys.get_gradient();
+            };
+
+            switch (rset.potential)
+            {
+            case potential_type::LAMMPS:
+                sys_lammps = std::make_unique<lammps::system_control_t>(
+                    structure, rset.lammps_settings);
+
+                get_gradient = [&]{return grad_fn(*sys_lammps);};
+                break;
+            case potential_type::REBO:
+                sys_rebo = std::make_unique<airebo::system_control_t>(
+                    structure);
+
+                get_gradient = [&]{return grad_fn(*sys_rebo);};
+            default:
+                return {};
+            }
         }
-        else
-        {
-            sys->set_position(structure.positions);
-        }
 
-        sys->update();
-
-        output_xml(output_file, sys->get_gradient());
-
+        output_xml(output_file, get_gradient());
         output_filenames.push_back(output_file);
     }
 
