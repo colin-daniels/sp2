@@ -534,6 +534,11 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
     std::vector<double> bins(n_bins, 0);
 
     auto irrep_labels = sp2::phonopy::read_irreps();
+    if (spectra.size() != irrep_labels.size())
+        throw std::runtime_error("Number of characters read from irreps.yaml ("
+            + std::to_string(irrep_labels.size()) +
+            ") does not match number of bands ("
+            + std::to_string(spectra.size()) + ")");
 
     ofstream outfile(filename);
     for (unsigned int i = 0; i < spectra.size(); ++i)

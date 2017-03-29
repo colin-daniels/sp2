@@ -29,12 +29,11 @@ std::vector<std::string> sp2::phonopy::read_irreps(std::string filename)
     std::map<int, std::string> irrep_labels;
     for (const auto &elem : node["normal_modes"])
     {
-        if (!elem["band_indices"] || !elem["ir_label"])
+        if (!elem["band_indices"])
             return {};
 
-        std::string label = elem["ir_label"].as<std::string>();
-        if (label.empty())
-            return {};
+        std::string label = elem["ir_label"] ?
+            elem["ir_label"].as<std::string>() : "Unknown";
 
         for (const auto &idx_node : elem["band_indices"])
         {
