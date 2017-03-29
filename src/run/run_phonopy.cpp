@@ -318,7 +318,9 @@ int write_irreps(phonopy::phonopy_settings_t pset)
     outfile << "DIM = " << pset.supercell_dim[0]
             << ' ' << pset.supercell_dim[1]
             << ' ' << pset.supercell_dim[2] << '\n'
-            << "IRREPS = 0 0 0 1e-3\n";
+            << "IRREPS = 0 0 0 1e-3\n"
+            << "FORCE_CONSTANTS = "
+                << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n");
 
     outfile.close();
 
