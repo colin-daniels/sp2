@@ -45,9 +45,6 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
     vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
     const string &filename);
 
-int write_raman_active_anim(sp2::phonopy::phonopy_settings_t pset,
-    const std::vector<std::pair<double, double>> &spectra);
-
 void write_log(string filename, string desc);
 
 void output_xml(string filename, const vector<double> &gradient);
@@ -169,11 +166,9 @@ void relax_structure(structure_t &structure, run_settings_t rset)
         rset.phonopy_settings.supercell_dim[1],
         rset.phonopy_settings.supercell_dim[2]);
 
-    minimize::acgsd_settings_t settings;
-    settings.gradient_tolerance = 1e-5;
-
     auto minimize = [&](auto &&sys) {
-        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), settings);
+        minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
+            rset.phonopy_settings.min_set);
         supercell = sys.get_structure();
     };
 
@@ -564,30 +559,10 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
     outfile.close();
 
+    if (!pset.write_raman_active_anim)
+        return EXIT_SUCCESS;
+
     // write animation files
-    if (pset.write_raman_active_anim)
-        return write_raman_active_anim(pset, spectra);
-
-    return EXIT_SUCCESS;
-}
-
-void write_log(string filename, string desc)
-{
-    if (filename.empty())
-        return;
-
-    stringstream ss;
-    ss << "{\"status\":\"" << desc << "\"}";
-
-    string string = ss.str();
-    ofstream outfile(filename);
-    outfile.write(string.c_str(), string.size());
-    outfile.close();
-}
-
-int write_raman_active_anim(sp2::phonopy::phonopy_settings_t pset,
-    const std::vector<std::pair<double, double>> &spectra)
-{
     std::vector<unsigned int> raman_active_ids;
     for (auto i = 0u; i < spectra.size(); ++i)
     {
@@ -607,7 +582,25 @@ int write_raman_active_anim(sp2::phonopy::phonopy_settings_t pset,
         }
 
         io::copy_file("anime.xyz", "anim_" + std::to_string(mode_id) + ".xyz");
+
+        // draw gnuplot file as well
+        phonopy::draw_normal_mode("mode_" + std::to_string(mode_id) + ".gplot",
+            structure, modes[i]);
     }
 
     return EXIT_SUCCESS;
+}
+
+void write_log(string filename, string desc)
+{
+    if (filename.empty())
+        return;
+
+    stringstream ss;
+    ss << "{\"status\":\"" << desc << "\"}";
+
+    string string = ss.str();
+    ofstream outfile(filename);
+    outfile.write(string.c_str(), string.size());
+    outfile.close();
 }

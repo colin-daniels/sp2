@@ -419,3 +419,29 @@ sp2::structure_t sp2::util::construct_arm_gnr(int width, int length,
 {
     return construct_gnr_impl(false, width, length, periodic);
 }
+
+sp2::structure_t sp2::util::center_by_avg(const sp2::structure_t &input)
+{
+    auto pos = dtov3(input.positions);
+
+    vec3_t avg_pos;
+    for (auto &atom : pos)
+        avg_pos += atom;
+
+    avg_pos /= pos.size();
+
+    vec3_t lattice_center = (
+        vec3_t(input.lattice[0]) +
+        vec3_t(input.lattice[1]) +
+        vec3_t(input.lattice[2])
+    ) / 3;
+
+    auto delta = lattice_center - avg_pos;
+    for (auto &atom : pos)
+        atom += delta;
+
+    auto new_structure = input;
+    new_structure.positions = v3tod(pos);
+
+    return new_structure;
+}

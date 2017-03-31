@@ -27,6 +27,8 @@ structure_t construct_zz_gnr(int width, int length, bool periodic = true);
 
 structure_t make_hydrogen_terminated(const structure_t &input);
 
+structure_t center_by_avg(const structure_t &input);
+
 } // namespace util
 } // namespace sp2
 

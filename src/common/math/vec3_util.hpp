@@ -118,10 +118,10 @@ template<class URBG>
 vec3_t random_vec3(URBG &&g)
 {
     constexpr double inv_range = 1.0 /
-        static_cast<double>(URBG::max() - URBG::min());
+        static_cast<double>(g.max() - g.min());
 
-    const double theta = 2 * M_PI * inv_range * (g() - URBG::min()), // [0:2pi]
-        u = 1 - 2 * inv_range * (g() - URBG::min()); // [-1:1]
+    const double theta = 2 * M_PI * inv_range * (g() - g.min()), // [0:2pi]
+        u = 1 - 2 * inv_range * (g() - g.min()); // [-1:1]
 
     return vec3_t{u,
         std::sqrt(1 - u * u) * std::cos(theta),

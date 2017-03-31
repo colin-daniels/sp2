@@ -16,6 +16,9 @@ std::tuple<structure_t, std::vector<std::pair<int, vec3_t>>>
 
 void write_force_sets(std::string filename);
 
+void draw_normal_mode(std::string filename,
+    structure_t structure, const std::pair<double, std::vector<vec3_t>> &mode);
+
 } // namespace phonopy
 } // namespace sp2
 

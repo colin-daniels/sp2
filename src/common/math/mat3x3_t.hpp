@@ -115,6 +115,11 @@ public:
             {0, 0, 1}
         }};
     }
+
+    sp2::vec3_t operator*(const sp2::vec3_t &vec) const
+    {
+        return vec.mul_3x3(data);
+    }
 };
 
 static_assert(std::is_trivial<mat3x3_t>::value, "");
