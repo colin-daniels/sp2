@@ -434,7 +434,7 @@ sp2::structure_t sp2::util::center_by_avg(const sp2::structure_t &input)
         vec3_t(input.lattice[0]) +
         vec3_t(input.lattice[1]) +
         vec3_t(input.lattice[2])
-    ) / 3;
+    ) / 2;
 
     auto delta = lattice_center - avg_pos;
     for (auto &atom : pos)
