@@ -1,7 +1,3 @@
-//
-// Created by cc on 11/26/16.
-//
-
 #ifndef SP2_PHONOPY_SETTINGS_T_HPP
 #define SP2_PHONOPY_SETTINGS_T_HPP
 
@@ -36,10 +32,11 @@ struct phonopy_settings_t : public io::json_serializable_t
 
     bool calc_raman = false,
         calc_raman_backscatter_avg = false,
-        write_raman_active_anim = false;
+        write_raman_active_anim = false,
+        write_raman_active_modes = false;
 
     // TODO: serialize
-    double raman_active_anim_cutoff = 1e-3;
+    double raman_active_cutoff = 1e-3;
     int polarization_axes[2] = {0, 0};
 
     bool calc_displacements = true;

@@ -11,13 +11,18 @@ namespace phonopy {
 
 std::vector<std::string> read_irreps(std::string filename = "irreps.yaml");
 
-std::tuple<structure_t, std::vector<std::pair<int, vec3_t>>>
+std::pair<structure_t, std::vector<std::pair<int, vec3_t>>>
     read_displacements(std::string filename = "disp.yaml");
 
-void write_force_sets(std::string filename);
+void write_force_sets(
+    std::string filename,
+    const std::pair<structure_t, std::vector<std::pair<int, vec3_t>>>
+        &displacements,
+    const std::vector<std::vector<vec3_t>> &forces
+);
 
 void draw_normal_mode(std::string filename,
-    structure_t structure, const std::pair<double, std::vector<vec3_t>> &mode);
+    structure_t structure, std::pair<double, std::vector<sp2::vec3_t>> mode);
 
 } // namespace phonopy
 } // namespace sp2

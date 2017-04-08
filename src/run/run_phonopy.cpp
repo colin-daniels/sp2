@@ -22,10 +22,19 @@
 using namespace std;
 using namespace sp2;
 
+inline std::string get_force_constant_rw()
+{
+    return std::string("FORCE_CONSTANTS = ") + (
+        io::file_exists("FORCE_CONSTANTS")      ? "READ\n" :
+        io::file_exists("force_constants.hdf5") ? "READ\n" :
+             "WRITE\n"
+    );
+}
+
 void relax_structure(structure_t &structure, run_settings_t rset);
 
 int generate_displacements(phonopy::phonopy_settings_t pset);
-int generate_force_sets(run_settings_t rset);
+void generate_force_sets(run_settings_t rset);
 
 int write_irreps(phonopy::phonopy_settings_t pset);
 int generate_bands(phonopy::phonopy_settings_t pset);
@@ -37,7 +46,6 @@ int write_anim(phonopy::phonopy_settings_t pset, int mode_id);
 vector<pair<double, vector<vec3_t>>> read_eigs();
 
 
-
 void plot_modes(string filename, airebo::system_control_t &sys,
     vector<pair<double, vector<vec3_t>>> modes);
 
@@ -47,8 +55,28 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
 void write_log(string filename, string desc);
 
-void output_xml(string filename, const vector<double> &gradient);
+void remove_hydrogen(structure_t &structure,
+    vector<pair<double, vector<vec3_t>>> *modes = nullptr)
+{
+    auto pos = dtov3(structure.positions);
+    for (int i = 0; i < structure.types.size(); ++i)
+    {
+        if (structure.types[i] != atom_type::HYDROGEN)
+            continue;
 
+        pos.erase(pos.begin() + i);
+        structure.types.erase(structure.types.begin() + i);
+        if (modes)
+        {
+            for (auto &mode : *modes)
+                mode.second.erase(mode.second.begin() + i);
+        }
+
+        i -= 1;
+    }
+
+    structure.positions = sp2::v3tod(pos);
+}
 
 int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 {
@@ -83,12 +111,7 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
     if (settings.phonopy_settings.calc_force_sets)
     {
         write_log(settings.log_filename, "Generating Force Sets");
-        if (generate_force_sets(settings) != 0)
-        {
-            std::cout << "Failed to generate force sets using phonopy."
-                      << std::endl;
-            return EXIT_FAILURE;
-        }
+        generate_force_sets(settings);
     }
 
     write_log(settings.log_filename, "Computing Force Constants");
@@ -122,32 +145,6 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
     }
 
     return EXIT_SUCCESS;
-}
-
-
-void output_xml(string filename, const vector<double> &gradient)
-{
-    ofstream outfile(filename);
-    if (!outfile)
-        return;
-
-    outfile.precision(15);
-    outfile << "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n"
-               "<modeling>\n"
-               " <generator>\n"
-               "  <i name=\"program\" type=\"string\">vasp</i>\n"
-               "  <i name=\"version\" type=\"string\">5.4.1</i>\n"
-               " </generator>\n"
-               " <calculation>\n"
-               "  <varray name=\"forces\">\n";
-
-    // we want forces, so -gradient
-    for (auto v : sp2::dtov3(gradient))
-        outfile << "<v>" << -v.x << ' ' << -v.y << ' ' << -v.z << "</v>\n";
-
-    outfile << "  </varray>\n"
-               " </calculation>\n"
-               "</modeling>\n";
 }
 
 void relax_structure(structure_t &structure, run_settings_t rset)
@@ -203,42 +200,48 @@ int generate_displacements(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return system("phonopy -d disp.conf");
+    return system("phonopy disp.conf");
 }
 
-/// read all input poscar files, return vector of output filenames
-vector<string> process_displacements(run_settings_t rset)
+/// read disp.yaml and calculate forces to output to FORCE_SETS
+void generate_force_sets(run_settings_t rset)
 {
-    auto get_ext = [](int i) {
-        stringstream ss;
-        ss << setw(3) << setfill('0') << i;
-        return ss.str();
-    };
+    // read in structure and displacements from phonopy's disp.yaml
+    structure_t structure;
+    std::vector<std::pair<int, sp2::vec3_t>> displacements;
 
-    vector<string> output_filenames;
+    auto disp_data = phonopy::read_displacements("disp.yaml");
+    std::tie(structure, displacements) = disp_data;
 
+    // store original position
+    auto orig_pos = dtov3(structure.positions);
+
+
+    // pointers (and function) for switching potentials for gradient calc
     std::unique_ptr<lammps::system_control_t> sys_lammps;
     std::unique_ptr<airebo::system_control_t> sys_rebo;
+    std::function<std::vector<vec3_t>(const std::vector<double>&)> get_forces;
 
-    std::function<std::vector<double>(void)> get_gradient;
-    for (int i = 1; i < std::numeric_limits<int>::max(); ++i)
+
+    // go through each displacement and calculate forces
+    std::vector<std::vector<vec3_t>> forces;
+    for (auto disp : displacements)
     {
-        string input_file = "POSCAR-" + get_ext(i),
-            output_file = "vasprun.xml-" + get_ext(i);
+        // copy original positions, and displace the specified atom
+        auto temp_pos = orig_pos;
+        temp_pos[disp.first] += disp.second;
 
-        structure_t structure;
-        if (!io::file_exists(input_file) ||
-            !io::read_structure(input_file, structure, file_type::POSCAR))
+        if (!get_forces)
         {
-            break;
-        }
-
-        if (!get_gradient)
-        {
-            auto grad_fn = [&](auto &&sys) -> std::vector<double> {
-                sys.set_position(structure.positions);
+            auto force_fn = [&](auto &pos, auto &&sys) -> std::vector<vec3_t> {
+                sys.set_position(pos);
                 sys.update();
-                return sys.get_gradient();
+
+                // get gradient, negate it for forces
+                auto temp = sys.get_gradient();
+                vscal(-1.0, temp);
+
+                return dtov3(temp);
             };
 
             switch (rset.potential)
@@ -247,36 +250,26 @@ vector<string> process_displacements(run_settings_t rset)
                 sys_lammps = std::make_unique<lammps::system_control_t>(
                     structure, rset.lammps_settings);
 
-                get_gradient = [&]{return grad_fn(*sys_lammps);};
+                get_forces = [&](auto& pos){return force_fn(pos, *sys_lammps);};
                 break;
             case potential_type::REBO:
                 sys_rebo = std::make_unique<airebo::system_control_t>(
                     structure);
 
-                get_gradient = [&]{return grad_fn(*sys_rebo);};
+                get_forces = [&](auto& pos){return force_fn(pos, *sys_rebo);};
+                break;
             default:
-                return {};
+                return;
             }
         }
 
-        output_xml(output_file, get_gradient());
-        output_filenames.push_back(output_file);
+        forces.emplace_back(
+            get_forces(v3tod(temp_pos))
+        );
     }
 
-    return output_filenames;
-}
-
-int generate_force_sets(run_settings_t rset)
-{
-    // process displacements
-    auto force_filenames = process_displacements(rset);
-
-    // generate force sets, "phonopy -f file1 file2 ..."
-    string command = "phonopy -f";
-    for (string file : force_filenames)
-        command += " " + file;
-
-    return system(command.c_str());
+    // output FORCE_SETS for phonopy
+    phonopy::write_force_sets("FORCE_SETS", disp_data, forces);
 }
 
 int generate_bands(phonopy::phonopy_settings_t pset)
@@ -293,8 +286,7 @@ int generate_bands(phonopy::phonopy_settings_t pset)
 
     outfile << "\n"
             << "BAND_POINTS = " << pset.n_samples << "\n"
-            << "FORCE_CONSTANTS = "
-                << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n");
+            << get_force_constant_rw();
 
     outfile.close();
 
@@ -304,7 +296,7 @@ int generate_bands(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return system("phonopy band.conf");
+    return system("phonopy --hdf5 band.conf");
 }
 
 int write_irreps(phonopy::phonopy_settings_t pset)
@@ -313,13 +305,12 @@ int write_irreps(phonopy::phonopy_settings_t pset)
     outfile << "DIM = " << pset.supercell_dim[0]
             << ' ' << pset.supercell_dim[1]
             << ' ' << pset.supercell_dim[2] << '\n'
-            << "IRREPS = 0 0 0 1e-3\n"
-            << "FORCE_CONSTANTS = "
-                << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n");
+            << "IRREPS = 0 0 0 1e-2\n"
+            << get_force_constant_rw();
 
     outfile.close();
 
-    return system("phonopy irreps.conf");
+    return system("phonopy --hdf5 irreps.conf");
 }
 
 int generate_eigs(phonopy::phonopy_settings_t pset)
@@ -331,14 +322,13 @@ int generate_eigs(phonopy::phonopy_settings_t pset)
                 << ' ' << pset.supercell_dim[2] << '\n'
             << "BAND = 0 0 0   1/2 0 0\n"
             << "BAND_POINTS = 1\n"
-            << "FORCE_CONSTANTS = "
-                << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n")
+            << get_force_constant_rw()
             << "EIGENVECTORS = .TRUE.\n";
 
 
     outfile.close();
 
-    return system("phonopy eigs.conf");
+    return system("phonopy --hdf5 eigs.conf");
 }
 
 int generate_dos(phonopy::phonopy_settings_t pset)
@@ -364,14 +354,13 @@ int write_anim(phonopy::phonopy_settings_t pset, int mode_id)
     outfile << "DIM = " << pset.supercell_dim[0]
             << ' ' << pset.supercell_dim[1]
             << ' ' << pset.supercell_dim[2] << '\n'
-            << "FORCE_CONSTANTS = "
-            << (io::file_exists("FORCE_CONSTANTS") ? "READ\n" : "WRITE\n")
+            << get_force_constant_rw()
             << "ANIME_TYPE = XYZ\n"
             << "ANIME = " << mode_id << " 5 20\n";
 
 
     outfile.close();
-    return system("phonopy anim.conf");
+    return system("phonopy --hdf5 anim.conf");
 }
 
 vector<pair<double, vector<vec3_t>>> read_eigs()
@@ -465,6 +454,16 @@ void plot_modes(string filename, airebo::system_control_t &sys,
     }
 }
 
+void renomalize(pair<double, vector<vec3_t>> &mode)
+{
+    double sum = 0;
+    for (auto e : mode.second)
+        sum += dot(e, e);
+
+    for (auto &e : mode.second)
+        e /= sum;
+}
+
 
 int write_spectra(sp2::phonopy::phonopy_settings_t pset,
     vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
@@ -475,7 +474,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
     auto gaussian = [](double x, double peak)
     {
         // full width at half maximum for gaussian broadening
-        constexpr double fwhm = 14;
+        constexpr double fwhm = 15;
 
         constexpr double sigma = fwhm / std::sqrt(std::log(256)),
             prefactor = 1 / (sigma * std::sqrt(2 * M_PI)),
@@ -489,16 +488,6 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
         {0, 1, 0},
         {0, 0, 1}
     };
-
-    // phonopy outputs non-mass-normalized eigenvectors, so we
-    // need to normalize them
-    for (auto &mode : modes)
-    {
-        auto na = structure.types.size();
-        for (std::size_t i = 0; i < na; ++i)
-            if (structure.types[i] == atom_type::CARBON)
-                mode.second[i] /= std::sqrt(12);
-    }
 
     std::vector<std::pair<double, double>> spectra;
     if (pset.calc_raman_backscatter_avg)
@@ -523,7 +512,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
         maxf = std::max(mode.first,  maxf);
     }
 
-    constexpr int n_bins = 1200;
+    const std::size_t n_bins = std::max<std::size_t>(maxf, 1000);
     const double bin_max = 1.1 * maxf,
         bin_step = bin_max / n_bins;
     std::vector<double> bins(n_bins, 0);
@@ -544,7 +533,8 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
         outfile << shift.first << ' '
                 << shift.second << ' '
                 << shift.second * maxi << ' '
-                << irrep_labels[i] << endl;
+                << irrep_labels[i] << ' '
+                << i << '\n';
 
         for (std::size_t j = 0; j < bins.size(); ++j)
             bins[j] += gaussian(j * bin_step, shift.first) * shift.second;
@@ -559,33 +549,43 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
     outfile.close();
 
-    if (!pset.write_raman_active_anim)
+    if (!(pset.write_raman_active_anim || pset.write_raman_active_modes))
         return EXIT_SUCCESS;
 
     // write animation files
     std::vector<unsigned int> raman_active_ids;
     for (auto i = 0u; i < spectra.size(); ++i)
     {
-        if (spectra[i].second < pset.raman_active_anim_cutoff)
-            continue;
+#warning revert
+//        if (spectra[i].second < pset.raman_active_cutoff)
+//            continue;
 
         // phonopy starts counting bands at 1
         int mode_id = i + 1;
 
-        // phonopy counts bands starting at 1
-        if (write_anim(pset, mode_id) != 0 || !io::file_exists("anime.xyz"))
+        // gnuplot file
+        if (pset.write_raman_active_modes)
         {
-            std::cerr << "Phonopy failed to write animation file for mode id "
-                      << mode_id << ", quitting." << std::endl;
-
-            return EXIT_FAILURE;
+            phonopy::draw_normal_mode(
+                "mode_" + std::to_string(mode_id) + ".gplot",
+                structure, modes[i]);
         }
 
-        io::copy_file("anime.xyz", "anim_" + std::to_string(mode_id) + ".xyz");
+        // animation file
+        if (pset.write_raman_active_anim)
+        {
+            if (write_anim(pset, mode_id) != 0 || !io::file_exists("anime.xyz"))
+            {
+                std::cerr
+                    << "Phonopy failed to write animation file for mode id "
+                    << mode_id << ", quitting." << std::endl;
 
-        // draw gnuplot file as well
-        phonopy::draw_normal_mode("mode_" + std::to_string(mode_id) + ".gplot",
-            structure, modes[i]);
+                return EXIT_FAILURE;
+            }
+
+            io::copy_file("anime.xyz",
+                "anim_" + std::to_string(mode_id) + ".xyz");
+        }
     }
 
     return EXIT_SUCCESS;

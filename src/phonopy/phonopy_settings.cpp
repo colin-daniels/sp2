@@ -29,6 +29,7 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
         "write_raman_active_anim", write_raman_active_anim,
+        "write_raman_active_modes", write_raman_active_modes,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );
@@ -55,6 +56,7 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
         "write_raman_active_anim", write_raman_active_anim,
+        "write_raman_active_modes", write_raman_active_modes,
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );

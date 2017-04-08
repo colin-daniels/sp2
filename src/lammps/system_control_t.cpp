@@ -214,11 +214,17 @@ void lammps::system_control_t::init(const structure_t &info,
 
     comm.barrier();
 
+    std::string style_command = "pair_style ";
+    if (lmp_set.compute_lj || lmp_set.compute_torsion)
+        style_command += "airebo "
+            + to_string(lmp_set.sigma_scale) + " "          // LJ range (x3.4 A)
+            + string(lmp_set.compute_lj ? "1 " : "0 ")      // LJ on/off
+            + string(lmp_set.compute_torsion ? "1" : "0");  // torsion on/off
+    else
+        style_command += "rebo";
+
     exec_command(
-        "pair_style airebo "            // airebo pair style potential
-        + to_string(lmp_set.sigma_scale) + " "          // LJ range (x3.4 A)
-        + string(lmp_set.compute_lj ? "1 " : "0 ")      // LJ on/off
-        + string(lmp_set.compute_torsion ? "1" : "0"),  // torsion on/off
+        style_command,
         "pair_coeff * * CH.airebo H C", // read potential info
         "compute 1 all pe",             // set up compute ID 1 for energy
         "run 0"                         // do an iteration

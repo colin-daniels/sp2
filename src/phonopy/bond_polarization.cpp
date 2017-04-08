@@ -2,20 +2,30 @@
 #include <common/math/vec3_t.hpp>
 #include <airebo/system_control_t.hpp>
 #include <common/util/random.hpp>
+#include <common/io/structure.hpp>
 #include "bond_polarization.hpp"
 
 #include "common/math/mat3x3_t.hpp"
 #include "common/math/vec3_util.hpp"
 
-double raman_prefactor(double frequency, double temperature)
+double raman_prefactor(
+    double frequency,
+    double temperature = 0,
+    double incident_freq = 0
+)
 {
-    constexpr double hk = 0.228988; // hbar / k_b in [K][cm]
+    // (hbar / k_b) in [K] per [cm-1]
+    constexpr double hk = 0.22898852319;
 
-    double distribution = 0;
+    double bose_occupation = 1;
     if (temperature != 0)
-        distribution = 1 / (std::exp(hk * frequency / temperature) - 1);
+        bose_occupation += 1 / (std::exp(hk * frequency / temperature) - 1);
 
-    return (distribution + 1) / frequency;
+    double multiplier = 1 / frequency;
+    if (incident_freq != 0)
+        multiplier *= std::pow(frequency - incident_freq, 4);
+
+    return bose_occupation * multiplier;
 }
 
 double sp2::phonopy::raman_intensity(
@@ -139,8 +149,10 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
         const int bond_id = edge.id;
         const auto bond_type = btype(types[edge.a], types[edge.b]);
 
-        // phonon eigenvector for this atom
-        const vec3_t &eig = eigs[edge.a];
+        // phonon eigenvector for this atom, need to mass normalize
+        const vec3_t eig = eigs[edge.a] / (types[edge.a] == atom_types::C ?
+            std::sqrt(12.0107) /* Carbon */ :
+            std::sqrt(1.00794) /* Hydrogen */);
 
         // unit bond vector and length, used later
         const double len = bonds[bond_id].mag();
@@ -151,9 +163,15 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
         if (!pol_constants.count(bond_type))
             throw std::runtime_error("No polarization constants specified "
                 "for bond type " + enum_to_str(types[edge.a])
-                                 + enum_to_str(types[edge.b]));
+                                 + enum_to_str(types[edge.b]) + " "
+                "between atoms " + std::to_string(edge.a) + " and "
+                                 + std::to_string(edge.b));
 
         const auto& pc = pol_constants.at(bond_type);
+        // check if bond is actually valid (via length)
+        if (len > pc.max_len)
+            continue;
+
         double const_one = pc.c1, // a || -   a |-
               dconst_one = pc.c2, // a'|| -   a'|-
               dconst_two = pc.c3; // a'|| + 2 a'|-

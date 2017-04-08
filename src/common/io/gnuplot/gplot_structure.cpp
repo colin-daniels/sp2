@@ -90,7 +90,7 @@ void sp2::io::draw_top_down(std::ostream &output,
         output << "set object ";
         output_object_num(output, current_object_num);
         output << " circle at " << pos.x << ", " << pos.y
-               << " size " << atom_radius << "\n";
+               << " size " << atom_radius << " fc rgb \"black\" fs solid\n";
 
         foreach_atom(i, output);
         current_object_num++;

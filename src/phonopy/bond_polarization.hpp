@@ -16,11 +16,10 @@ struct pol_constant_t
            c2 = 0, ///< a'|| -   a'|-
            c3 = 0; ///< a'|| + 2 a'|-
 
-    pol_constant_t() = default;
+    /// maximum bond length
+    double max_len = 0;
 
-    constexpr bool zero() const {
-        return (c1 == 0 && c2 == 0 && c3 == 0);
-    }
+    pol_constant_t() = default;
 };
 
 template<bond_types>
@@ -28,7 +27,15 @@ constexpr pol_constant_t pol_const;
 
 template<>
 constexpr auto pol_const<bond_types::CC> =
-    pol_constant_t{0.32, 2.60, 7.55};
+    pol_constant_t{0.32, 2.60, 7.55, /* max_len */ 1.6};
+
+template<>
+constexpr auto pol_const<bond_types::CH> =
+    pol_constant_t{0.32, 2.60, 7.55, /* max_len */ 1.3};
+
+template<>
+constexpr auto pol_const<bond_types::HH> =
+    pol_constant_t{0, 0, 0, /* max_len */ 1.1};
 
 mat3x3_t raman_tensor(
     const std::vector<vec3_t> &eigs,
@@ -48,7 +55,8 @@ double raman_intensity(
     const std::unordered_map<bond_types, pol_constant_t>
         &pol_constants = {
             {bond_types::CC, pol_const<bond_types::CC>},
-            {bond_types::CH, pol_const<bond_types::CC>}
+            {bond_types::CH, pol_const<bond_types::CH>},
+            {bond_types::HH, pol_const<bond_types::HH>}
         }
 );
 
@@ -62,14 +70,15 @@ double raman_intensity_avg(
     const std::unordered_map<bond_types, pol_constant_t>
         &pol_constants = {
             {bond_types::CC, pol_const<bond_types::CC>},
-            {bond_types::CH, pol_const<bond_types::CC>}
+            {bond_types::CH, pol_const<bond_types::CH>},
+            {bond_types::HH, pol_const<bond_types::HH>}
         }
 );
 
 /// calculate raman spectra for a given system
 /// \param incident polarization direction unit vector for the incident light
 /// \param scattered polarization direction unit vector for the scattered light
-/// \param modes vector of {frequency, mass-normalized eigenvectors} pairs
+/// \param modes vector of {frequency, orthonormal mode eigenvectors} pairs
 /// \param structure input structure
 /// \return vector of pairs of {frequency [cm^-1], intensity [arb units]}
 ///         note: not normalized to maximum intensity
