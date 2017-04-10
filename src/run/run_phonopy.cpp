@@ -476,7 +476,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
         // full width at half maximum for gaussian broadening
         constexpr double fwhm = 15;
 
-        constexpr double sigma = fwhm / std::sqrt(std::log(256)),
+        const double sigma = fwhm / std::sqrt(std::log(256)),
             prefactor = 1 / (sigma * std::sqrt(2 * M_PI)),
             exp_denom = (2 * sigma * sigma);
 
@@ -503,6 +503,10 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
             temperature, modes, structure
         );
     }
+
+    // ignore acoustic modes
+    for (int i = 0; i < spectra.size() && spectra[i].first < 1; ++i)
+        spectra[i].second = 0;
 
     double maxi = 0,
         maxf = 0;

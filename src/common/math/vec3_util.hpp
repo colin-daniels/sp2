@@ -117,11 +117,14 @@ inline std::pair<vec3_t, vec3_t> get_bounds(const std::vector<vec3_t> &input)
 template<class URBG>
 vec3_t random_vec3(URBG &&g)
 {
-    constexpr double inv_range = 1.0 /
-        static_cast<double>(g.max() - g.min());
+    constexpr auto rng_min = std::remove_reference_t<URBG>::min(),
+        rng_max = std::remove_reference_t<URBG>::max();
 
-    const double theta = 2 * M_PI * inv_range * (g() - g.min()), // [0:2pi]
-        u = 1 - 2 * inv_range * (g() - g.min()); // [-1:1]
+    constexpr double inv_range = 1.0 /
+        static_cast<double>(rng_max - rng_min);
+
+    const double theta = 2 * M_PI * inv_range * (g() - rng_min), // [0:2pi]
+        u = 1 - 2 * inv_range * (g() - rng_min); // [-1:1]
 
     return vec3_t{u,
         std::sqrt(1 - u * u) * std::cos(theta),

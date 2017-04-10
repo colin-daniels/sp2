@@ -1,8 +1,9 @@
 #include "neighbor_control_t.hpp"
-#include <gtest/gtest.h>
 #include <common/math/mat3x3_t.hpp>
 #include <common/util/random.hpp>
 
+#ifdef SP2_ENABLE_TESTS
+#include <gtest/gtest.h>
 sp2::mat3x3_t gen_lattice(sp2::util::rng_t &rng, double r_min = 1, double r_max = 100)
 {
     auto gen_vec = [&]{
@@ -63,3 +64,4 @@ TEST(lattice, all)
         std::cout << "t: " << t << std::endl;
     }
 }
+#endif // SP2_ENABLE_TESTS
