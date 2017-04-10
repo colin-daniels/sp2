@@ -35,6 +35,7 @@ constexpr auto pol_const<bond_types::CH> =
 
 template<>
 constexpr auto pol_const<bond_types::HH> =
+//    pol_constant_t{0.32, 2.60, 7.55, /* max_len */ 2.1};
     pol_constant_t{0, 0, 0, /* max_len */ 1.1};
 
 mat3x3_t raman_tensor(

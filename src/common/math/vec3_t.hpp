@@ -18,7 +18,6 @@ constexpr bool vec3_math_compat_v = std::is_arithmetic<std::decay_t<T>>::value;
 ////////////////////////////////////////////////////////////////////////////////
 struct alignas(16) vec3_t
 {
-//    double x, y, z;
     union
     {
         struct {
@@ -51,9 +50,9 @@ struct alignas(16) vec3_t
         return begin() + 3;}
 
     constexpr double& operator[](std::size_t i) {
-        return begin()[i];}
+        return data[i];}
     constexpr const double& operator[](std::size_t i) const {
-        return begin()[i];}
+        return data[i];}
 
     constexpr std::size_t size() const {return 3;}
 

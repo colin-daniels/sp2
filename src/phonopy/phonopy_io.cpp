@@ -166,6 +166,9 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
         atom_radius, bond_radius,
         // for each atom
         [&](int atom_id, std::ostream &oss) {
+            if (mode.second[atom_id].mag() == 0)
+                return;
+
             auto eigenvector = mode.second[atom_id] * amplification
                     + mode.second[atom_id].unit_vector() * arrow_radius,
                 arrow_start = pos[atom_id]

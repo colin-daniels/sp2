@@ -28,7 +28,8 @@ struct phonopy_settings_t : public io::json_serializable_t
 {
     int n_samples = 250;
     int supercell_dim[3] = {1, 1, 1};
-    double displacement_distance = 0.01;
+    double displacement_distance = 0.01,
+        symmetry_tol = 1e-5;
 
     bool calc_raman = false,
         calc_raman_backscatter_avg = false,

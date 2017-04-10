@@ -31,6 +31,17 @@ inline std::string get_force_constant_rw()
     );
 }
 
+inline int run_phonopy_with_args(const phonopy::phonopy_settings_t pset,
+    std::string args)
+{
+    std::string command = "phonopy "
+          "--tolerance=" + std::to_string(pset.symmetry_tol) + " "
+        + "--hdf5 "
+        + args;
+
+    return system(command.c_str());
+}
+
 void relax_structure(structure_t &structure, run_settings_t rset);
 
 int generate_displacements(phonopy::phonopy_settings_t pset);
@@ -200,7 +211,7 @@ int generate_displacements(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return system("phonopy disp.conf");
+    return run_phonopy_with_args(pset, "disp.conf");
 }
 
 /// read disp.yaml and calculate forces to output to FORCE_SETS
@@ -296,7 +307,7 @@ int generate_bands(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return system("phonopy --hdf5 band.conf");
+    return run_phonopy_with_args(pset, "band.conf");
 }
 
 int write_irreps(phonopy::phonopy_settings_t pset)
@@ -310,7 +321,7 @@ int write_irreps(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return system("phonopy --hdf5 irreps.conf");
+    return run_phonopy_with_args(pset, "irreps.conf");
 }
 
 int generate_eigs(phonopy::phonopy_settings_t pset)
@@ -328,7 +339,7 @@ int generate_eigs(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return system("phonopy --hdf5 eigs.conf");
+    return run_phonopy_with_args(pset, "eigs.conf");
 }
 
 int generate_dos(phonopy::phonopy_settings_t pset)
@@ -338,13 +349,14 @@ int generate_dos(phonopy::phonopy_settings_t pset)
     outfile << "DIM = " << pset.supercell_dim[0]
                 << ' ' << pset.supercell_dim[1]
                 << ' ' << pset.supercell_dim[2] << '\n'
+            << get_force_constant_rw()
             << "MESH = 7 7 7\n"
             << "DOS = .TRUE.\n"
             << "DOS_RANGE = 0 90 0.1\n";
 
     outfile.close();
 
-    return system("phonopy dos.conf");
+    return run_phonopy_with_args(pset, "dos.conf");
 }
 
 int write_anim(phonopy::phonopy_settings_t pset, int mode_id)
@@ -360,7 +372,7 @@ int write_anim(phonopy::phonopy_settings_t pset, int mode_id)
 
 
     outfile.close();
-    return system("phonopy --hdf5 anim.conf");
+    return run_phonopy_with_args(pset, "anim.conf");
 }
 
 vector<pair<double, vector<vec3_t>>> read_eigs()
@@ -547,6 +559,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
     outfile.open("gauss_" + filename);
     double max_bin = *std::max_element(bins.begin(), bins.end());
+
     for (std::size_t i = 0; i < bins.size(); ++i)
         outfile << (i * bin_step) << ' '
                 << bins[i] / max_bin << std::endl;
@@ -558,6 +571,14 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
     // write animation files
     std::vector<unsigned int> raman_active_ids;
+    auto get_id_suffix = [id_max = spectra.size()](int id) {
+        const int n_digits = static_cast<int>(std::log10(id_max)) + 1;
+
+        std::ostringstream oss;
+        oss << std::setw(n_digits) << std::setfill('0') << id;
+        return oss.str();
+    };
+
     for (auto i = 0u; i < spectra.size(); ++i)
     {
 #warning revert
@@ -571,7 +592,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
         if (pset.write_raman_active_modes)
         {
             phonopy::draw_normal_mode(
-                "mode_" + std::to_string(mode_id) + ".gplot",
+                "mode_" + get_id_suffix(mode_id) + ".gplot",
                 structure, modes[i]);
         }
 
@@ -588,7 +609,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
             }
 
             io::copy_file("anime.xyz",
-                "anim_" + std::to_string(mode_id) + ".xyz");
+                "anim_" + get_id_suffix(mode_id) + ".xyz");
         }
     }
 
