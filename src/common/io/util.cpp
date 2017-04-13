@@ -163,3 +163,8 @@ std::string io::tolower(const std::string &input)
         c = static_cast<char>(::tolower(c));
     return output;
 }
+
+bool sp2::io::move_file(std::string source, std::string dest)
+{
+    return io::copy_file(source, dest) && io::remove_file(source);
+}

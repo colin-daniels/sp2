@@ -16,15 +16,9 @@ constexpr bool vec3_math_compat_v = std::is_arithmetic<std::decay_t<T>>::value;
 ////////////////////////////////////////////////////////////////////////////////
 // Utility R^3 vector class                                                   //
 ////////////////////////////////////////////////////////////////////////////////
-struct alignas(16) vec3_t
+struct alignas(sizeof(double[4])) vec3_t
 {
-    union
-    {
-        struct {
-            double x, y, z;
-        };
-        double data[3];
-    };
+    double x, y, z;
 
     vec3_t() = default;
 
@@ -41,18 +35,31 @@ struct alignas(16) vec3_t
 // Access-related functions                                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
-    constexpr double *begin() {return data;}
+    constexpr double *begin() {return &x;}
     constexpr double *end() {return begin() + 3;}
 
     constexpr const double *begin() const {
-        return data;}
+        return &x;}
     constexpr const double *end() const {
         return begin() + 3;}
 
-    constexpr double& operator[](std::size_t i) {
-        return data[i];}
-    constexpr const double& operator[](std::size_t i) const {
-        return data[i];}
+    constexpr double& operator[](std::size_t i)
+    {
+        constexpr decltype(&vec3_t::x) vmap[] = {
+            &vec3_t::x, &vec3_t::y, &vec3_t::z
+        };
+
+        return this->*(vmap[i]);
+    }
+
+    constexpr const double& operator[](std::size_t i) const
+    {
+        constexpr decltype(&vec3_t::x) vmap[] = {
+            &vec3_t::x, &vec3_t::y, &vec3_t::z
+        };
+
+        return this->*(vmap[i]);
+    }
 
     constexpr std::size_t size() const {return 3;}
 
@@ -139,10 +146,9 @@ static_assert(vec3_t{1, 2, 3}.x == 1, "");
 static_assert(vec3_t{1, 2, 3}.y == 2, "");
 static_assert(vec3_t{1, 2, 3}.z == 3, "");
 
-// TODO: fix
-//static_assert(vec3_t{1, 2, 3}[0] == 1, "");
-//static_assert(vec3_t{1, 2, 3}[1] == 2, "");
-//static_assert(vec3_t{1, 2, 3}[2] == 3, "");
+static_assert(vec3_t{1, 2, 3}[0] == 1, "");
+static_assert(vec3_t{1, 2, 3}[1] == 2, "");
+static_assert(vec3_t{1, 2, 3}[2] == 3, "");
 
 } // namespace sp2
 

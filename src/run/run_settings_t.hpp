@@ -31,6 +31,10 @@ struct run_settings_t : public io::json_serializable_t
     structure_t structure;
 
     bool add_hydrogen = false;
+    /// number of threads to use (when applicable):
+    ///     0 for off
+    ///     -1 for std::thread::hardware_concurrency
+    int n_threads = 0;
     std::string log_filename = "progress.log";
 
     symm::symm_settings_t symm_settings;

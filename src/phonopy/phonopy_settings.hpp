@@ -33,8 +33,8 @@ struct phonopy_settings_t : public io::json_serializable_t
 
     bool calc_raman = false,
         calc_raman_backscatter_avg = false,
-        write_raman_active_anim = false,
-        write_raman_active_modes = false;
+        write_all_mode_anim = false,
+        write_all_mode_gplot = false;
 
     // TODO: serialize
     double raman_active_cutoff = 1e-3;

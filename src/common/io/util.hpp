@@ -11,6 +11,8 @@ namespace io {
 bool clear_file(std::string filename);
 /// copy a file from source to dest
 bool copy_file(std::string source, std::string dest);
+/// move a file from source to dest (implemented as copy then remove)
+bool move_file(std::string source, std::string dest);
 /// check the existence of a file
 bool file_exists(std::string filename);
 /// remove a file

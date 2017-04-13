@@ -44,6 +44,7 @@ bool run_settings_t::serialize(Json::Value &output) const
     io::serialize_basic(output,
         "add_hydrogen", add_hydrogen,
         "log_filename", log_filename,
+        "n_threads", n_threads,
         "symm", symm_settings,
         "atac", atac_settings,
 #ifdef SP2_ENABLE_LAMMPS
@@ -86,6 +87,7 @@ bool run_settings_t::deserialize(const Json::Value &input)
     io::deserialize_basic(input,
         "add_hydrogen", add_hydrogen,
         "log_filename", log_filename,
+        "n_threads", n_threads,
         "symm", symm_settings,
         "atac", atac_settings,
 #ifdef SP2_ENABLE_LAMMPS

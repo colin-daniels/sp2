@@ -14,6 +14,7 @@
 #include "lammps/lammps_interface.hpp"
 #endif
 
+#include <thread>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
@@ -60,7 +61,7 @@ vector<pair<double, vector<vec3_t>>> read_eigs();
 void plot_modes(string filename, airebo::system_control_t &sys,
     vector<pair<double, vector<vec3_t>>> modes);
 
-int write_spectra(sp2::phonopy::phonopy_settings_t pset,
+int write_spectra(run_settings_t rset,
     vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
     const string &filename);
 
@@ -143,7 +144,7 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
         sys.init(structure);
         plot_modes("modes.dat", sys, modes);
 
-        write_spectra(settings.phonopy_settings, modes, structure,
+        write_spectra(settings, modes, structure,
             "spectra.dat");
     }
 
@@ -477,12 +478,11 @@ void renomalize(pair<double, vector<vec3_t>> &mode)
 }
 
 
-int write_spectra(sp2::phonopy::phonopy_settings_t pset,
+int write_spectra(run_settings_t rset,
     vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
     const string &filename)
 {
     constexpr double temperature = 293.15; // room temp
-#warning temporary
     auto gaussian = [](double x, double peak)
     {
         // full width at half maximum for gaussian broadening
@@ -502,7 +502,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
     };
 
     std::vector<std::pair<double, double>> spectra;
-    if (pset.calc_raman_backscatter_avg)
+    if (rset.phonopy_settings.calc_raman_backscatter_avg)
     {
         spectra = sp2::phonopy::raman_spectra_avg(true, temperature,
             modes, structure);
@@ -510,8 +510,8 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
     else
     {
         spectra = sp2::phonopy::raman_spectra(
-            pol_vecs[pset.polarization_axes[0]],
-            pol_vecs[pset.polarization_axes[1]],
+            pol_vecs[rset.phonopy_settings.polarization_axes[0]],
+            pol_vecs[rset.phonopy_settings.polarization_axes[1]],
             temperature, modes, structure
         );
     }
@@ -550,7 +550,7 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
                 << shift.second << ' '
                 << shift.second * maxi << ' '
                 << irrep_labels[i] << ' '
-                << i << '\n';
+                << (i + 1) << '\n';
 
         for (std::size_t j = 0; j < bins.size(); ++j)
             bins[j] += gaussian(j * bin_step, shift.first) * shift.second;
@@ -566,7 +566,8 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
     outfile.close();
 
-    if (!(pset.write_raman_active_anim || pset.write_raman_active_modes))
+    if (!(rset.phonopy_settings.write_all_mode_anim ||
+          rset.phonopy_settings.write_all_mode_gplot))
         return EXIT_SUCCESS;
 
     // write animation files
@@ -581,15 +582,11 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
 
     for (auto i = 0u; i < spectra.size(); ++i)
     {
-#warning revert
-//        if (spectra[i].second < pset.raman_active_cutoff)
-//            continue;
-
         // phonopy starts counting bands at 1
         int mode_id = i + 1;
 
         // gnuplot file
-        if (pset.write_raman_active_modes)
+        if (rset.phonopy_settings.write_all_mode_gplot)
         {
             phonopy::draw_normal_mode(
                 "mode_" + get_id_suffix(mode_id) + ".gplot",
@@ -597,9 +594,10 @@ int write_spectra(sp2::phonopy::phonopy_settings_t pset,
         }
 
         // animation file
-        if (pset.write_raman_active_anim)
+        if (rset.phonopy_settings.write_all_mode_anim)
         {
-            if (write_anim(pset, mode_id) != 0 || !io::file_exists("anime.xyz"))
+            if (write_anim(rset.phonopy_settings, mode_id) != 0 ||
+                !io::file_exists("anime.xyz"))
             {
                 std::cerr
                     << "Phonopy failed to write animation file for mode id "
