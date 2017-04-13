@@ -191,7 +191,7 @@ bool io::write_poscar(std::string filename, const structure_t &input)
     fbc::invert_3x3(input.lattice, inv_lattice);
     outfile << "Direct\n";
 
-    for (int i = 0; i < positions.size(); i += 3)
+    for (std::size_t i = 0; i < positions.size(); i += 3)
     {
         for (int j = 0; j < 3; ++j)
         {

@@ -71,7 +71,7 @@ void remove_hydrogen(structure_t &structure,
     vector<pair<double, vector<vec3_t>>> *modes = nullptr)
 {
     auto pos = dtov3(structure.positions);
-    for (int i = 0; i < structure.types.size(); ++i)
+    for (std::size_t i = 0; i < structure.types.size(); ++i)
     {
         if (structure.types[i] != atom_type::HYDROGEN)
             continue;
@@ -448,7 +448,7 @@ void plot_modes(string filename, airebo::system_control_t &sys,
 
     for (auto &mode : modes)
     {
-        for (int i = 0; i < mode.second.size(); ++i)
+        for (std::size_t i = 0; i < mode.second.size(); ++i)
         {
             auto pos1 = positions[i],
                 pos2 = mode.second[i];
@@ -517,7 +517,7 @@ int write_spectra(run_settings_t rset,
     }
 
     // ignore acoustic modes
-    for (int i = 0; i < spectra.size() && spectra[i].first < 1; ++i)
+    for (std::size_t i = 0; i < spectra.size() && spectra[i].first < 1; ++i)
         spectra[i].second = 0;
 
     double maxi = 0,

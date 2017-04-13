@@ -60,8 +60,8 @@ sp2::structure_t read_phonopy_structure(YAML::Node &root)
             structure.positions.push_back(coord);
     }
 
-    if (n_atoms != structure.types.size() ||
-        n_atoms * 3 != structure.positions.size())
+    if (static_cast<std::size_t>(n_atoms) != structure.types.size() ||
+        static_cast<std::size_t>(n_atoms) * 3 != structure.positions.size())
         throw std::runtime_error("Couldn't read phonopy structure.");
 
     return structure;
@@ -113,7 +113,7 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
 
     // remove hydrogen atoms
     auto pos = dtov3(structure.positions);
-    for (int i = 0; i < structure.types.size(); ++i)
+    for (std::size_t i = 0; i < structure.types.size(); ++i)
     {
         if (structure.types[i] != atom_type::HYDROGEN)
             continue;

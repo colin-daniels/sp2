@@ -17,10 +17,10 @@ constexpr auto central_difference(std::function<T(T)> func, T x_0, T step_size)
     constexpr auto coeff = std::get<cd_coeff_t<N, T>>(
         std::make_tuple(
             // format is {denominator coefficient, {numerator coefficients}}
-            cd_coeff_t<3, T>(  3, {1, 0, -1}),
-            cd_coeff_t<5, T>( 12, {1, -8, 0, 8, -1}),
-            cd_coeff_t<7, T>( 60, {-1, 9, -45, 0, 45, -9, 1}),
-            cd_coeff_t<9, T>(840, {3, -32, 168, -672, 0, 672, -168, 32, -3})
+            cd_coeff_t<3, T>(  3, {{1, 0, -1}}),
+            cd_coeff_t<5, T>( 12, {{1, -8, 0, 8, -1}}),
+            cd_coeff_t<7, T>( 60, {{-1, 9, -45, 0, 45, -9, 1}}),
+            cd_coeff_t<9, T>(840, {{3, -32, 168, -672, 0, 672, -168, 32, -3}})
         )
     );
 

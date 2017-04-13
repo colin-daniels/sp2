@@ -60,11 +60,12 @@ public:
 
         // add the repulsive potential to the total potential now,
         // since no other terms are needed
-        total_potential += ptnl::val(cutoff) * ptnl::val(rep_ptnl);
+        total_potential += ptnl::val(cutoff) * ptnl::val(rep_ptnl)
+            + /* (bond order) x */ ptnl::val(attr_ptnl);
 
 //        gradient[bond.a] += cutoff.deriv() * rep_ptnl.value() +
 //                            cutoff.value() * rep_ptnl.deriv();
-
+//
 //        bond_dir_force[j] += cutoff[j * 2 + 1] * rep_p + cutoff[j * 2] * d_rep_p;
     }
 };

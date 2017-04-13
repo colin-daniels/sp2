@@ -31,7 +31,7 @@ vector<pair<int, int>> gen_graph_pairs(int nv = 1000, int ne = -1)
     return pairs;
 }
 
-simple_graph_t gen_graph_simple(int nv = 1000, int ne = -1)
+simple_graph_t gen_graph_simple(std::size_t nv = 1000, int ne = -1)
 {
     if (ne < 0)
         ne = nv * 8;
@@ -64,21 +64,21 @@ TEST(test_graph, edgeless)
 {
     ud_graph_t graph;
 
-    EXPECT_EQ(0, graph.n_vertices());
-    EXPECT_EQ(0, graph.n_edges());
+    EXPECT_EQ(0u, graph.n_vertices());
+    EXPECT_EQ(0u, graph.n_edges());
     validate_graph(graph);
 
     for (int i = 0; i < 100; ++i)
         graph.add_vertex();
 
-    EXPECT_EQ(100, graph.n_vertices());
+    EXPECT_EQ(100u, graph.n_vertices());
     EXPECT_EQ(ud_graph_t(100), graph);
     validate_graph(graph);
 }
 
 TEST(test_graph, offset_construct)
 {
-    int n_vert = 1000;
+    std::size_t n_vert = 1000;
     auto ref = gen_graph_simple(n_vert);
 
     // test constructor
@@ -99,7 +99,7 @@ TEST(test_graph, offset_construct)
     EXPECT_EQ(ref.edge_ids, graph.get_int_edge_ids());
 
     EXPECT_EQ(n_vert, graph.n_vertices());
-    EXPECT_EQ((int)ref.edge_ids.size(), graph.n_edges());
+    EXPECT_EQ(ref.edge_ids.size(), graph.n_edges());
 }
 
 TEST(test_graph, equality_assignment)
@@ -191,7 +191,7 @@ TEST(test_graph, edge_iterators)
         for (ud_edge_t edge : graph.edges(i))
         {
             ASSERT_EQ(idx_inner, edge.id);
-            ASSERT_EQ(i, edge.a);
+            ASSERT_EQ(static_cast<int>(i), edge.a);
             ASSERT_EQ(edge_ids[idx_inner], edge.b);
 
             idx_inner += 1;

@@ -31,7 +31,6 @@ void sp2::io::draw_top_down(std::ostream &output,
     int current_object_num = 0;
 
     auto positions = sp2::dtov3(structure.positions);
-    auto &types = structure.types;
 
     auto in_bounds = [&](const vec3_t &pos) {
         return x_bounds.first < pos.x && pos.x < x_bounds.second &&
@@ -80,7 +79,7 @@ void sp2::io::draw_top_down(std::ostream &output,
         current_object_num++;
     }
 
-    for (int i = 0; i < positions.size(); ++i)
+    for (std::size_t i = 0; i < positions.size(); ++i)
     {
         auto &pos = positions[i];
         if (!in_bounds(pos))

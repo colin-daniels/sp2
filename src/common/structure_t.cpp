@@ -108,14 +108,14 @@ void structure_t::bcast(const boost::mpi::communicator &comm, int root)
 void sp2::sort_structure_types(structure_t &structure)
 {
     vector<pair<atom_type, int>> atoms;
-    for (int i = 0; i < structure.types.size(); ++i)
+    for (std::size_t i = 0; i < structure.types.size(); ++i)
         atoms.emplace_back(structure.types[i], i);
 
     sort(atoms.begin(), atoms.end());
     sort(structure.types.begin(), structure.types.end());
 
     vector<double> sorted_pos;
-    for (int i = 0; i < atoms.size(); ++i)
+    for (std::size_t i = 0; i < atoms.size(); ++i)
         for (int j = 0; j < 3; ++j)
             sorted_pos.push_back(structure.positions[atoms[i].second * 3 + j]);
 

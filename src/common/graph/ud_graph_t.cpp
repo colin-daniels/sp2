@@ -34,7 +34,7 @@ vector<pair<int, int>> make_pairlist(const vector<int> &offsets,
         cout << "bad pairlist" << endl;
 
         bad = any_of(edge_ids.begin(), edge_ids.end(), [&](auto i) {
-            if (i < 0 || i >= offsets.size())
+            if (i < 0 || static_cast<std::size_t>(i) >= offsets.size())
             {
                 cout << i << endl;
                 return true;
@@ -46,7 +46,7 @@ vector<pair<int, int>> make_pairlist(const vector<int> &offsets,
             cout << "bad edge ids" << endl;
 
         bad = any_of(offsets.begin(), offsets.end(), [&](auto i) {
-            return i < 0 || i > edge_ids.size();
+            return i < 0 || static_cast<std::size_t>(i) > edge_ids.size();
         });
 
         if (bad)
@@ -233,7 +233,7 @@ void graph::ud_graph_t::remove_directed(int a, int b)
 #ifdef SP2_ENABLE_TESTS
 bool graph::ud_graph_t::offsets_ok()
 {
-    for (int i = 0; i < nv; ++i)
+    for (int i = 0; i < static_cast<int>(nv); ++i)
     {
         for (auto it = offsets[i]; it != offsets[i + 1]; ++it)
             if (it->first != i)

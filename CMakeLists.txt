@@ -217,6 +217,8 @@ add_subdirectory(external)
 if(SP2_ENABLE_TESTS)
     add_test(all sp2 --test)
     target_link_libraries(sp2 PRIVATE gtest)
+    # note: should work for gcc, clang
+    target_compile_options(sp2 PRIVATE -Wall -Wextra -pedantic)
 endif()
 
 if(SP2_ENABLE_LAMMPS)

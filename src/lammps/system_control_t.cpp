@@ -125,7 +125,8 @@ void lammps::system_control_t::set_structure(const structure_t  &input)
     type = input.types;
     position = input.positions;
 
-    if (std::equal(lattice_orig[0], lattice_orig[3], input.lattice[0]))
+    if (std::equal(std::begin(lattice_orig[0]), std::end(lattice_orig[2]),
+        input.lattice[0]))
         transform_input(position);
     else
     {

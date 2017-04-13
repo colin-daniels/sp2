@@ -90,8 +90,8 @@ bool get_json_as_type(const Json::Value &obj, T (&arr)[N])
         return false;
 
     bool ok = true;
-    for (int i = 0; i < N; ++i)
-        if (!get_json_as_type(obj[i], arr[i]))
+    for (std::size_t i = 0; i < N; ++i)
+        if (!get_json_as_type(obj[static_cast<int>(i)], arr[i]))
             ok = false;
 
     return ok;
@@ -108,8 +108,8 @@ bool get_json_as_type(const Json::Value &obj, T (&arr)[N][M])
         return false;
 
     bool ok = true;
-    for (int i = 0; i < N; ++i)
-        if (!get_json_as_type(obj[i], arr[i]))
+    for (std::size_t i = 0; i < N; ++i)
+        if (!get_json_as_type(obj[static_cast<int>(i)], arr[i]))
             ok = false;
 
     return ok;
@@ -124,10 +124,10 @@ bool get_json_as_type(const Json::Value &obj, std::vector<T> &vec)
     vec.clear();
 
     bool ok = true;
-    for (int i = 0; i < obj.size(); ++i)
+    for (std::size_t i = 0; i < obj.size(); ++i)
     {
         vec.emplace_back();
-        if (!get_json_as_type(obj[i], vec.back()))
+        if (!get_json_as_type(obj[static_cast<int>(i)], vec.back()))
             ok = false;
     }
 
@@ -211,7 +211,7 @@ void get_type_as_json(const T (&arr)[N][M], Json::Value &obj)
 
 ////////////////////
 // serialization
-inline void serialize_basic(Json::Value &output) {}
+inline void serialize_basic(Json::Value&) {}
 
 template<typename T, typename ...Args>
 void serialize_basic(Json::Value &output,
@@ -224,7 +224,7 @@ void serialize_basic(Json::Value &output,
 
 ////////////////////
 // deserialization
-inline bool deserialize_basic(const Json::Value &input) {return true;}
+inline bool deserialize_basic(const Json::Value&) {return true;}
 
 template<typename T, typename ...Args>
 bool deserialize_basic(const Json::Value &input,

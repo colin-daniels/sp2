@@ -42,7 +42,7 @@ void make_agnr_set()
         auto pos = dtov3(structure.positions);
 
         double min = std::numeric_limits<double>::max(), max = std::numeric_limits<double>::lowest();
-        for (int i = 0; i < structure.types.size(); ++i)
+        for (std::size_t i = 0; i < structure.types.size(); ++i)
         {
             if (structure.types[i] == atom_type::HYDROGEN)
                 continue;
@@ -160,8 +160,7 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
     const sp2::structure_t &input)
 {
     // maximum distance between two atoms to be considered bonded in Angstroms
-    constexpr double max_dist = 1.6,
-        ch_dist = 1.09; // initial CH bond length for added atoms
+    constexpr double max_dist = 1.6;
 
     // use fbc::bond_control_t to calculate all the bonds between atoms
     // in the system
@@ -185,9 +184,9 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
         if (n_bonds >= 3)
             continue;
 
-        vec3_t bonds[3];
-        int neigh_ids[3];
-
+//        vec3_t bonds[3];
+//        int neigh_ids[3];
+//
 //        for (int j = 0; j < n_bonds; ++j)
 //        {
 //            auto edge = graph.edge(idx, j);
@@ -195,6 +194,8 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
 //            neigh_ids[j] = edge.b;
 //        }
 //
+//        // initial CH bond length for added atoms
+//        constexpr double ch_dist = 1.09;
 //        switch (n_bonds)
 //        {
 //        case 0:
@@ -424,7 +425,7 @@ sp2::structure_t sp2::util::center_by_avg(const sp2::structure_t &input)
 {
     auto pos = dtov3(input.positions);
 
-    vec3_t avg_pos;
+    vec3_t avg_pos = {};
     for (auto &atom : pos)
         avg_pos += atom;
 

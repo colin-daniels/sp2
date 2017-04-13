@@ -688,6 +688,6 @@ void bond_control_t::update_small()
     sister_ids = move(prc_sister_ids);
 
     nb = bond_ids.size();
-    for (int i = 0; i < sister_ids.size(); ++i)
-        assert (sister_ids[sister_ids[i]] == i);
+    for (std::size_t i = 0; i < sister_ids.size(); ++i)
+        assert (sister_ids[sister_ids[i]] == static_cast<int>(i));
 }

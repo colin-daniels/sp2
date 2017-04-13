@@ -32,7 +32,7 @@ private:
 public:
 
     void resize(const int input_low[3], const int input_high[3],
-        int n_periodic_in)
+        int /* n_periodic_in */)
     {
         const int input_range[3] = {
             input_high[0] - input_low[0],
@@ -160,10 +160,7 @@ public:
     neighbor_control_t& operator=(const neighbor_control_t&) = delete;
 
     void init(const double lattice[3][3], double max_dist,
-        double recalc_threshold)
-    {
-
-    }
+        double recalc_threshold);
 
     void update(const std::vector<vec3_t> &positions)
     {
