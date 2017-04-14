@@ -446,3 +446,18 @@ sp2::structure_t sp2::util::center_by_avg(const sp2::structure_t &input)
 
     return new_structure;
 }
+
+sp2::structure_t sp2::util::make_capped_nanotube(const sp2::structure_t &cap,
+    const sp2::structure_t &segment, int n_segment)
+{
+    structure_t output = cap,
+        rep = util::construct_supercell(segment, 1, 1, n_segment);
+
+    output.positions.insert(output.positions.end(),
+        rep.positions.begin(), rep.positions.end());
+
+    output.types.insert(output.types.end(),
+        rep.types.begin(), rep.types.end());
+
+    return output;
+}
