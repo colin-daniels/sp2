@@ -52,6 +52,10 @@ double linesearch(diff1d_fn_t objective_fn, double alpha);
 std::vector<double> linear_cg(vector_fn_t matrix_fn,
     std::vector<double> b, double tolerance = 1e-12);
 
+std::vector<double> fire(diff_fn_t grad_fn,
+    double mass, std::vector<double> initial_position,
+    const fire_settings_t &settings = {});
+
 // PSO currently cannot be run without MPI
 #ifdef SP2_ENABLE_MPI
 

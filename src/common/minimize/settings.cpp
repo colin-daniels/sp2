@@ -95,3 +95,37 @@ bool minimize::pso_settings_t::deserialize(const Json::Value &input)
 
     return true;
 }
+
+bool minimize::fire_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "grad_tol", grad_tol,
+        "max_iter", max_iter,
+        "dt_initial", dt_initial,
+        "dt_max", dt_max,
+        "N_min", N_min,
+        "dt_mult_increase", dt_mult_increase,
+        "dt_mult_decrease", dt_mult_decrease,
+        "alpha_initial", alpha_initial,
+        "alpha_mult", alpha_mult
+    );
+
+    return true;
+}
+
+bool minimize::fire_settings_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "grad_tol", grad_tol,
+        "max_iter", max_iter,
+        "dt_initial", dt_initial,
+        "dt_max", dt_max,
+        "N_min", N_min,
+        "dt_mult_increase", dt_mult_increase,
+        "dt_mult_decrease", dt_mult_decrease,
+        "alpha_initial", alpha_initial,
+        "alpha_mult", alpha_mult
+    );
+
+    return true;
+}

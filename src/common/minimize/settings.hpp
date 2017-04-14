@@ -127,6 +127,39 @@ struct pso_settings_t : public io::json_serializable_t
     bool deserialize(const Json::Value &input);
 };
 
+
+struct fire_settings_t : public io::json_serializable_t
+{
+    /// number of iterations we have been "going downhill"
+    double N_min = 5,
+    /// amount to increase dt when going downhill
+        dt_mult_increase = 1.1,
+    /// amount to decrease dt when going uphill
+        dt_mult_decrease = 0.5,
+    /// opposite of inertia
+        alpha_initial = 0.1,
+    /// amount to decrease alpha if going downhill
+        alpha_mult = 0.99;
+
+    /// initial time step
+    double dt_initial = 0.001,
+    /// max time step
+        dt_max = 0.05;
+
+    /// maximum number of iterations
+    std::size_t max_iter = 1000;
+    /// gradient tolerance exit condition
+    double grad_tol = 1e-5;
+
+    /// function to call with the current state
+    /// every intermediate_output_interval iterations
+    output_fn_t output_fn = [](const auto &) {};
+
+    bool serialize(Json::Value &output) const;
+
+    bool deserialize(const Json::Value &input);
+};
+
 } // namespace minimize
 } // namespace sp2
 

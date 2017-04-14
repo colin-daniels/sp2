@@ -11,6 +11,8 @@ struct relaxation_settings_t : public io::json_serializable_t
     std::string output_file;
     minimize::acgsd_settings_t minimize_settings;
 
+    // TODO: add FIRE settings and switch for minimization algorithm
+
     bool serialize(Json::Value &output) const;
     bool deserialize(const Json::Value &input);
 };

@@ -50,6 +50,7 @@ set(SOURCE_FILES
         src/common/structure_t.hpp
         src/common/atom_types.hpp
         src/common/math/vec3_t.hpp
+        src/common/math/vec3_util.hpp
         src/common/math/rotations.cpp
         src/common/math/rotations.hpp
         src/common/math/blas.hpp
@@ -74,6 +75,8 @@ set(SOURCE_FILES
         src/common/io/file_types/cif.hpp
         src/common/io/file_types/poscar.cpp
         src/common/io/file_types/poscar.hpp
+        src/common/io/gnuplot/gplot_structure.cpp
+        src/common/io/gnuplot/gplot_structure.hpp
         src/common/json/json.cpp
         src/common/json/json.hpp
         src/common/json/json_serializable_t.hpp
@@ -86,6 +89,7 @@ set(SOURCE_FILES
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
         src/common/minimize/acgsd.cpp
+        src/common/minimize/fire.cpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
@@ -117,7 +121,9 @@ set(SOURCE_FILES
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.hpp
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.cpp
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.hpp
-################################################################################
+        IF_PHONOPY_ENABLED src/phonopy/phonopy_io.cpp
+        IF_PHONOPY_ENABLED src/phonopy/phonopy_io.hpp
+        ################################################################################
         IF_TESTS_ENABLED src/common/graph/test/test_ud_graph_t.cpp
         src/common/graph/ud_graph_t.cpp
         src/common/graph/ud_graph_t.hpp
@@ -156,7 +162,7 @@ set(SOURCE_FILES
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/include/sp2/sp2.h src/common/math/vec3_util.hpp src/phonopy/phonopy_io.cpp src/phonopy/phonopy_io.hpp src/common/io/gnuplot/gplot_structure.cpp src/common/io/gnuplot/gplot_structure.hpp)
+        src/include/sp2/sp2.h)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)

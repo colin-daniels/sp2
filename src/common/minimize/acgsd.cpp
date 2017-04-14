@@ -277,11 +277,10 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
 
         // exit conditions
         bool acgsd_exit = abs(delta_val) < settings.value_tolerance    ||
-                          grad_mag < settings.gradient_tolerance ||
-                          max_norm(gradient) < settings.grad_max_tolerance ||
-                          n_target_fail > settings.target_exit_min    ||
-                          (settings.iteration_limit > 0 &&
-                           iter >= settings.iteration_limit);
+                                grad_mag < settings.gradient_tolerance ||
+                      max_norm(gradient) < settings.grad_max_tolerance ||
+                           n_target_fail > settings.target_exit_min    ||
+            (settings.iteration_limit > 0 && iter >= settings.iteration_limit);
 
         if (acgsd_exit)
         {
