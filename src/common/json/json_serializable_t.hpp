@@ -16,7 +16,7 @@ public:
     json_serializable_t& operator=(const Json::Value&);
     operator Json::Value() const;
 
-    virtual ~json_serializable_t() {}
+    virtual ~json_serializable_t() = default;
 
     /// serialize object to Json::Value
     virtual bool serialize(Json::Value &output) const = 0;

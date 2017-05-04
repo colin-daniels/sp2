@@ -2,6 +2,7 @@
 #define SP2_MATH_HPP
 
 #include "common/math/vec3_t.hpp"
+#include "common/math/mat3x3_t.hpp"
 
 namespace sp2 {
 namespace util {
@@ -11,13 +12,10 @@ namespace util {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// generate a rotation matrix given an axis (unit vector) and angle
-void gen_rotation(vec3_t axis, double theta, double output[3][3]);
+mat3x3_t gen_rotation(vec3_t axis, double theta);
 
 /// generate a rotation matrix from the unit vector a to the unit vector b
-void gen_rotation(const vec3_t &a, const vec3_t &b, double output[3][3]);
-
-/// generate random rotation matrix
-void gen_rand_rotation(double output[3][3]);
+mat3x3_t gen_rotation(const vec3_t &from, const vec3_t &to);
 
 } // namespace util
 } // namespace sp2

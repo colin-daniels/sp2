@@ -70,7 +70,7 @@ void write_log(string filename, string desc);
 void remove_hydrogen(structure_t &structure,
     vector<pair<double, vector<vec3_t>>> *modes = nullptr)
 {
-    auto pos = dtov3(structure.positions);
+    auto &pos = structure.positions;
     for (std::size_t i = 0; i < structure.types.size(); ++i)
     {
         if (structure.types[i] != atom_type::HYDROGEN)
@@ -86,12 +86,50 @@ void remove_hydrogen(structure_t &structure,
 
         i -= 1;
     }
-
-    structure.positions = sp2::v3tod(pos);
 }
 
-int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
+std::vector<double> get_phonopy_masses(const sp2::structure_t &structure)
 {
+    std::vector<double> masses;
+    masses.reserve(structure.types.size());
+
+    for (const auto &type : structure.types)
+    {
+        switch (type)
+        {
+        case atom_type::CARBON:
+            masses.push_back(12.0107);
+            break;
+        case atom_type::HYDROGEN:
+            masses.push_back(1.00794);
+            break;
+        }
+    }
+
+#warning temporary (for nanotubes)
+    for (int i = 0; i < 12; ++i)
+        masses[i] = 10000;
+
+    return masses;
+}
+
+std::string get_phonopy_mass_command(const phonopy::phonopy_settings_t &pset)
+{
+    if (pset.masses.empty())
+        return "";
+
+    std::string mass_setting = "MASS =";
+    for (auto mass : pset.masses)
+        mass_setting += " " + std::to_string(mass);
+
+    return mass_setting + "\n";
+}
+
+int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
+{
+    // copy settings so we can modify it
+    auto settings = settings_in;
+    // copy structure for convenience
     auto structure = settings.structure;
 
 #ifdef SP2_DEBUG
@@ -108,6 +146,13 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
 #ifdef SP2_DEBUG
     io::write_structure("relaxed.xyz", structure);
 #endif // SP2_DEBUG
+
+    // set masses if none are present and raman is going to be calculated
+    if (settings.phonopy_settings.masses.empty() &&
+        settings.phonopy_settings.calc_raman)
+    {
+        settings.phonopy_settings.masses = get_phonopy_masses(structure);
+    }
 
     if (settings.phonopy_settings.calc_displacements)
     {
@@ -129,7 +174,10 @@ int sp2::run_phonopy(const run_settings_t &settings, MPI_Comm)
     write_log(settings.log_filename, "Computing Force Constants");
     if (settings.phonopy_settings.calc_raman)
     {
-        if (generate_eigs(settings.phonopy_settings) != 0 ||
+        if (generate_eigs(settings.phonopy_settings) != 0)
+            return EXIT_FAILURE;
+
+        if (settings.phonopy_settings.calc_irreps &&
             write_irreps(settings.phonopy_settings) != 0)
             return EXIT_FAILURE;
 
@@ -226,7 +274,7 @@ void generate_force_sets(run_settings_t rset)
     std::tie(structure, displacements) = disp_data;
 
     // store original position
-    auto orig_pos = dtov3(structure.positions);
+    auto orig_pos = structure.positions;
 
 
     // pointers (and function) for switching potentials for gradient calc
@@ -298,6 +346,7 @@ int generate_bands(phonopy::phonopy_settings_t pset)
 
     outfile << "\n"
             << "BAND_POINTS = " << pset.n_samples << "\n"
+            << get_phonopy_mass_command(pset)
             << get_force_constant_rw();
 
     outfile.close();
@@ -318,6 +367,7 @@ int write_irreps(phonopy::phonopy_settings_t pset)
             << ' ' << pset.supercell_dim[1]
             << ' ' << pset.supercell_dim[2] << '\n'
             << "IRREPS = 0 0 0 1e-2\n"
+            << get_phonopy_mass_command(pset)
             << get_force_constant_rw();
 
     outfile.close();
@@ -334,6 +384,7 @@ int generate_eigs(phonopy::phonopy_settings_t pset)
                 << ' ' << pset.supercell_dim[2] << '\n'
             << "BAND = 0 0 0   1/2 0 0\n"
             << "BAND_POINTS = 1\n"
+            << get_phonopy_mass_command(pset)
             << get_force_constant_rw()
             << "EIGENVECTORS = .TRUE.\n";
 
@@ -351,6 +402,7 @@ int generate_dos(phonopy::phonopy_settings_t pset)
                 << ' ' << pset.supercell_dim[1]
                 << ' ' << pset.supercell_dim[2] << '\n'
             << get_force_constant_rw()
+            << get_phonopy_mass_command(pset)
             << "MESH = 7 7 7\n"
             << "DOS = .TRUE.\n"
             << "DOS_RANGE = 0 90 0.1\n";
@@ -368,6 +420,7 @@ int write_anim(phonopy::phonopy_settings_t pset, int mode_id)
             << ' ' << pset.supercell_dim[1]
             << ' ' << pset.supercell_dim[2] << '\n'
             << get_force_constant_rw()
+            << get_phonopy_mass_command(pset)
             << "ANIME_TYPE = XYZ\n"
             << "ANIME = " << mode_id << " 5 20\n";
 
@@ -505,14 +558,14 @@ int write_spectra(run_settings_t rset,
     if (rset.phonopy_settings.calc_raman_backscatter_avg)
     {
         spectra = sp2::phonopy::raman_spectra_avg(true, temperature,
-            modes, structure);
+            modes, rset.phonopy_settings.masses, structure);
     }
     else
     {
         spectra = sp2::phonopy::raman_spectra(
             pol_vecs[rset.phonopy_settings.polarization_axes[0]],
             pol_vecs[rset.phonopy_settings.polarization_axes[1]],
-            temperature, modes, structure
+            temperature, modes, rset.phonopy_settings.masses, structure
         );
     }
 
@@ -533,7 +586,12 @@ int write_spectra(run_settings_t rset,
         bin_step = bin_max / n_bins;
     std::vector<double> bins(n_bins, 0);
 
-    auto irrep_labels = sp2::phonopy::read_irreps();
+    std::vector<std::string> irrep_labels;
+    if (!rset.phonopy_settings.calc_irreps)
+        irrep_labels.resize(spectra.size(), "None");
+    else
+        irrep_labels = sp2::phonopy::read_irreps();
+
     if (spectra.size() != irrep_labels.size())
         throw std::runtime_error("Number of characters read from irreps.yaml ("
             + std::to_string(irrep_labels.size()) +

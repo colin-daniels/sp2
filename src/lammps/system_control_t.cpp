@@ -123,7 +123,7 @@ void lammps::system_control_t::set_position(const vector<double> &input)
 void lammps::system_control_t::set_structure(const structure_t  &input)
 {
     type = input.types;
-    position = input.positions;
+    position = sp2::v3tod(input.positions);
 
     if (std::equal(std::begin(lattice_orig[0]), std::end(lattice_orig[2]),
         input.lattice[0]))
@@ -146,9 +146,11 @@ structure_t lammps::system_control_t::get_structure() const
     structure_t structure;
 
     structure.types = type;
-    structure.positions = position;
 
-    transform_output(structure.positions);
+    auto temp_pos = position;
+    transform_output(temp_pos);
+    structure.positions = sp2::dtov3(temp_pos);
+
     copy_n(lattice_orig[0], 9, structure.lattice[0]);
 
     return structure;
@@ -163,7 +165,7 @@ void lammps::system_control_t::init(const structure_t &info,
     na = info.types.size();
 
     type = info.types;
-    position = info.positions;
+    position = sp2::v3tod(info.positions);
     force.resize(na * 3, 0);
 
     // transform to triclinic
@@ -306,7 +308,7 @@ void lammps::system_control_t::append_output(std::string filename)
 
 void lammps::system_control_t::add_atom(atom_type type_in, const double *pos)
 {
-    vec3_t transformed_pos = vec3_t(pos).mul_3x3(transform);
+    vec3_t transformed_pos = transform * vec3_t(pos);
 
     stringstream ss;
     ss << "create_atoms " << (int)type_in + 1 << " single";
@@ -511,7 +513,7 @@ void lammps::system_control_t::transform_input(std::vector<double> &pos) const
 {
     std::vector<vec3_t> input = sp2::dtov3(pos);
     for (auto &p : input)
-        p = p.mul_3x3(transform);
+        p = transform * p;
 
     pos = sp2::v3tod(input);
 }
@@ -525,7 +527,7 @@ void lammps::system_control_t::transform_output(std::vector<double> &pos) const
 
     std::vector<vec3_t> output = sp2::dtov3(pos);
     for (auto &p : output)
-        p = p.mul_3x3(inv_transform);
+        p = inv_transform * p;
 
     pos = sp2::v3tod(output);
 }

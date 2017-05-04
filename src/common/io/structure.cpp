@@ -58,7 +58,7 @@ bool io::write_structure(std::string filename,
         string comment_line;
         return io::write_json(val, comment_line, false) &&
                io::write_xyz(filename, comment_line,
-                       types, input.positions, append);
+                       types, sp2::v3tod(input.positions), append);
     }
     case file_type::JSON: {
         // note: no append option at the moment
@@ -92,9 +92,12 @@ bool io::read_structure(std::string filename,
         // parse the types and positions normally
         string comment_line;
         vector<std::string> types;
-        if (!io::read_xyz(filename, comment_line,
-                types, output.positions))
+
+        std::vector<double> pos_in;
+        if (!io::read_xyz(filename, comment_line, types, pos_in))
             return false;
+
+        output.positions = sp2::dtov3(pos_in);
 
         // convert strings to types
         for (string t : types)

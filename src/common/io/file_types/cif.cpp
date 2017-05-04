@@ -43,7 +43,7 @@ bool io::write_cif(std::string filename, const structure_t &structure)
     {
         outfile << enum_to_str(structure.types[i]);
         for (size_t j = 0; j < 3; ++j)
-            outfile << '\t' << structure.positions[i * 3 + j]
+            outfile << '\t' << structure.positions[i][j]
                                / structure.lattice[j][j];
         outfile << '\n';
     }

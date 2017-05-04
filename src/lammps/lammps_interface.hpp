@@ -122,7 +122,7 @@ public:
     {
         return [&](const auto &pos) {
             auto structure = this->get_structure();
-            structure.positions = pos;
+            structure.positions = sp2::dtov3(pos);
             this->set_structure(structure);
 
             this->update();

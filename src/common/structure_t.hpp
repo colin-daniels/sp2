@@ -10,6 +10,8 @@
 
 #include <vector>
 #include <boost/mpi/communicator.hpp>
+#include <common/math/vec3_t.hpp>
+#include <common/math/mat3x3_t.hpp>
 
 namespace sp2 {
 
@@ -25,13 +27,19 @@ struct structure_t : public io::json_serializable_t
     int n_symm;
 
     std::vector<atom_type> types;   ///< N x 1 vector of atom types (see: enums.hpp)
-    std::vector<double> positions;  ///< N x 3 matrix of atom positions,
-    /// e.g. (x1, y1, z1, x2, y2, z2, ...)
+    std::vector<vec3_t> positions;  ///< N x 1 vector of atom positions
 
     structure_t() = default;
     structure_t(const double lattice_in[3][3],
         const std::vector<atom_type> &types_in,
         const std::vector<double> &positions_in);
+
+    structure_t(const double lattice_in[3][3],
+        const std::vector<atom_type> &types_in,
+        const std::vector<vec3_t> &positions_in);
+
+    void rotate(vec3_t axis, double theta);
+    void transform(const mat3x3_t &transformation);
 
     bool serialize(Json::Value &output) const;
     bool deserialize(const Json::Value &input);

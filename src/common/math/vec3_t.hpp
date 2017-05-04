@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstddef>
+#include <iterator>
 #include <utility>
 
 namespace sp2 {
@@ -16,92 +17,153 @@ constexpr bool vec3_math_compat_v = std::is_arithmetic<std::decay_t<T>>::value;
 ////////////////////////////////////////////////////////////////////////////////
 // Utility R^3 vector class                                                   //
 ////////////////////////////////////////////////////////////////////////////////
-struct alignas(sizeof(double[4])) vec3_t
+class alignas(32) vec3_t
 {
-    double x, y, z;
+private:
+    double data[3];
+
+public:
 
     vec3_t() = default;
 
-    constexpr explicit vec3_t(const double *ptr) :
-        x(ptr[0]), y(ptr[1]), z(ptr[2]) {}
+    constexpr explicit vec3_t(const double *ptr) noexcept :
+        data{ptr[0], ptr[1], ptr[2]} {}
 
-    constexpr vec3_t(double x, double y, double z) :
-        x(x), y(y), z(z) {}
+    constexpr vec3_t(double x, double y, double z) noexcept :
+        data{x, y, z} {}
 
-    constexpr operator const double*() const { return begin(); }
-    constexpr operator       double*()       { return begin(); }
+////////////////////////////////////////////////////////////////////////////////
+// Comparison operators                                                       //
+////////////////////////////////////////////////////////////////////////////////
+
+    friend constexpr bool operator==(const vec3_t &a, const vec3_t &b) noexcept
+    {
+        // note: bitwise and
+        return (a[0] == b[0]) &
+               (a[1] == b[1]) &
+               (a[2] == b[2]);
+    }
+
+    friend constexpr bool operator!=(const vec3_t &a, const vec3_t &b) noexcept
+    {
+        return !(a == b);
+    }
+
+    // swap?
 
 ////////////////////////////////////////////////////////////////////////////////
 // Access-related functions                                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
-    constexpr double *begin() {return &x;}
-    constexpr double *end() {return begin() + 3;}
+    constexpr       double *begin()       {return std::begin(data);}
+    constexpr const double *begin() const {return std::begin(data);}
 
-    constexpr const double *begin() const {
-        return &x;}
-    constexpr const double *end() const {
-        return begin() + 3;}
+    constexpr       double *end()       {return std::end(data);}
+    constexpr const double *end() const {return std::end(data);}
 
-    constexpr double& operator[](std::size_t i)
-    {
-        constexpr decltype(&vec3_t::x) vmap[] = {
-            &vec3_t::x, &vec3_t::y, &vec3_t::z
-        };
-
-        return this->*(vmap[i]);
-    }
-
-    constexpr const double& operator[](std::size_t i) const
-    {
-        constexpr decltype(&vec3_t::x) vmap[] = {
-            &vec3_t::x, &vec3_t::y, &vec3_t::z
-        };
-
-        return this->*(vmap[i]);
-    }
+    constexpr double& operator[](std::size_t i)       {return data[i];}
+    constexpr double  operator[](std::size_t i) const {return data[i];}
 
     constexpr std::size_t size() const {return 3;}
+
+    constexpr double& x()       {return data[0];}
+    constexpr double  x() const {return data[0];}
+
+    constexpr double& y()       {return data[1];}
+    constexpr double  y() const {return data[1];}
+
+    constexpr double& z()       {return data[2];}
+    constexpr double  z() const {return data[2];}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Mathematical operators                                                     //
 ////////////////////////////////////////////////////////////////////////////////
 
-    constexpr vec3_t& operator+=(const vec3_t &o) {
-        x += o.x; y += o.y; z += o.z; return *this; }
+    constexpr vec3_t& operator+=(const vec3_t &o)
+    {
+        for (int i = 0; i < 3; ++i)
+            data[i] += o.data[i];
+        return *this;
+    }
 
-    constexpr vec3_t& operator-=(const vec3_t &o) {
-        x -= o.x; y -= o.y; z -= o.z; return *this; }
-
-    template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
-    constexpr vec3_t& operator*=(T a) {
-        x *= a; y *= a; z *= a; return *this; }
-
-    template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
-    constexpr vec3_t& operator/=(T a) {
-        x /= a; y /= a; z /= a; return *this; }
-
-
-    constexpr vec3_t operator-() const {
-        return -1.0 * *this;}
-
-    constexpr vec3_t operator+(const vec3_t &o) const {
-        return {x + o.x, y + o.y, z + o.z};}
-
-    constexpr vec3_t operator-(const vec3_t &o) const {
-        return {x - o.x, y - o.y, z - o.z};}
-
+    constexpr vec3_t& operator-=(const vec3_t &o)
+    {
+        for (int i = 0; i < 3; ++i)
+            data[i] -= o.data[i];
+        return *this;
+    }
 
     template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
-    constexpr vec3_t operator*(T a) const { return {x * a, y * a, z * a}; }
+    constexpr vec3_t& operator*=(T a)
+    {
+        for (auto& v : data)
+            v *= a;
+        return *this;
+    }
 
     template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
-    constexpr vec3_t operator/(T a) const { return {x / a, y / a, z / a}; }
+    constexpr vec3_t& operator/=(T a)
+    {
+        for (auto& v : data)
+            v /= a;
+        return *this;
+    }
 
+    constexpr vec3_t operator-() const { return *this * -1.0; }
+
+    constexpr vec3_t operator+(const vec3_t &o) const
+    {
+        return {
+            data[0] + o[0],
+            data[1] + o[1],
+            data[2] + o[2]
+        };
+    }
+
+    constexpr vec3_t operator-(const vec3_t &o) const
+    {
+        return {
+            data[0] - o[0],
+            data[1] - o[1],
+            data[2] - o[2]
+        };
+    }
+
+    template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
+    constexpr vec3_t operator*(T a) const
+    {
+        return {
+            data[0] * a,
+            data[1] * a,
+            data[2] * a
+        };
+    }
+
+    template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
+    constexpr vec3_t operator/(T a) const
+    {
+        return {
+            data[0] / a,
+            data[1] / a,
+            data[2] / a
+        };
+    }
 
     template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
     friend constexpr vec3_t operator*(T&& a, const vec3_t &v) {
         return v * std::forward<T>(a); }
+
+
+    /// multiply a 3x3 matrix by this vector (as a column vector)
+    template<class T, class = std::enable_if_t<vec3_math_compat_v<T>>>
+    friend constexpr vec3_t operator*(const T (&mat)[3][3], const vec3_t &v)
+    {
+        return {
+            v[0] * mat[0][0] + v[1] * mat[0][1] + v[2] * mat[0][2],
+            v[0] * mat[1][0] + v[1] * mat[1][1] + v[2] * mat[1][2],
+            v[0] * mat[2][0] + v[1] * mat[2][1] + v[2] * mat[2][2]
+        };
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Miscellaneous member functions                                             //
@@ -109,42 +171,30 @@ struct alignas(sizeof(double[4])) vec3_t
 
     /// returns the magnitude squared for the vector
     constexpr double mag_sq() const {
-        return x * x + y * y + z * z;}
+        return data[0] * data[0]
+             + data[1] * data[1]
+             + data[2] * data[2];
+    }
 
     /// returns the 2-norm of the vector
     double mag() const {
         return std::sqrt(mag_sq());}
 
-    /// normalize the vector
+    /// normalize the vector, assumes magnitude is not 0
     vec3_t &normalize() {
         return *this /= mag();}
 
-    /// return the vectors unit vector does not modify it
+    /// return the vectors unit vector, non-modifying
     vec3_t unit_vector() const {
         return *this / mag();}
-
-    /// multiply a 3x3 matrix by this vector
-    constexpr vec3_t mul_3x3(const double (&mat)[3][3]) const
-    {
-        vec3_t result{0, 0, 0};
-        return vec3_t{
-            x * mat[0][0] + y * mat[0][1] + z * mat[0][2],
-            x * mat[1][0] + y * mat[1][1] + z * mat[1][2],
-            x * mat[2][0] + y * mat[2][1] + z * mat[2][2]
-        };
-    }
 };
 
 static_assert(std::is_trivial<vec3_t>::value, "");
-static_assert(sizeof(vec3_t) == sizeof(double[4]), "");
+static_assert(sizeof(vec3_t) == 32, "");
 
-static_assert(offsetof(vec3_t, x) == 0, "");
-static_assert(offsetof(vec3_t, y) == alignof(double), "");
-static_assert(offsetof(vec3_t, z) == 2 * alignof(double), "");
-
-static_assert(vec3_t{1, 2, 3}.x == 1, "");
-static_assert(vec3_t{1, 2, 3}.y == 2, "");
-static_assert(vec3_t{1, 2, 3}.z == 3, "");
+static_assert(vec3_t{1, 2, 3}.x() == 1, "");
+static_assert(vec3_t{1, 2, 3}.y() == 2, "");
+static_assert(vec3_t{1, 2, 3}.z() == 3, "");
 
 static_assert(vec3_t{1, 2, 3}[0] == 1, "");
 static_assert(vec3_t{1, 2, 3}[1] == 2, "");

@@ -112,7 +112,7 @@ bool io::read_poscar(std::string filename, structure_t &output)
         {
             auto positions = io::split_line(line);
 
-            double pos[3] = {};
+            vec3_t pos;
             for (int i = 0; i < 3; ++i)
             {
                 double val = stod(positions[i]);
@@ -125,9 +125,7 @@ bool io::read_poscar(std::string filename, structure_t &output)
                 }
             }
 
-            for (int i = 0; i < 3; ++i)
-                output.positions.push_back(pos[i]);
-
+            output.positions.push_back(pos);
             if (n >= n_atoms[type_n + 1])
                 type_n++;
 
@@ -197,7 +195,7 @@ bool io::write_poscar(std::string filename, const structure_t &input)
         {
             double val = 0;
             for (int k = 0; k < 3; ++k)
-                val += positions[i + k] * inv_lattice[k][j];
+                val += positions[i][k] * inv_lattice[k][j];
 
             outfile << val << ' ';
         }

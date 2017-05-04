@@ -123,7 +123,7 @@ set(SOURCE_FILES
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.hpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_io.cpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_io.hpp
-        ################################################################################
+################################################################################
         IF_TESTS_ENABLED src/common/graph/test/test_ud_graph_t.cpp
         src/common/graph/ud_graph_t.cpp
         src/common/graph/ud_graph_t.hpp
@@ -199,6 +199,9 @@ target_include_directories(sp2 PRIVATE
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
     target_compile_definitions(sp2 PRIVATE
             SP2_DEBUG)
+else()
+    target_compile_options(sp2 PRIVATE
+            -march=native -ffast-math)
 endif()
 
 install(TARGETS sp2

@@ -36,7 +36,7 @@ void airebo::system_control_t::init(const double lattice[3][3],
 
 void airebo::system_control_t::init(const structure_t &structure)
 {
-    init(structure.lattice, structure.positions, structure.types);
+    init(structure.lattice, sp2::v3tod(structure.positions), structure.types);
 }
 
 structure_t airebo::system_control_t::get_structure() const
@@ -44,7 +44,7 @@ structure_t airebo::system_control_t::get_structure() const
     structure_t structure;
 
     structure.types = types;
-    structure.positions = position;
+    structure.positions = sp2::dtov3(position);
     copy_n(ref_lattice[0], 9, structure.lattice[0]);
 
     return structure;
@@ -73,7 +73,7 @@ void airebo::system_control_t::set_lattice(const double lattice[3][3])
 void airebo::system_control_t::set_structure(const structure_t &input)
 {
     types = input.types;
-    position = input.positions;
+    position = sp2::v3tod(input.positions);
     for (int i = 0; i < 9; ++i)
     {
         if (input.lattice[i/3][i%3] != ref_lattice[i/3][i%3])
@@ -417,7 +417,7 @@ void airebo::system_control_t::update_stage3()
             if (N_h >= 4 || N_c >= 4)
                 continue;
 
-            if (N_c == floor(N_c) && N_h == floor(N_h))
+            if (N_c == std::floor(N_c) && N_h == std::floor(N_h))
             {
                 if (b_types[j] == bond_type::CARBON_CARBON)
                     P[j * 3] = PCC[(int)N_h][(int)N_c];
@@ -468,7 +468,9 @@ void airebo::system_control_t::update_stage3()
             int id_T = ((int)N_ti) * 40 + ((int)N_tj) * 10 + (int)N_conj,
                 id_F = id_T;
 
-            if (N_ti == floor(N_ti) && N_tj == floor(N_tj) && N_conj == floor(N_conj))
+            if (N_ti == std::floor(N_ti) &&
+                N_tj == std::floor(N_tj) &&
+                N_conj == std::floor(N_conj))
             {
                 if (b_types[j] == bond_type::CARBON_CARBON)
                 {
@@ -964,7 +966,7 @@ diff_fn_t system_control_t::get_diff_fn()
 {
     return [&](const auto &pos) {
         auto structure = this->get_structure();
-        structure.positions = pos;
+        structure.positions = sp2::dtov3(pos);
         this->set_structure(structure);
 
         this->update();
@@ -1093,14 +1095,12 @@ diff_fn_t system_control_t::get_diff_fn()
              vec3_t bond_ref(&deltas[added_ids[0] * 3]);
              vec3_t axis = unit_normal_to(bond_ref);
 
-             double rot[3][3] = {};
-             const double pi = atan2(0, -1);
+             sp2::mat3x3_t rot;
+             rot = util::gen_rotation(axis, 2 * M_PI / 3);
+             vec3_t bond_a = (rot * bond_ref).unit_vector() * 1.09;
 
-             util::gen_rotation(axis, 2 * pi / 3, rot);
-             vec3_t bond_a = bond_ref.mul_3x3(rot).unit_vector() * 1.09;
-
-             util::gen_rotation(axis, 4 * pi / 3, rot);
-             vec3_t bond_b = bond_ref.mul_3x3(rot).unit_vector() * 1.09;
+             rot = util::gen_rotation(axis, 4 * M_PI / 3);
+             vec3_t bond_b = (rot * bond_ref).unit_vector() * 1.09;
 
              for (int j = 0; j < 3; ++j)
                  position.push_back(position[id * 3 + j] + 1.09 * bond_a[j]);

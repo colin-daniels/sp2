@@ -2,6 +2,8 @@
 #include "common/util/mpi.hpp"
 
 #include <json/json.h>
+#include <common/math/rotations.hpp>
+#include <common/math/vec3_util.hpp>
 
 using namespace std;
 using namespace sp2;
@@ -10,7 +12,13 @@ namespace mpi = boost::mpi;
 structure_t::structure_t(const double lattice_in[3][3],
     const std::vector<atom_type> &types_in,
     const std::vector<double> &positions_in) :
-    types(types_in), positions(positions_in)
+        structure_t(lattice_in, types_in, sp2::dtov3(positions_in)) {}
+
+structure_t::structure_t(const double lattice_in[3][3],
+    const std::vector<atom_type> &types_in,
+    const std::vector<vec3_t> &positions_in) :
+        types(types_in),
+        positions(positions_in)
 {
     copy_n(lattice_in[0], 9, lattice[0]);
 }
@@ -29,7 +37,7 @@ bool structure_t::serialize(Json::Value &output) const
         structure.append(Json::Value());
         structure[i].append(enum_to_str<atom_type>(types[i]));
         for (int j = 0; j < 3; ++j)
-            structure[i].append(positions[i * 3 + j]);
+            structure[i].append(positions[i][j]);
     }
 
     output["positions"] = structure;
@@ -59,12 +67,16 @@ bool structure_t::deserialize(const Json::Value &input)
         string type = atom_info[0].asString();
         types.push_back(enum_from_str<atom_type>(type));
 
+        sp2::vec3_t pos;
         for (int j = 1; j < 4; ++j)
         {
             if (!atom_info[j].isNumeric())
                 return false;
-            positions.push_back(atom_info[j].asDouble());
+
+            pos[j] = atom_info[j].asDouble();
         }
+
+        positions.push_back(pos);
     }
 
     return true;
@@ -105,6 +117,17 @@ void structure_t::bcast(const boost::mpi::communicator &comm, int root)
     mpi::broadcast(comm, types, root);
 }
 
+void structure_t::rotate(vec3_t axis, double theta)
+{
+    transform(util::gen_rotation(axis, theta));
+}
+
+void structure_t::transform(const mat3x3_t &transformation)
+{
+    for (auto &p : positions)
+        p = transformation * p;
+}
+
 void sp2::sort_structure_types(structure_t &structure)
 {
     vector<pair<atom_type, int>> atoms;
@@ -114,10 +137,9 @@ void sp2::sort_structure_types(structure_t &structure)
     sort(atoms.begin(), atoms.end());
     sort(structure.types.begin(), structure.types.end());
 
-    vector<double> sorted_pos;
+    vector<vec3_t> sorted_pos;
     for (std::size_t i = 0; i < atoms.size(); ++i)
-        for (int j = 0; j < 3; ++j)
-            sorted_pos.push_back(structure.positions[atoms[i].second * 3 + j]);
+        sorted_pos.push_back(structure.positions[atoms[i].second]);
 
     structure.positions = sorted_pos;
 }

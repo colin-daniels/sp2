@@ -56,12 +56,11 @@ sp2::structure_t read_phonopy_structure(YAML::Node &root)
         );
 
         // transform to cartesian and store coordinates
-        for (auto coord : lat * node_to_v3(atom["coordinates"]))
-            structure.positions.push_back(coord);
+        structure.positions.push_back(lat * node_to_v3(atom["coordinates"]));
     }
 
     if (static_cast<std::size_t>(n_atoms) != structure.types.size() ||
-        static_cast<std::size_t>(n_atoms) * 3 != structure.positions.size())
+        static_cast<std::size_t>(n_atoms) != structure.positions.size())
         throw std::runtime_error("Couldn't read phonopy structure.");
 
     return structure;
@@ -112,7 +111,7 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
     structure = util::center_by_avg(structure);
 
     // remove hydrogen atoms
-    auto pos = dtov3(structure.positions);
+    auto pos = structure.positions;
     for (std::size_t i = 0; i < structure.types.size(); ++i)
     {
         if (structure.types[i] != atom_type::HYDROGEN)
@@ -124,7 +123,7 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
 
         i -= 1;
     }
-    structure.positions = sp2::v3tod(pos);
+    structure.positions = pos;
 
     // rescale eigenvectors by largest magnitude
     double mag_max = 0;
@@ -146,10 +145,10 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
 
     outfile << "set size ratio -1;\n"
             << "set xrange ["
-                << bounds.first.x << ":" << bounds.second.x
+                << bounds.first.x() << ":" << bounds.second.x()
             << "];\n"
             << "set yrange ["
-                << bounds.first.y << ":" << bounds.second.y
+                << bounds.first.y() << ":" << bounds.second.y()
             << "];\n"
             << "set style arrow 1 head filled size "
                     << arrow_radius
@@ -160,8 +159,8 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
         structure.lattice[i / 3][i % 3] = 0;
 
     io::draw_top_down(outfile, structure,
-        {bounds.first.x, bounds.second.x},
-        {bounds.first.y, bounds.second.y},
+        {bounds.first.x(), bounds.second.x()},
+        {bounds.first.y(), bounds.second.y()},
         airebo::system_control_t(structure).get_bond_control().get_graph(),
         atom_radius, bond_radius,
         // for each atom
@@ -179,9 +178,9 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
 
             // draw an arrow representing the mode eigenvector
             oss << "set arrow from "
-                    << arrow_start.x << ", " << arrow_start.y
+                    << arrow_start.x() << ", " << arrow_start.y()
                 << " rto "
-                    << eigenvector.x << ", " << eigenvector.y
+                    << eigenvector.x() << ", " << eigenvector.y()
                 << " as 1;\n";
     });
 }
@@ -225,13 +224,13 @@ void sp2::phonopy::write_force_sets(
         // atom id, note: phonopy 1-indexes their atoms
         outfile << disp.first + 1 << '\n'
                 // cartesian displacement for the given atom
-                << disp.second.x << ' '
-                    << disp.second.y << ' '
-                    << disp.second.z << '\n';
+                << disp.second.x() << ' '
+                    << disp.second.y() << ' '
+                    << disp.second.z() << '\n';
 
         // forces on all atoms
         for (auto &v : forces[i])
-            outfile << v.x << ' ' << v.y << ' ' << v.z << '\n';
+            outfile << v.x() << ' ' << v.y() << ' ' << v.z() << '\n';
 
         // blank line for easy reading
         outfile << '\n';

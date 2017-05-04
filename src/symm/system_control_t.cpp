@@ -49,7 +49,7 @@ void symm::system_control_t::set_structure(const structure_t &input) {
     }
 
     types = input.types;
-    position = dtov3(input.positions);
+    position = input.positions;
 }
 
 std::vector<double> symm::system_control_t::get_gradient() const {
@@ -99,7 +99,7 @@ void symm::system_control_t::update()
         vec3_t deriv = {},
             pos = position[i] / unit_cell;
 
-        total_potential += scale * gyroid_ptnl(pos, deriv);
+        total_potential += scale * gyroid_ptnl(&pos[0], &deriv[0]);
         gradient[i] += scale * deriv;
     }
 

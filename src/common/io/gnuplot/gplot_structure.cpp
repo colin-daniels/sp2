@@ -30,16 +30,16 @@ void sp2::io::draw_top_down(std::ostream &output,
     init_object_num(output);
     int current_object_num = 0;
 
-    auto positions = sp2::dtov3(structure.positions);
+    auto positions = structure.positions;
 
     auto in_bounds = [&](const vec3_t &pos) {
-        return x_bounds.first < pos.x && pos.x < x_bounds.second &&
-            y_bounds.first < pos.y && pos.y < y_bounds.second;
+        return x_bounds.first < pos.x() && pos.x() < x_bounds.second &&
+            y_bounds.first < pos.y() && pos.y() < y_bounds.second;
     };
 
     auto clamp_pos = [&](vec3_t &pos) {
-        pos.x = std::max(x_bounds.first, std::min(x_bounds.second, pos.x));
-        pos.y = std::max(y_bounds.first, std::min(y_bounds.second, pos.y));
+        pos.x() = std::max(x_bounds.first, std::min(x_bounds.second, pos.x()));
+        pos.y() = std::max(y_bounds.first, std::min(y_bounds.second, pos.y()));
     };
 
     // draw bonds
@@ -72,7 +72,7 @@ void sp2::io::draw_top_down(std::ostream &output,
             // make sure we don't draw outside the lines
             clamp_pos(pos);
 
-            output << pos.x << ", " << pos.y;
+            output << pos.x() << ", " << pos.y();
         }
 
         output << '\n';
@@ -88,7 +88,7 @@ void sp2::io::draw_top_down(std::ostream &output,
         // draw a circle at the atom
         output << "set object ";
         output_object_num(output, current_object_num);
-        output << " circle at " << pos.x << ", " << pos.y
+        output << " circle at " << pos.x() << ", " << pos.y()
                << " size " << atom_radius << " fc rgb \"black\" fs solid\n";
 
         foreach_atom(i, output);

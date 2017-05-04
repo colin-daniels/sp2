@@ -38,7 +38,7 @@ structure_t symm::basic_adapter(const std::vector<double> &input,
 std::vector<double> symm::inverse_basic_adapter(const structure_t &structure,
     double uc_range[2])
 {
-    auto &pos = structure.positions;
+    auto pos = sp2::v3tod(structure.positions);
     std::vector<double> result(pos.size() + 1);
 
     // cubic for now, copy all coordinates in terms of the lattice vector lengths
@@ -69,8 +69,14 @@ structure_t symm::bonded_adapter(const std::vector<double> &input,
 
     // n_connected number of completely randomly placed atoms
     vector<vec3_t> pos;
-    for (size_t i = 0; i < min(n_connected, na); ++i)
-        pos.push_back(vec3_t(&input[i * 3]) * unit_cell);
+    for (size_t i = 0; i < std::min(n_connected, na); ++i)
+    {
+        pos.emplace_back(
+            input[i * 3] * unit_cell,
+            input[i * 3 + 1] * unit_cell,
+            input[i * 3 + 2] * unit_cell
+        );
+    }
 
     // rest of the atoms are generated as neighbors to existing atoms
     int neighbors_left = pos.size();

@@ -32,14 +32,12 @@ int sp2::run_relaxation(const run_settings_t &config, MPI_Comm)
     switch (config.potential)
     {
     case potential_type::LAMMPS: {
-        lammps::system_control_t sys;
-        sys.init(config.structure, config.lammps_settings);
+        lammps::system_control_t sys(config.structure, config.lammps_settings);
 
         return run_relax(sys);
     }
     case potential_type::REBO: {
-        airebo::system_control_t sys;
-        sys.init(config.structure);
+        airebo::system_control_t sys(config.structure);
 
         return run_relax(sys);
     }

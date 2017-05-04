@@ -609,7 +609,7 @@ void bond_control_t::update_small()
     };
 
     auto update_prc = [&](const auto &lattice_delta, int i, int j, int &m) {
-        auto delta = lattice_delta.mul_3x3(inv_transformation);
+        auto delta = inv_transformation * lattice_delta;
         auto len_sq = delta.mag_sq();
         if (len_sq > max_dist)
             return false;

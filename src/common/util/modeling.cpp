@@ -7,6 +7,8 @@
 #include <lammps/lammps_interface.hpp>
 #include <common/minimize/minimize.hpp>
 #include <common/io/structure.hpp>
+#include <run/run_settings_t.hpp>
+#include <common/math/rotations.hpp>
 
 void make_agnr_set()
 {
@@ -39,7 +41,7 @@ void make_agnr_set()
 
         minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset);
         auto structure = sys.get_structure();
-        auto pos = dtov3(structure.positions);
+        auto pos = structure.positions;
 
         double min = std::numeric_limits<double>::max(), max = std::numeric_limits<double>::lowest();
         for (std::size_t i = 0; i < structure.types.size(); ++i)
@@ -47,8 +49,8 @@ void make_agnr_set()
             if (structure.types[i] == atom_type::HYDROGEN)
                 continue;
 
-            min = std::min(min, pos[i].y);
-            max = std::max(max, pos[i].y);
+            min = std::min(min, pos[i].y());
+            max = std::max(max, pos[i].y());
         }
 
         std::cout << width << " " << (max - min) << std::endl;
@@ -94,7 +96,7 @@ sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
         vec3_t(input.lattice[2])
     };
 
-    const auto original_pos = sp2::dtov3(input.positions);
+    const auto original_pos = input.positions;
     auto new_pos = std::vector<vec3_t>();
 
     new_pos.reserve(n_rep * original_pos.size());
@@ -114,7 +116,7 @@ sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
                 add_new(i, j, k);
 
 
-    supercell.positions = sp2::v3tod(new_pos);
+    supercell.positions = new_pos;
 
     return supercell;
 }
@@ -138,20 +140,15 @@ sp2::structure_t sp2::util::graphene_unit_cell()
         for (int j = 0; j < 3; ++j)
             graphene.lattice[i][j] = lattice[i][j];
 
-    // atoms
+    // atom types
+    graphene.types = {atom_type::CARBON, atom_type::CARBON};
+
+    // atom positions
     constexpr double bond_distance = 1.418;
-    const vec3_t pos[2] = {
+    graphene.positions = {
         vec3_t{0, 0, 0},
         vec3_t{std::sqrt(3) / 2, 0.5, 0} * bond_distance
     };
-
-    // set the types
-    graphene.types.resize(2, atom_type::CARBON);
-
-    // insert the positions
-    for (auto atom : pos)
-        for (auto coord : atom)
-            graphene.positions.push_back(coord);
 
     return graphene;
 }
@@ -166,10 +163,10 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
     // in the system
     fbc::bond_control_t bond_control;
     bond_control.init(input.lattice, max_dist, 0);
-    bond_control.update(input.positions);
+    bond_control.update(sp2::v3tod(input.positions));
 
     auto types = input.types;
-    auto pos = sp2::dtov3(input.positions);
+    auto pos = input.positions;
 
     auto graph = bond_control.get_graph();
     auto bond_deltas = sp2::dtov3(bond_control.get_bond_deltas());
@@ -365,7 +362,7 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length,
     structure_t unit_cell;
     std::copy_n(lattice[0], 9, unit_cell.lattice[0]);
     unit_cell.types = types;
-    unit_cell.positions = sp2::v3tod(pos);
+    unit_cell.positions = pos;
 
     // repeat the cell in the x direction (width)
     auto supercell = sp2::util::construct_supercell(unit_cell,
@@ -375,7 +372,7 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length,
     if (width % 2 == 1)
     {
         supercell.types.resize(supercell.types.size() - 2);
-        supercell.positions.resize(supercell.positions.size() - 6);
+        supercell.positions.resize(supercell.positions.size() - 2);
 
         // update the lattice (note: technically would make atoms overlap in
         // the armchair gnr case, but since we have vacuum separation it
@@ -391,7 +388,7 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length,
         supercell.lattice[i][i] += vacuum_sep;
 
     // center the gnr in the cell
-    auto v3pos = sp2::dtov3(supercell.positions);
+    auto v3pos = supercell.positions;
     vec3_t avg_pos = {};
     for (auto &v : v3pos)
         avg_pos += v;
@@ -405,7 +402,7 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length,
     for (auto &v : v3pos)
         v += offset;
 
-    supercell.positions = sp2::v3tod(v3pos);
+    supercell.positions = v3pos;
     return supercell;
 }
 
@@ -423,7 +420,7 @@ sp2::structure_t sp2::util::construct_arm_gnr(int width, int length,
 
 sp2::structure_t sp2::util::center_by_avg(const sp2::structure_t &input)
 {
-    auto pos = dtov3(input.positions);
+    auto pos = input.positions;
 
     vec3_t avg_pos = {};
     for (auto &atom : pos)
@@ -442,7 +439,7 @@ sp2::structure_t sp2::util::center_by_avg(const sp2::structure_t &input)
         atom += delta;
 
     auto new_structure = input;
-    new_structure.positions = v3tod(pos);
+    new_structure.positions = pos;
 
     return new_structure;
 }
@@ -460,4 +457,98 @@ sp2::structure_t sp2::util::make_capped_nanotube(const sp2::structure_t &cap,
         rep.types.begin(), rep.types.end());
 
     return output;
+}
+
+
+sp2::vec3_t get_tvec(const sp2::structure_t &input)
+{
+    auto temp = input.positions;
+    std::sort(temp.begin(), temp.end(), [](auto &a, auto &b) {
+        return a.z() < b.z();
+    });
+
+    sp2::vec3_t top_avg = {};
+    for (int i = 0; i < 6; ++i)
+        top_avg += temp[temp.size() - i - 1];
+
+    sp2::vec3_t bottom_avg = {};
+    for (int i = 0; i < 12; ++i)
+        bottom_avg += temp[i];
+
+    return (top_avg / 6 - bottom_avg / 12).unit_vector();
+}
+
+void make_dataset(const sp2::run_settings_t &config, MPI_Comm)
+{
+    using namespace sp2;
+
+    structure_t cap, segment;
+    io::read_structure("cap6-6.xyz", cap);
+    io::read_structure("segment6-6.xyz", segment);
+
+    minimize::acgsd_settings_t aset;
+    aset.iteration_limit = 0;
+    aset.output_level = 1;
+
+    for (int i = 0; i < 101; ++i)
+    {
+        auto structure = util::make_capped_nanotube(cap, segment, i);
+
+        // relax for good measure
+        airebo::system_control_t sys(structure);
+        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), aset);
+
+        // get min/max positions
+        structure = sys.get_structure();
+        auto bounds = get_bounds(structure.positions);
+        double len = bounds.second.z() - bounds.first.z();
+
+        for (auto &v : structure.positions)
+            v[2] *= -1;
+
+        // center at origin
+        structure = util::center_by_avg(structure);
+
+        for (int j = 0; j < 3; ++j)
+            structure.lattice[j][j] = len + 12;
+
+        lammps::system_control_t sys2(structure, config.lammps_settings);
+        minimize::acgsd(sys2.get_diff_fn(), sys2.get_position(), aset);
+
+        // rotate so that the structure is vertical
+        auto tvec = get_tvec(structure);
+        structure.transform(
+            util::gen_rotation(tvec, vec3_t(0, 0, 1))
+        );
+
+        auto temp = structure.positions;
+        std::sort(temp.begin(), temp.end(), [](auto &a, auto &b) {
+            return a.z() < b.z();
+        });
+
+        tvec = temp.back().unit_vector();
+        structure.rotate(vec3_t(0, 0, 1), -std::atan2(tvec.y(), tvec.x())
+                                          + 0.26179938779914943653855361527);
+
+        temp = structure.positions;
+        std::sort(temp.begin(), temp.end(), [](auto &a, auto &b) {
+            return a.z() < b.z();
+        });
+
+        bounds = get_bounds(structure.positions);
+        len = bounds.second.z() - bounds.first.z();
+
+        structure.positions = temp;
+        structure.rotate(vec3_t(-1, 1, 0).unit_vector(),
+            M_PI_2 - std::atan2(1, std::sqrt(2)));
+
+        for (int j = 0; j < 3; ++j)
+            structure.lattice[j][j] = len + 12;
+
+        structure = util::center_by_avg(structure);
+
+        std::cout << "n: " << i << "\t len: " << len << std::endl;
+        io::write_structure("tube6-6-l" + std::to_string(i) + ".vasp",
+            structure);
+    }
 }

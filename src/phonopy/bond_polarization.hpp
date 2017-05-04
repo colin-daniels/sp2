@@ -38,43 +38,37 @@ constexpr auto pol_const<bond_types::HH> =
 //    pol_constant_t{0.32, 2.60, 7.55, /* max_len */ 2.1};
     pol_constant_t{0, 0, 0, /* max_len */ 1.1};
 
-mat3x3_t raman_tensor(
-    const std::vector<vec3_t> &eigs,
-    const graph::ud_graph_t &bond_graph,
-    const std::vector<vec3_t> &bonds,
-    const std::vector<atom_types> &types,
-    const std::unordered_map<bond_types, pol_constant_t> &pol_constants
-);
-
-double raman_intensity(
-    double frequency, double temperature,
-    vec3_t incident, vec3_t scattered,
-    const std::vector<vec3_t> &eigs,
-    const graph::ud_graph_t &bond_graph,
-    const std::vector<vec3_t> &bonds,
-    const std::vector<atom_types> &types,
-    const std::unordered_map<bond_types, pol_constant_t>
-        &pol_constants = {
+sp2::mat3x3_t raman_tensor(const std::vector<vec3_t> &eigs,
+    const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants =
+        {
             {bond_types::CC, pol_const<bond_types::CC>},
             {bond_types::CH, pol_const<bond_types::CH>},
             {bond_types::HH, pol_const<bond_types::HH>}
-        }
-);
+        });
 
-double raman_intensity_avg(
-    bool backscatter,
-    double frequency, double temperature,
-    const std::vector<vec3_t> &eigs,
-    const graph::ud_graph_t &bond_graph,
-    const std::vector<vec3_t> &bonds,
-    const std::vector<atom_types> &types,
-    const std::unordered_map<bond_types, pol_constant_t>
-        &pol_constants = {
+double raman_intensity(double frequency, double temperature,
+    vec3_t incident, vec3_t scattered, const std::vector<vec3_t> &eigs,
+    const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants =
+        {
             {bond_types::CC, pol_const<bond_types::CC>},
             {bond_types::CH, pol_const<bond_types::CH>},
             {bond_types::HH, pol_const<bond_types::HH>}
-        }
-);
+        });
+
+double raman_intensity_avg(bool backscatter, double frequency,
+    double temperature, const std::vector<vec3_t> &eigs,
+    const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants =
+        {
+            {bond_types::CC, pol_const<bond_types::CC>},
+            {bond_types::CH, pol_const<bond_types::CH>},
+            {bond_types::HH, pol_const<bond_types::HH>}
+        });
 
 /// calculate raman spectra for a given system
 /// \param incident polarization direction unit vector for the incident light
@@ -86,6 +80,7 @@ double raman_intensity_avg(
 std::vector<std::pair<double, double>> raman_spectra(
     vec3_t incident, vec3_t scattered, double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const std::vector<double> &masses,
     const structure_t &structure
 );
 
@@ -94,6 +89,7 @@ std::vector<std::pair<double, double>> raman_spectra_avg(
     bool backscatter,
     double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const std::vector<double> &masses,
     const structure_t &structure
 );
 

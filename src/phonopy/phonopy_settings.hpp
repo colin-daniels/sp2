@@ -33,8 +33,11 @@ struct phonopy_settings_t : public io::json_serializable_t
 
     bool calc_raman = false,
         calc_raman_backscatter_avg = false,
+        calc_irreps = false,
         write_all_mode_anim = false,
         write_all_mode_gplot = false;
+
+    std::vector<double> masses;
 
     // TODO: serialize
     double raman_active_cutoff = 1e-3;

@@ -30,7 +30,7 @@ double penalty_func(const structure_t &structure)
     static fbc::bond_control_t bond_control;
     bond_control.init(structure.lattice, 2.0, 0);
 
-    bond_control.update(structure.positions);
+    bond_control.update(sp2::v3tod(structure.positions));
 
     auto graph = bond_control.get_graph();
     auto bond_lengths = bond_control.get_bond_lengths();
@@ -104,13 +104,13 @@ void process_files()
         sys.update();
 
         auto ref_structure = structure;
-        for (auto &d : ref_structure.positions)
-            d /= uc;
+        for (auto &v : ref_structure.positions)
+            v /= uc;
 
         auto get_struct = [&](double a) {
             auto temp = ref_structure;
-            for (auto &d : temp.positions)
-                d *= a;
+            for (auto &v : temp.positions)
+                v *= a;
 
             for (int i = 0; i < 3; ++i)
                 temp.lattice[i][i] = a;
@@ -127,12 +127,12 @@ void process_files()
 
             minimize::acgsd([&](const auto &pos) {
                 auto temp = sys.get_structure();
-                temp.positions = pos;
+                temp.positions = sp2::dtov3(pos);
                 sys.set_structure(temp);
 
                 sys.update();
                 return make_pair(sys.get_value(), sys.get_gradient());
-            }, sys.get_structure().positions, cg_set);
+            }, sp2::v3tod(sys.get_structure().positions), cg_set);
 
             return sys.get_value();
         };
@@ -144,8 +144,8 @@ void process_files()
 
         get_value(0);
         ref_structure.positions = sys.get_structure().positions;
-        for (auto &d : ref_structure.positions)
-            d /= uc;
+        for (auto &v : ref_structure.positions)
+            v /= uc;
 
         double alpha = get_slope(0);
         cout << filename << " v: " << sys.get_value()
@@ -165,8 +165,8 @@ void process_files()
         }
 
         structure = sys.get_full_structure();
-        for (auto &d : structure.positions)
-            d -= uc * floor(d / uc);
+        for (auto &v : structure.positions)
+            v -= uc * floor(v / uc);
 
         io::write_structure("c" + filename, structure);
         sys.update();
@@ -274,18 +274,22 @@ int sp2::run_symm(const run_settings_t &settings, MPI_Comm comm_in)
             try {
                 minimize::acgsd([&](const auto &pos) {
                     auto structure = sys.get_structure();
-                    structure.positions = pos;
+                    structure.positions = sp2::dtov3(pos);
                     sys.set_structure(structure);
 
                     sys.update();
                     return make_pair(sys.get_value(), sys.get_gradient());
-                }, sys.get_structure().positions, symm_settings.acgsd_set);
+                },
+                    sp2::v3tod(sys.get_structure().positions),
+                    symm_settings.acgsd_set
+                );
 
             } catch (std::domain_error &ex) {}
 
             bool normal = true;
-            for (auto d : sys.get_structure().positions)
-                normal = normal && isnormal(d);
+            for (auto v : sys.get_structure().positions)
+                for (auto d : v)
+                    normal = normal && isnormal(d);
 
             if (normal && isnormal(sys.get_value()))
             {
@@ -311,8 +315,8 @@ int sp2::run_symm(const run_settings_t &settings, MPI_Comm comm_in)
         auto temp = sys.get_full_structure();
 
         auto uc = temp.lattice[0][0];
-        for (auto &d : temp.positions)
-            d -= uc * floor(d / uc);
+        for (auto &v : temp.positions)
+            v -= uc * floor(v / uc);
 
         // append the structure to the output file
         io::write_structure(symm_settings.output_filename, temp, true);

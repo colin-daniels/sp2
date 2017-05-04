@@ -2,16 +2,22 @@
 #define SP2_MAT3X3_T_HPP
 
 #include <utility>
+#include "vec3_t.hpp"
+#include "vec3_util.hpp"
 
 namespace sp2 {
 
-struct mat3x3_t
+class mat3x3_t
 {
-public:
-    double data[3][3];
+private:
+    vec3_t data[3];
 
+public:
     mat3x3_t() = default;
-    constexpr mat3x3_t(const double (&data)[3][3]) :
+    constexpr mat3x3_t(const vec3_t &a, const vec3_t &b, const vec3_t &c) :
+        data{a, b, c} {}
+
+    explicit constexpr mat3x3_t(const double (&data)[3][3]) :
         data{
             {data[0][0], data[0][1], data[0][2]},
             {data[1][0], data[1][1], data[1][2]},
@@ -25,11 +31,11 @@ public:
 // Access-related functions                                                   //
 ////////////////////////////////////////////////////////////////////////////////
 
-    constexpr       double *begin()       { return std::begin(data[0]); }
-    constexpr const double *begin() const { return std::begin(data[0]); }
+    constexpr       auto begin()       { return std::begin(data); }
+    constexpr const auto begin() const { return std::begin(data); }
 
-    constexpr       double *end()       { return std::end(data[2]); }
-    constexpr const double *end() const { return std::end(data[2]); }
+    constexpr       auto end()       { return std::end(data); }
+    constexpr const auto end() const { return std::end(data); }
 
     constexpr decltype(auto) operator[](int i) const { return data[i]; }
     constexpr decltype(auto) operator[](int i)       { return data[i]; }
@@ -118,7 +124,11 @@ public:
 
     sp2::vec3_t operator*(const sp2::vec3_t &vec) const
     {
-        return vec.mul_3x3(data);
+        return {
+            dot(data[0], vec),
+            dot(data[1], vec),
+            dot(data[2], vec)
+        };
     }
 };
 

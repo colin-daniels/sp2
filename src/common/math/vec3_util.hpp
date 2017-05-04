@@ -8,6 +8,10 @@
 
 namespace sp2 {
 
+inline vec3_t floor(vec3_t x);
+inline vec3_t ceil(vec3_t x);
+inline vec3_t trunc(vec3_t x);
+
 /// vector dot product
 constexpr double dot(const vec3_t &a, const vec3_t &b);
 /// vector cross product
@@ -49,19 +53,29 @@ inline std::vector<vec3_t> dtov3(const std::vector<double> &input);
 // Implementations                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
+template<double Func(double)>
+inline vec3_t apply_fn(vec3_t input)
+{
+    return {Func(input[0]), Func(input[1]), Func(input[2])};
+}
+
+inline vec3_t floor(vec3_t x) { return apply_fn<std::floor>(x); }
+inline vec3_t ceil(vec3_t x)  { return apply_fn<std::ceil>(x); }
+inline vec3_t trunc(vec3_t x) { return apply_fn<std::trunc>(x); }
+
 constexpr double dot(const vec3_t &a, const vec3_t &b)
 {
-    return a.x * b.x
-         + a.y * b.y
-         + a.z * b.z;
+    return a.x() * b.x()
+         + a.y() * b.y()
+         + a.z() * b.z();
 }
 
 constexpr vec3_t cross(const vec3_t &a, const vec3_t &b)
 {
     return vec3_t(
-        a.y * b.z - a.z * b.y,
-        a.z * b.x - a.x * b.z,
-        a.x * b.y - a.y * b.x
+        a.y() * b.z() - a.z() * b.y(),
+        a.z() * b.x() - a.x() * b.z(),
+        a.x() * b.y() - a.y() * b.x()
     );
 }
 
@@ -73,7 +87,7 @@ inline double angle(const vec3_t &a, const vec3_t &b)
 inline vec3_t unit_normal_to(const vec3_t &a)
 {
     // need +1 on z to make sure the second vector isn't 0 and isn't equal to a
-    return unit_normal_to(a, {a.x, a.y, a.z + 1});
+    return unit_normal_to(a, {a.x(), a.y(), a.z() + 1});
 }
 
 inline  vec3_t unit_normal_to(const vec3_t &a, const vec3_t &b)
@@ -84,18 +98,18 @@ inline  vec3_t unit_normal_to(const vec3_t &a, const vec3_t &b)
 inline vec3_t min_elem(const vec3_t &a, const vec3_t &b)
 {
     return vec3_t(
-        std::min(a.x, b.x),
-        std::min(a.y, b.y),
-        std::min(a.z, b.z)
+        std::min(a.x(), b.x()),
+        std::min(a.y(), b.y()),
+        std::min(a.z(), b.z())
     );
 }
 
 inline vec3_t max_elem(const vec3_t &a, const vec3_t &b)
 {
     return vec3_t(
-        std::max(a.x, b.x),
-        std::max(a.y, b.y),
-        std::max(a.z, b.z)
+        std::max(a.x(), b.x()),
+        std::max(a.y(), b.y()),
+        std::max(a.z(), b.z())
     );
 }
 
@@ -164,7 +178,7 @@ inline std::vector<vec3_t> dtov3(const std::vector<double> &input)
     std::vector<vec3_t> output;
     output.reserve(input.size() / 3);
     for (size_t i = 0; i < input.size(); i += 3)
-        output.emplace_back(&input[i]);
+        output.emplace_back(input[i], input[i + 1], input[i + 2]);
 
     return output;
 }

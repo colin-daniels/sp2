@@ -1,133 +1,82 @@
 #include "rotations.hpp"
 #include "common/math/vec3_util.hpp"
+#include "mat3x3_t.hpp"
 #include <cmath>
 
 using namespace std;
 using namespace sp2;
 
-void make_rotation_matrix(const vec3_t &axis, double cos_theta, double sin_theta,
-    double output[3][3])
+sp2::mat3x3_t make_rotation_matrix(const vec3_t &axis,
+    double cos_theta, double sin_theta)
 {
     // output = [u^T . u] * (1 - cos(theta))
     //        + [I] * cos(theta)
     //        + [u]_x * sin(theta)
+    sp2::mat3x3_t rotation;
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 3; ++j)
-            output[i][j] = (1 - cos_theta) * axis[i] * axis[j];
+            rotation[i][j] = (1 - cos_theta) * axis[i] * axis[j];
 
-        output[i][i] += cos_theta;
-        output[i][(i + 1) % 3] -= sin_theta * axis[(i + 2) % 3];
-        output[i][(i + 2) % 3] += sin_theta * axis[(i + 1) % 3];
+        rotation[i][i] += cos_theta;
+        rotation[i][(i + 1) % 3] -= sin_theta * axis[(i + 2) % 3];
+        rotation[i][(i + 2) % 3] += sin_theta * axis[(i + 1) % 3];
     }
+
+    return rotation;
 }
 
-void util::gen_rotation(vec3_t axis, double theta, double output[3][3])
+mat3x3_t util::gen_rotation(vec3_t axis, double theta)
 {
     double cos_theta, sin_theta;
     sincos(theta, &sin_theta, &cos_theta);
 
-    make_rotation_matrix(axis, cos_theta, sin_theta, output);
+    return make_rotation_matrix(axis, cos_theta, sin_theta);
 }
 
-
-//void generate_orthobasis(double input[3][3])
-//{
-//    // Frisvad, Jeppe Revall. "Building an orthonormal basis from a 3D unit
-//    // vector without normalization."
-//    // Journal of Graphics Tools 16.3 (2012): 151-159.
-//
-//    const double &x = input[0][0],
-//        &y = input[0][1],
-//        &z = input[0][2];
-//
-//    // Handle the singularity
-//    if (z < std::nextafter(-1.0, 0.0))
-//    {
-//        // matrix looks like
-//        // input = {
-//        //     { 0, 0,-1},
-//        //     { 0,-1, 0},
-//        //     {-1, 0, 0}
-//        // };
-//
-//        input[1][1] = -1;
-//        input[2][0] = -1;
-//    }
-//    else
-//    {
-//        double a = 1.0 / (1.0 + z),
-//            b = -x * y * a;
-//
-//        // matrix looks like
-//        // double output[3][3] = {
-//        //     {              x,               y,  z},
-//        //     {1.0 - x * x * a,               b, -x},
-//        //     {              b, 1.0 - y * y * a, -y}
-//        // };
-//
-//        input[1][0] = 1.0 - x * x * a,;
-//        input[1][1] = b;
-//        input[1][2] = -x;
-//
-//        input[2][0] = b;
-//        input[2][1] = 1.0 - y * y * a;
-//        input[2][2] = -y;
-//    }
-//}
-
-//void util::gen_rotation(const vec3_t &a, const vec3_t &b, double output[3][3])
-//{
-////    auto axis = cross(a, b);
-////
-////    // a and b are unit vectors so we can do this
-////    double sin_theta = axis.mag(),
-////        cos_theta = dot(a, b);
-////
-////    // note, sin_theta is the magnitude of the cross product/axis
-////    // so we just divide the axis vector by it to normalize it
-////    make_rotation_matrix(axis / sin_theta, cos_theta, sin_theta, output);
-//
-//    double r1[3][3] = {
-//        {a.x(), a.y(), a.z()},
-//        {    0,     0,     0},
-//        {    0,     0,     0}
-//    };
-//
-//    generate_orthobasis(r1);
-//
-//    double r2[3][3] = {
-//        {b.x(), b.y(), b.z()},
-//        {    0,     0,     0},
-//        {    0,     0,     0}
-//    };
-//
-//    generate_orthobasis(r2);
-//}
-
-void util::gen_rand_rotation(double output[3][3])
+constexpr sp2::mat3x3_t generate_orthobasis(const sp2::vec3_t &input)
 {
-    auto current_dir = vec3_t(0, 0, 1),
-            new_dir  = random_vec3(),
-            rot_axis = unit_normal_to(current_dir, new_dir);
+    // Frisvad, Jeppe Revall. "Building an orthonormal basis from a 3D unit
+    // vector without normalization."
+    // Journal of Graphics Tools 16.3 (2012): 151-159.
 
-    double rot1[3][3] = {},
-            rot2[3][3] = {},
-            theta1 = 2.0 * M_PI * rand() / (RAND_MAX + 1.0),
-            theta2 = angle(current_dir, new_dir);
-
-    // first rotate about z
-    util::gen_rotation(current_dir, theta1, rot1);
-    // then rotate to the randomly generated unit vector
-    util::gen_rotation(rot_axis, theta2, rot2);
-
-    for (int i = 0; i < 3; ++i)
+    // Handle the singularity (note: "close enough" to -1.0, more than
+    // one ulp away though)
+    if (input.z() < -0.99999999999)
     {
-        for (int j = 0; j < 3; ++j)
-        {
-            output[i][j] = 0;
-            for (int k = 0; k < 3; ++k)
-                output[i][j] += rot1[i][k] * rot2[k][j];
-        }
+        // output basis is
+        return {
+            { 0,  0, -1}, // input
+            { 0, -1,  0},
+            {-1,  0,  0}
+        };
     }
+    else
+    {
+        const double a = 1.0 / (1.0 + input.z()),
+            b = -input.x() * input.y() * a;
+
+        // output basis is
+        return {
+            {input.x(), input.y(), input.z()}, // input
+            {/*x*/ 1.0 - input.x() * input.x() * a, /*y*/ b, /*z*/ -input.x()},
+            {/*x*/ b, /*y*/ 1.0 - input.y() * input.y() * a, /*z*/ -input.y()}
+        };
+    }
+}
+
+// expects a.mag() = 1, b.mag() = 1
+mat3x3_t util::gen_rotation(const vec3_t &a, const vec3_t &b)
+{
+    // make orthogonal bases for a and b
+    sp2::mat3x3_t basis_a = generate_orthobasis(a),
+        basis_b = generate_orthobasis(b);
+
+    // R = A*B^T now, doing R * v yields a coordinate change from a to b for v
+    mat3x3_t rotation;
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            rotation[i][j] = dot(basis_a[i], basis_b[j]);
+
+    return rotation;
 }

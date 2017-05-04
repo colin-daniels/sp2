@@ -28,38 +28,31 @@ double raman_prefactor(
     return bose_occupation * multiplier;
 }
 
-double sp2::phonopy::raman_intensity(
-    double frequency, double temperature,
-    vec3_t incident, vec3_t scattered,
-    const std::vector<vec3_t> &eigs,
-    const graph::ud_graph_t &bond_graph,
-    const std::vector<vec3_t> &bonds,
-    const std::vector<atom_types> &types,
-    const std::unordered_map<bond_types, pol_constant_t> &pol_constants
-)
+double sp2::phonopy::raman_intensity(double frequency, double temperature,
+    vec3_t incident, vec3_t scattered, const std::vector<vec3_t> &eigs,
+    const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants)
 {
-    mat3x3_t tensor = raman_tensor(
-        eigs, bond_graph, bonds, types, pol_constants);
+    mat3x3_t tensor = raman_tensor(eigs, masses, bond_graph, bonds,
+        types, pol_constants);
 
 
     const double prefactor = raman_prefactor(frequency, temperature),
-        sum = dot(incident, scattered.mul_3x3(tensor));
+        sum = dot(incident, tensor * scattered);
 
     return prefactor * (sum * sum);
 }
 
-double sp2::phonopy::raman_intensity_avg(
-    bool backscatter,
-    double frequency, double temperature,
-    const std::vector<vec3_t> &eigs,
-    const graph::ud_graph_t &bond_graph,
-    const std::vector<vec3_t> &bonds,
-    const std::vector<atom_types> &types,
-    const std::unordered_map<bond_types, pol_constant_t> &pol_constants
-)
+double sp2::phonopy::raman_intensity_avg(bool backscatter, double frequency,
+    double temperature, const std::vector<vec3_t> &eigs,
+    const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants)
 {
-    const mat3x3_t tensor = raman_tensor(
-        eigs, bond_graph, bonds, types, pol_constants);
+    const mat3x3_t tensor = raman_tensor(eigs, masses, bond_graph,
+        bonds,
+        types, pol_constants);
 
     // there was probably an easier way to do this, or a simple proof, given
     // the extremely simple answer
@@ -128,13 +121,10 @@ double sp2::phonopy::raman_intensity_avg(
     return prefactor * sum;
 }
 
-sp2::mat3x3_t sp2::phonopy::raman_tensor(
-    const std::vector<vec3_t> &eigs,
-    const graph::ud_graph_t &bond_graph,
-    const std::vector<vec3_t> &bonds,
-    const std::vector<atom_types> &types,
-    const std::unordered_map<bond_types, pol_constant_t> &pol_constants
-)
+sp2::mat3x3_t sp2::phonopy::raman_tensor(const std::vector<vec3_t> &eigs,
+    const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
+    const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
+    const std::unordered_map<bond_types, pol_constant_t> &pol_constants)
 {
     // kronecker delta value
     constexpr double kdelta[3][3] = {
@@ -150,9 +140,7 @@ sp2::mat3x3_t sp2::phonopy::raman_tensor(
         const auto bond_type = btype(types[edge.a], types[edge.b]);
 
         // phonon eigenvector for this atom, need to mass normalize
-        const vec3_t eig = eigs[edge.a] / (types[edge.a] == atom_types::C ?
-            std::sqrt(12.0107) /* Carbon */ :
-            std::sqrt(1.00794) /* Hydrogen */);
+        const vec3_t eig = eigs[edge.a] / std::sqrt(masses[edge.a]);
 
         // unit bond vector and length, used later
         const double len = bonds[bond_id].mag();
@@ -198,6 +186,7 @@ std::vector<std::pair<double, double>> raman_spectra_impl(
     bool avg, bool backscatter,
     sp2::vec3_t incident, sp2::vec3_t scattered, double temperature,
     const std::vector<std::pair<double, std::vector<sp2::vec3_t>>> &modes,
+    const std::vector<double> &masses,
     const sp2::structure_t &structure
 )
 {
@@ -226,12 +215,14 @@ std::vector<std::pair<double, double>> raman_spectra_impl(
         if (!avg)
         {
             intensity = sp2::phonopy::raman_intensity(frequency, temperature,
-                incident, scattered, eigs, bond_graph, bond_deltas, types);
+                incident, scattered, eigs,
+                masses, bond_graph, bond_deltas, types);
         }
         else
         {
             intensity = sp2::phonopy::raman_intensity_avg(backscatter,
-                frequency, temperature, eigs, bond_graph, bond_deltas, types);
+                frequency, temperature, eigs, masses,
+                bond_graph, bond_deltas, types);
         }
 
         result.emplace_back(frequency, intensity);
@@ -244,20 +235,22 @@ std::vector<std::pair<double, double>> raman_spectra_impl(
 std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra(
     vec3_t incident, vec3_t scattered, double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const std::vector<double> &masses,
     const structure_t &structure
 )
 {
     return raman_spectra_impl(false, false, incident, scattered,
-        temperature, modes, structure);
+        temperature, modes, masses, structure);
 }
 
 
 std::vector<std::pair<double, double>> sp2::phonopy::raman_spectra_avg(
     bool backscatter, double temperature,
     const std::vector<std::pair<double, std::vector<vec3_t>>> &modes,
+    const std::vector<double> &masses,
     const structure_t &structure
 )
 {
     return raman_spectra_impl(true, backscatter, vec3_t{}, vec3_t{},
-        temperature, modes, structure);
+        temperature, modes, masses, structure);
 }
