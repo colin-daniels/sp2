@@ -1,7 +1,3 @@
-//
-// Created by cc on 11/25/16.
-//
-
 #include "common/json/json.hpp"
 #include "run/run_settings_t.hpp"
 
@@ -101,3 +97,4 @@ bool run_settings_t::deserialize(const Json::Value &input)
 
     return true;
 }
+

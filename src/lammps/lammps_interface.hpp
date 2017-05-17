@@ -120,12 +120,10 @@ public:
     /// construct a differentiable function object tied to this object
     diff_fn_t get_diff_fn()
     {
-        return [&](const auto &pos) {
-            auto structure = this->get_structure();
-            structure.positions = sp2::dtov3(pos);
-            this->set_structure(structure);
-
+        return [this](const auto &pos) {
+            this->set_position(pos);
             this->update();
+
             return std::make_pair(this->get_value(), this->get_gradient());
         };
     }

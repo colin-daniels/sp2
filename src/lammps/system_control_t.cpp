@@ -127,7 +127,9 @@ void lammps::system_control_t::set_structure(const structure_t  &input)
 
     if (std::equal(std::begin(lattice_orig[0]), std::end(lattice_orig[2]),
         input.lattice[0]))
+    {
         transform_input(position);
+    }
     else
     {
         // process the new lattice
@@ -146,10 +148,7 @@ structure_t lammps::system_control_t::get_structure() const
     structure_t structure;
 
     structure.types = type;
-
-    auto temp_pos = position;
-    transform_output(temp_pos);
-    structure.positions = sp2::dtov3(temp_pos);
+    structure.positions = sp2::dtov3(get_position());
 
     copy_n(lattice_orig[0], 9, structure.lattice[0]);
 
@@ -223,6 +222,8 @@ void lammps::system_control_t::init(const structure_t &info,
             + string(lmp_set.compute_lj ? "1 " : "0 ")      // LJ on/off
             + string(lmp_set.compute_torsion ? "1" : "0"),  // torsion on/off
         "pair_coeff * * CH.airebo H C", // read potential info
+        // set lj potential scaling factor (hack)
+        "pair_coeff * * lj/scale " + std::to_string(lmp_set.lj_scale),
         "compute 1 all pe",             // set up compute ID 1 for energy
         "run 0"                         // do an iteration
     );

@@ -478,77 +478,64 @@ sp2::vec3_t get_tvec(const sp2::structure_t &input)
     return (top_avg / 6 - bottom_avg / 12).unit_vector();
 }
 
-void make_dataset(const sp2::run_settings_t &config, MPI_Comm)
+void shorten_tube(sp2::structure_t &input, double delta)
 {
     using namespace sp2;
 
-    structure_t cap, segment;
-    io::read_structure("cap6-6.xyz", cap);
-    io::read_structure("segment6-6.xyz", segment);
+    auto &pos = input.positions;
 
-    minimize::acgsd_settings_t aset;
-    aset.iteration_limit = 0;
-    aset.output_level = 1;
+    // sort by z
+    std::sort(pos.begin(), pos.end(),
+        [](auto &a, auto &b) {
+            return a.z() < b.z();
+    });
 
-    for (int i = 0; i < 101; ++i)
+    auto get_delta = [bottom = pos.back().z(), &pos]() -> double {
+        return pos.back().z() - bottom;
+    };
+
+    double lattice[3][3] = {};
+    sp2::fbc::bond_control_t bc;
+    bc.init(lattice, 1.7, 0);
+
+    std::vector<int> n_bonds;
+    auto update_bonds = [&]{
+        bc.update(sp2::v3tod(pos));
+        auto graph = bc.get_graph();
+
+        n_bonds.clear();
+        for (std::size_t i = 0; i < graph.n_vertices(); ++i)
+            n_bonds.push_back(graph.degree(i));
+    };
+
+    while (!pos.empty() && get_delta() < delta)
     {
-        auto structure = util::make_capped_nanotube(cap, segment, i);
+        pos.pop_back();
+        update_bonds();
 
-        // relax for good measure
-        airebo::system_control_t sys(structure);
-        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), aset);
-
-        // get min/max positions
-        structure = sys.get_structure();
-        auto bounds = get_bounds(structure.positions);
-        double len = bounds.second.z() - bounds.first.z();
-
-        for (auto &v : structure.positions)
-            v[2] *= -1;
-
-        // center at origin
-        structure = util::center_by_avg(structure);
-
-        for (int j = 0; j < 3; ++j)
-            structure.lattice[j][j] = len + 12;
-
-        lammps::system_control_t sys2(structure, config.lammps_settings);
-        minimize::acgsd(sys2.get_diff_fn(), sys2.get_position(), aset);
-
-        // rotate so that the structure is vertical
-        auto tvec = get_tvec(structure);
-        structure.transform(
-            util::gen_rotation(tvec, vec3_t(0, 0, 1))
-        );
-
-        auto temp = structure.positions;
-        std::sort(temp.begin(), temp.end(), [](auto &a, auto &b) {
-            return a.z() < b.z();
-        });
-
-        tvec = temp.back().unit_vector();
-        structure.rotate(vec3_t(0, 0, 1), -std::atan2(tvec.y(), tvec.x())
-                                          + 0.26179938779914943653855361527);
-
-        temp = structure.positions;
-        std::sort(temp.begin(), temp.end(), [](auto &a, auto &b) {
-            return a.z() < b.z();
-        });
-
-        bounds = get_bounds(structure.positions);
-        len = bounds.second.z() - bounds.first.z();
-
-        structure.positions = temp;
-        structure.rotate(vec3_t(-1, 1, 0).unit_vector(),
-            M_PI_2 - std::atan2(1, std::sqrt(2)));
-
-        for (int j = 0; j < 3; ++j)
-            structure.lattice[j][j] = len + 12;
-
-        structure = util::center_by_avg(structure);
-
-        std::cout << "n: " << i << "\t len: " << len << std::endl;
-        io::write_structure("tube6-6-l" + std::to_string(i) + ".vasp",
-            structure);
+        for (std::size_t i = 0; i < pos.size();)
+        {
+            if (n_bonds[i] > 1)
+                i += 1;
+            else
+            {
+                pos.erase(pos.begin() + i);
+                n_bonds.erase(n_bonds.begin() + i);
+                i -= 1;
+            }
+        }
     }
+
+    input.types.resize(input.positions.size());
+}
+
+void make_dataset(const sp2::run_settings_t &config, MPI_Comm comm)
+{
+    using namespace sp2;
+
+    structure_t tube;
+    if (!io::read_structure("tube5-5.xyz", tube))
+        throw std::runtime_error("cant open file");
+
+
 }

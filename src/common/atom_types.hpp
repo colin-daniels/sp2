@@ -171,8 +171,8 @@ constexpr bond_types btype(atom_types a, atom_types b)
 {
     using ut = std::underlying_type_t<atom_types>;
     return static_cast<bond_types>(
-        ((static_cast<ut>(a) ^ static_cast<ut>(b)) << 16)
-        | static_cast<ut>(a) | static_cast<ut>(b)
+        (static_cast<ut>(a) ^ static_cast<ut>(b)) ?
+            (static_cast<ut>(a) ^ static_cast<ut>(b)) : static_cast<ut>(a)
     );
 }
 

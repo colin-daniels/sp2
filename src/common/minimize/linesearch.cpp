@@ -31,13 +31,14 @@ double minimize::linesearch(diff1d_fn_t objective_fn, double alpha)
 
     // get values for alpha = 0
     double value, slope;
-    tie(value, slope) = objective_fn(0);
+    std::tie(value, slope) = objective_fn(0);
 
     // record initial value
     auto initial_value = value;
 
     // right hand side quantities for the wolfe condition linesearch
-    auto armijo = 1e-4 * slope, // sufficient decrease, from the armijo condition
+    auto armijo = 1e-4 * slope,   // sufficient decrease, from the armijo
+                                  // condition
         curvature = 1e-1 * slope; // the curvature condition
 
     // lower and upper bounds for minumum finding
@@ -45,24 +46,24 @@ double minimize::linesearch(diff1d_fn_t objective_fn, double alpha)
         high = {0, 0, 0};
 
     // running minimum, initialize with the information from alpha = 0
-    auto min_point = make_pair(value, 0.0);
+    auto min_point = std::make_pair(value, 0.0);
 
     for (int iteration = 0; iteration < iter_lim; ++iteration)
     {
         // check for errors in alpha
-        if (!isfinite(alpha))
+        if (!std::isfinite(alpha))
             return min_point.second;
 
         // update value and slope
-        tie(value, slope) = objective_fn(alpha);
+        std::tie(value, slope) = objective_fn(alpha);
 
         // check the wolfe conditions
-        if (value <= initial_value + alpha * armijo) // armijo
-            if (abs(slope) <= abs(curvature))        // curvature
+        if (value <= initial_value + alpha * armijo)    // armijo
+            if (std::abs(slope) <= std::abs(curvature)) // curvature
                 return alpha;
 
         // update running minimum
-        min_point = min(min_point, make_pair(value, alpha));
+        min_point = std::min(min_point, std::make_pair(value, alpha));
 
         // update the bounding interval for the minimum
         if (value < low.v && slope < 0 && alpha < high.a)
@@ -72,7 +73,7 @@ double minimize::linesearch(diff1d_fn_t objective_fn, double alpha)
 
         // get the new alpha
         auto minimum = cubic_min(low, high);
-        if (isnormal(minimum))
+        if (std::isnormal(minimum))
             alpha = minimum;
         else
             alpha = quad_min(low, high);

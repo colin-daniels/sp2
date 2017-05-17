@@ -1,7 +1,3 @@
-//
-// Created by cc on 11/25/16.
-//
-
 #ifndef SP2_RUN_SETTINGS_T_HPP
 #define SP2_RUN_SETTINGS_T_HPP
 
@@ -35,7 +31,7 @@ struct run_settings_t : public io::json_serializable_t
     ///     0 for off
     ///     -1 for std::thread::hardware_concurrency
     int n_threads = 0;
-    std::string log_filename = "progress.log";
+    std::string log_filename = "";
 
     symm::symm_settings_t symm_settings;
     atac::atac_settings_t atac_settings;

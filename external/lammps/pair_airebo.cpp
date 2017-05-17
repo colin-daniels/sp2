@@ -170,12 +170,24 @@ void PairAIREBO::coeff(int narg, char **arg)
 {
   if (!allocated) allocate();
 
-  if (narg != 3 + atom->ntypes)
+  if (narg < 3 || narg > 3 + atom->ntypes)
     error->all(FLERR,"Incorrect args for pair coefficients");
 
   // insure I,J args are * *
-
   if (strcmp(arg[0],"*") != 0 || strcmp(arg[1],"*") != 0)
+    error->all(FLERR,"Incorrect args for pair coefficients");
+
+  if (narg == 4 && strcmp(arg[2],"lj/scale") == 0)
+  {
+    double multiplier = std::stod(arg[3]);
+
+    for (int i = 0; i < 2; ++i)
+      for (int j = 0; j < 2; ++j)
+        epsilon[i][j] *= multiplier;
+
+    return;
+  }
+  else if (narg != 3 + atom->ntypes)
     error->all(FLERR,"Incorrect args for pair coefficients");
 
   // read args that map atom types to C and H

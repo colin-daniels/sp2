@@ -12,7 +12,7 @@ sp2::mat3x3_t make_rotation_matrix(const vec3_t &axis,
     // output = [u^T . u] * (1 - cos(theta))
     //        + [I] * cos(theta)
     //        + [u]_x * sin(theta)
-    sp2::mat3x3_t rotation;
+    sp2::mat3x3_t rotation = {};
     for (int i = 0; i < 3; ++i)
     {
         for (int j = 0; j < 3; ++j)

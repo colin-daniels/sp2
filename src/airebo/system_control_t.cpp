@@ -44,7 +44,7 @@ structure_t airebo::system_control_t::get_structure() const
     structure_t structure;
 
     structure.types = types;
-    structure.positions = sp2::dtov3(position);
+    structure.positions = sp2::dtov3(get_position());
     copy_n(ref_lattice[0], 9, structure.lattice[0]);
 
     return structure;
@@ -964,12 +964,10 @@ void airebo::system_control_t::update_distribute()
 
 diff_fn_t system_control_t::get_diff_fn()
 {
-    return [&](const auto &pos) {
-        auto structure = this->get_structure();
-        structure.positions = sp2::dtov3(pos);
-        this->set_structure(structure);
-
+    return [this](const auto &pos) {
+        this->set_position(pos);
         this->update();
+
         return make_pair(this->get_value(), this->get_gradient());
     };
 }

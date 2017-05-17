@@ -201,7 +201,7 @@ if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
             SP2_DEBUG)
 else()
     target_compile_options(sp2 PRIVATE
-            -march=native -ffast-math)
+            -march=native)
 endif()
 
 install(TARGETS sp2

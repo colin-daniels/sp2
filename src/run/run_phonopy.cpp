@@ -19,6 +19,7 @@
 #include <sstream>
 #include <iomanip>
 #include <phonopy/phonopy_io.hpp>
+#include <common/math/rotations.hpp>
 
 using namespace std;
 using namespace sp2;
@@ -107,10 +108,76 @@ std::vector<double> get_phonopy_masses(const sp2::structure_t &structure)
     }
 
 #warning temporary (for nanotubes)
-    for (int i = 0; i < 12; ++i)
-        masses[i] = 10000;
+    auto graph = [&]{
+        double lattice[3][3] = {};
+
+        sp2::fbc::bond_control_t bc;
+        bc.init(lattice, 1.7, 0);
+        bc.update(sp2::v3tod(structure.positions));
+
+        return bc.get_graph();
+    }();
+
+    for (std::size_t i = 0; i < masses.size(); ++i)
+        if (structure.types[i] == atom_type::CARBON && graph.degree(i) < 3)
+            masses[i] = 10000;
 
     return masses;
+}
+
+vector<std::pair<double, double>> get_nanotube_avg(const run_settings_t &rset,
+    const vector<pair<double, vector<vec3_t>>> &modes,
+    const structure_t &structure, const double temperature)
+{
+    const int n_rot = 10000;
+
+    vector<pair<double, double>> spectra;
+    auto transform_structure = [&](mat3x3_t transform) {
+        auto temp = structure;
+        temp.transform(transform);
+        return temp;
+    };
+
+    auto transform_modes = [&](mat3x3_t transform) {
+        auto temp = modes;
+        for (auto &p : temp)
+            for (auto &v : p.second)
+                v = transform * v;
+
+        return temp;
+    };
+
+    // 30 degree tilt for the structure
+    auto transform_tilt = util::gen_rotation(
+        vec3_t{-1, 1, 0}.unit_vector(), M_PI / 6);
+
+    for (int i = 0; i < n_rot; ++i)
+    {
+        double random_angle = M_2_PI * rand() / (RAND_MAX + 1.0);
+        auto transform = transform_tilt
+                         * util::gen_rotation({0, 0, 1}, random_angle);
+
+        auto rotated_structure = transform_structure(transform);
+        auto rotated_modes = transform_modes(transform);
+
+        auto rotated_spectra = phonopy::raman_spectra_avg(true,
+            temperature, rotated_modes, rset.phonopy_settings.masses,
+            rotated_structure);
+
+        // average
+        if (spectra.empty())
+            spectra = rotated_spectra;
+        else
+        {
+            for (size_t j = 0; j < spectra.size(); ++j)
+                spectra[j].second += rotated_spectra[j].second;
+        }
+    }
+
+    for (auto &s : spectra)
+        s.second /= n_rot;
+
+    return spectra;
 }
 
 std::string get_phonopy_mass_command(const phonopy::phonopy_settings_t &pset)
@@ -151,6 +218,7 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
     if (settings.phonopy_settings.masses.empty() &&
         settings.phonopy_settings.calc_raman)
     {
+#warning temporary
         settings.phonopy_settings.masses = get_phonopy_masses(structure);
     }
 
@@ -175,11 +243,17 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
     if (settings.phonopy_settings.calc_raman)
     {
         if (generate_eigs(settings.phonopy_settings) != 0)
+        {
+            std::cerr << "Failed to calculate eigenvectors/eigenvalues.\n";
             return EXIT_FAILURE;
+        }
 
         if (settings.phonopy_settings.calc_irreps &&
             write_irreps(settings.phonopy_settings) != 0)
+        {
+            std::cerr << "Failed to calculate irreps.\n";
             return EXIT_FAILURE;
+        }
 
         // read eigenmodes/etc
         auto modes = read_eigs();
@@ -530,7 +604,6 @@ void renomalize(pair<double, vector<vec3_t>> &mode)
         e /= sum;
 }
 
-
 int write_spectra(run_settings_t rset,
     vector<pair<double, vector<vec3_t>>> modes, structure_t structure,
     const string &filename)
@@ -557,8 +630,8 @@ int write_spectra(run_settings_t rset,
     std::vector<std::pair<double, double>> spectra;
     if (rset.phonopy_settings.calc_raman_backscatter_avg)
     {
-        spectra = sp2::phonopy::raman_spectra_avg(true, temperature,
-            modes, rset.phonopy_settings.masses, structure);
+        spectra = phonopy::raman_spectra_avg(true,
+            temperature, modes, rset.phonopy_settings.masses, structure);
     }
     else
     {

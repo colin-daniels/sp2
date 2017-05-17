@@ -130,6 +130,22 @@ public:
             dot(data[2], vec)
         };
     }
+
+    sp2::mat3x3_t operator*(const sp2::mat3x3_t &m) const
+    {
+        sp2::mat3x3_t result;
+        for (int i = 0; i < 3; ++i)
+        {
+            for (int j = 0; j < 3; ++j)
+            {
+                result[i][j] = 0;
+                for (int k = 0; k < 3; ++k)
+                    result[i][j] += data[i][k] * m[k][j];
+            }
+        }
+
+        return result;
+    }
 };
 
 static_assert(std::is_trivial<mat3x3_t>::value, "");
