@@ -143,6 +143,8 @@ set(SOURCE_FILES
         src/common/enums.hpp
         src/common/neighbor/neighbor_control_t.hpp
         src/common/neighbor/neighbor_control_t.cpp
+        src/common/env/env_t.cpp
+        src/common/env/env_t.hpp
         src/airebo/system_control_t.cpp
         src/airebo/system_control_t.hpp
         src/airebo/interpolation_coeff.hpp
@@ -158,6 +160,8 @@ set(SOURCE_FILES
         src/run/run_types.hpp
         src/run/run_settings_t.cpp
         src/run/run_settings_t.hpp
+        src/run/program_args_t.cpp
+        src/run/program_args_t.hpp
         src/run/run_relaxation.cpp
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
@@ -235,9 +239,11 @@ if(SP2_ENABLE_LAMMPS)
 endif()
 
 target_link_libraries(sp2 PRIVATE
+        cxxopts
         jsoncpp_lib_static
         yaml-cpp
-        templ)
+        templ
+        randutils)
 
 # internal code generation target
 add_subdirectory(src/common/codegen)

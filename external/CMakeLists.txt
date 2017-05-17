@@ -9,5 +9,7 @@ if(SP2_ENABLE_LAMMPS)
 endif()
 
 add_subdirectory(templ)
+add_subdirectory(cxxopts)
 add_subdirectory(jsoncpp)
 add_subdirectory(yaml-cpp)
+add_subdirectory(randutils)
