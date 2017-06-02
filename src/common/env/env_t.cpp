@@ -2,9 +2,9 @@
 
 #ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
-#include <run/run_settings_t.hpp>
 
 #endif // SP2_ENABLE_TESTS
+#include <run/run_settings_t.hpp>
 
 sp2::env_t::env_t(const boost::mpi::communicator &comm_in,
     const logger_t &logger_in, randutils::mt19937_rng  &&rng_in) :
