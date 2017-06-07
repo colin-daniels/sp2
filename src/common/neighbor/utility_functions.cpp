@@ -13,8 +13,9 @@ using namespace sp2;
 void fbc::array_rot(const int axis, double *input,
     double *output, const double theta)
 {
-    double ct, st;
-    sincos(theta, &st, &ct);
+    double ct = std::cos(theta),
+        st = std::sin(theta);
+
     double R[3][3] = {{ct, 0, 0},
                       {0, ct, 0},
                       {0, 0, ct}};

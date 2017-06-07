@@ -100,7 +100,9 @@ structure_t symm::bonded_adapter(const std::vector<double> &input,
         vec3_t atom_pos(0, 0, z);
 
         // set x/y (cylindrical projection onto a sphere)
-        sincos(theta, &atom_pos[0], &atom_pos[1]);
+        atom_pos[0] = std::sin(theta);
+        atom_pos[1] = std::cos(theta);
+
         atom_pos[0] *= sqrt(1 - z * z);
         atom_pos[1] *= sqrt(1 - z * z);
 

@@ -147,7 +147,7 @@ struct fire_settings_t : public io::json_serializable_t
         dt_max = 0.05;
 
     /// maximum number of iterations
-    std::size_t max_iter = 1000;
+    int max_iter = 1000;
     /// gradient tolerance exit condition
     double grad_tol = 1e-5;
 

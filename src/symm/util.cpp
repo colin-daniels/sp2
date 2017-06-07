@@ -12,9 +12,10 @@ void gen_sol(double r1, double r2, double &vn, double &vp, const double alpha = 
 {
     const double pi = atan2(0, -1);
 
-    double cr1, cr2, sr1, sr2;
-    sincos(2 * pi * r1, &sr1, &cr1);
-    sincos(2 * pi * r2, &sr2, &cr2);
+    double cr1 = std::cos(2 * pi * r1),
+        cr2 = std::cos(2 * pi * r2),
+        sr1 = std::sin(2 * pi * r1),
+        sr2 = std::sin(2 * pi * r2);
 
     vn = atan((cr2 - sqrt(-alpha*alpha + 2*alpha*cr1*sr2 - cr1*cr1*sr2*sr2 + sr1*sr1 + cr2*cr2)) / (alpha - cr1*sr2 + sr1)) / pi;
     vp = atan((cr2 + sqrt(-alpha*alpha + 2*alpha*cr1*sr2 - cr1*cr1*sr2*sr2 + sr1*sr1 + cr2*cr2)) / (alpha - cr1*sr2 + sr1)) / pi;
@@ -63,11 +64,12 @@ void symm::test()
 double symm::gyroid_ptnl(const double *pos, double *deriv, const double c)
 {
     static const double pi = atan2(0, -1);
-    double cx, cy, cz,
-        sx, sy, sz;
-    sincos(2 * pi * pos[0], &sx, &cx);
-    sincos(2 * pi * pos[1], &sy, &cy);
-    sincos(2 * pi * pos[2], &sz, &cz);
+    double cx = std::cos(2 * pi * pos[0]),
+        cy = std::cos(2 * pi * pos[1]),
+        cz = std::cos(2 * pi * pos[2]),
+        sx = std::sin(2 * pi * pos[0]),
+        sy = std::sin(2 * pi * pos[1]),
+        sz = std::sin(2 * pi * pos[2]);
 
     double val = cx*sz + cz*sy + cy*sx - c;
 
