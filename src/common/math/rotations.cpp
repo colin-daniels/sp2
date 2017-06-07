@@ -28,10 +28,11 @@ sp2::mat3x3_t make_rotation_matrix(const vec3_t &axis,
 
 mat3x3_t util::gen_rotation(vec3_t axis, double theta)
 {
-    double cos_theta, sin_theta;
-    sincos(theta, &sin_theta, &cos_theta);
-
-    return make_rotation_matrix(axis, cos_theta, sin_theta);
+    return make_rotation_matrix(
+        axis,
+        std::cos(theta), 
+        std::sin(theta)
+    );
 }
 
 constexpr sp2::mat3x3_t generate_orthobasis(const sp2::vec3_t &input)
