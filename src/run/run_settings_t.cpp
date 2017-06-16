@@ -17,7 +17,7 @@ bool load_structure(const Json::Value &config, structure_t &structure)
     {
         if (!io::read_structure(structure_file, structure))
         {
-            cout << "Error, failed to read structure file." << endl;
+            cerr << "Error, failed to read structure file." << endl;
             return false;
         }
     }
@@ -97,4 +97,3 @@ bool run_settings_t::deserialize(const Json::Value &input)
 
     return true;
 }
-

@@ -8,7 +8,7 @@ int sp2::run_relaxation(const run_settings_t &config, MPI_Comm)
 {
     if (config.relaxation_settings.output_file.empty())
     {
-        std::cout << "No output file name given for structural relaxation."
+        std::cerr << "No output file name given for structural relaxation."
                   << std::endl;
 
         return EXIT_FAILURE;

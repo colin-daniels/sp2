@@ -23,7 +23,7 @@ vector<pair<int, int>> make_pairlist(const vector<int> &offsets,
     auto bad = any_of(pairs.begin(), pairs.end(), [](auto p) {
         if (p.first < 0 || p.second < 0)
         {
-            cout << "bad pair: " << p.first << ' ' << p.second << endl;
+            cerr << "bad pair: " << p.first << ' ' << p.second << endl;
             return true;
         }
         return false;
@@ -31,26 +31,26 @@ vector<pair<int, int>> make_pairlist(const vector<int> &offsets,
 
     if (bad)
     {
-        cout << "bad pairlist" << endl;
+        cerr << "bad pairlist" << endl;
 
         bad = any_of(edge_ids.begin(), edge_ids.end(), [&](auto i) {
             if (i < 0 || static_cast<std::size_t>(i) >= offsets.size())
             {
-                cout << i << endl;
+                cerr << i << endl;
                 return true;
             }
             return false;
         });
 
         if (bad)
-            cout << "bad edge ids" << endl;
+            cerr << "bad edge ids" << endl;
 
         bad = any_of(offsets.begin(), offsets.end(), [&](auto i) {
             return i < 0 || static_cast<std::size_t>(i) > edge_ids.size();
         });
 
         if (bad)
-            cout << "bad offsets" << endl;
+            cerr << "bad offsets" << endl;
 
         abort();
     }
@@ -265,4 +265,3 @@ bool graph::ud_graph_t::edges_are_duplicated()
     });
 }
 #endif // SP2_ENABLE_TESTS
-

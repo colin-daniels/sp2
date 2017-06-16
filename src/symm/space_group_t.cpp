@@ -183,7 +183,7 @@ symm::read_groups(std::string filename)
     ifstream infile(filename);
     if (!infile.is_open())
     {
-        cout << "Failed to open space group input file \""
+        cerr << "Failed to open space group input file \""
              << filename << "\"." << endl;
         return groups;
     }

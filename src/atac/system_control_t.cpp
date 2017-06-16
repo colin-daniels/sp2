@@ -240,7 +240,7 @@ bool atac::system_control_t::iterate()
 
     if (mut.name == "error")
     {
-        cout << "Error, mutation attempts exceeded maximum allowed."
+        cerr << "Error: mutation attempts exceeded maximum allowed."
              << endl;
         return false;
     }

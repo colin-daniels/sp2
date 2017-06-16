@@ -64,7 +64,7 @@ int run_normal(string config_filename, MPI_Comm comm)
     Json::Value config;
     if (!io::read_json_file(config, config_filename))
     {
-        cout << "Failed to load json configuration file, run with the flag "
+        cerr << "Failed to load json configuration file, run with the flag "
              << "--generate-defaults to generate a default configuration file "
              << "with the name 'config.json' in the current directory."
              << endl;
@@ -79,8 +79,8 @@ int run_normal(string config_filename, MPI_Comm comm)
     run_settings_t settings;
     if (!settings.deserialize(config))
     {
-        std::cout << "Failed to deserialize json configuration file \""
-                  << config_filename << "\"" << std::endl;
+        cerr << "Failed to deserialize json configuration file \""
+             << config_filename << "\"" << endl;
         return EXIT_FAILURE;
     }
 

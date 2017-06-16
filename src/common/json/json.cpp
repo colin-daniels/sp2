@@ -37,7 +37,7 @@ bool io::write_json_file(const Json::Value &root,
 
     if (!io::write_file(filename, content))
     {
-        cout << "Failed to write JSON file \"" << filename << "\"" << endl;
+        cerr << "Failed to write JSON file \"" << filename << "\"" << endl;
         return false;
     }
     return true;
@@ -48,7 +48,7 @@ bool io::read_json(Json::Value &root, const std::string &input)
     Json::Reader reader;
     if (!reader.parse(input, root))
     {
-        cout << "Failed to parse JSON\n"
+        cerr << "Failed to parse JSON\n"
              << reader.getFormattedErrorMessages();
         return false;
     }
@@ -62,7 +62,7 @@ bool io::read_json_file(Json::Value &root, std::string filename)
     string content;
     if (!io::read_file(filename, content))
     {
-        cout << "Failed to open (or empty) JSON file \""
+        cerr << "Failed to open (or empty) JSON file \""
              << filename << "\"" << endl;
         return false;
     }
@@ -77,7 +77,7 @@ bool io::deserialize_field(const Json::Value &val,
 {
     if (!object.deserialize(val[field]))
     {
-        cout << "Error, failed to deserialize (or missing) \"" + field + "\""
+        cerr << "Error, failed to deserialize (or missing) \"" + field + "\""
              << " field in input JSON." << endl;
         return false;
     }

@@ -260,7 +260,7 @@ T deserialize_enum(const Json::Value &value, std::string field_name,
     if (enum_string.empty())
     {
         if (output)
-            std::cout << "Error, failed to deserialize (or missing) "
+            std::cerr << "Error, failed to deserialize (or missing) "
                       << "required " << field_name << " in input JSON."
                       << std::endl;
         return default_choice;
@@ -278,13 +278,13 @@ T deserialize_enum(const Json::Value &value, std::string field_name,
     // if no match was found
     if (output)
     {
-        std::cout << "Error, incorrect (or no) " << field_name
+        std::cerr << "Error, incorrect (or no) " << field_name
                   << " specified in input JSON. Accepted inputs are: "
                   << '\"' << choices[0].first << '\"';
         for (std::size_t i = 1; i < choices.size(); ++i)
-            std::cout << ", \"" << choices[i].first << '\"';
+            std::cerr << ", \"" << choices[i].first << '\"';
 
-        std::cout << std::endl;
+        std::cerr << std::endl;
     }
     return default_choice;
 }

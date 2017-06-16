@@ -70,6 +70,6 @@ std::vector<double> generate_lookup_table(unsigned int n_points,
         max_error = std::max(max_error, min_error);
     }
 
-    std::cout << "lookup table max error: " << max_error << std::endl;
+    std::cerr << "lookup table max error: " << max_error << std::endl;
     return values;
 }

@@ -73,7 +73,7 @@ bool io::write_structure(std::string filename,
     case file_type::POSCAR:
         return io::write_poscar(filename, input);
     default:
-        cout << "Failed to write structure file \"" + filename + "\""
+        cerr << "Failed to write structure file \"" + filename + "\""
              << " with unknown file type.";
         return false;
     }
@@ -111,7 +111,7 @@ bool io::read_structure(std::string filename,
         else
         {
             if (!comment_line.empty())
-                std::cout << "Warning, non-empty comment failed "
+                std::cerr << "Warning, non-empty comment failed "
                           << "to parse into JSON." << std::endl;
 
             return true;
@@ -126,7 +126,7 @@ bool io::read_structure(std::string filename,
     case file_type::POSCAR:
         return io::read_poscar(filename, output);
     default:
-        cout << "Failed to read structure file \"" + filename + "\""
+        cerr << "Failed to read structure file \"" + filename + "\""
              << " with unknown file type.";
         return false;
     }

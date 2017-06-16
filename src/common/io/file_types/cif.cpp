@@ -14,7 +14,7 @@ bool io::write_cif(std::string filename, const structure_t &structure)
     ofstream outfile(filename);
     if (!outfile.is_open())
     {
-        cout << "Error opening file. " << info << endl;
+        cerr << "Error opening file. " << info << endl;
         return false;
     }
 
@@ -50,4 +50,3 @@ bool io::write_cif(std::string filename, const structure_t &structure)
 
     return true;
 }
-

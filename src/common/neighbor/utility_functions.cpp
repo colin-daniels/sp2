@@ -21,7 +21,7 @@ void fbc::array_rot(const int axis, double *input,
                       {0, 0, ct}};
 
     if (axis > 2 || axis < 0)
-        cout << "Error, invalid axis (" << axis << ") passed to array_rot."
+        cerr << "Error, invalid axis (" << axis << ") passed to array_rot."
              << endl;
 
     R[(axis + 1) % 3][(axis + 2) % 3] = -st;
@@ -103,7 +103,7 @@ void fbc::invert_3x3(const double input[3][3], double inverse[3][3])
 
     if (det == 0)
     {
-        cout << "Error, matrix passed to invert_3x3 is singular."
+        cerr << "Error, matrix passed to invert_3x3 is singular."
              << endl;
     }
     else
