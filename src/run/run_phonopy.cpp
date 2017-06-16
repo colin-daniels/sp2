@@ -245,17 +245,10 @@ void relax_structure(structure_t &structure, run_settings_t rset)
 
     // just get the positions from the first primitive cell of the
     // supercell and pass it back out
-    auto na = structure.positions.size(),
-        n_rep = supercell.positions.size() / na;
-    for (std::size_t n = 1; n < n_rep; ++n)
-        for (std::size_t i = 0; i < na; ++i)
-            supercell.positions[i] += supercell.positions[na * n + i];
-
-    supercell.positions.resize(structure.positions.size());
-    structure.positions = supercell.positions;
-
-    for (auto &v : structure.positions)
-        v /= n_rep;
+    structure = util::deconstruct_supercell(supercell,
+        rset.phonopy_settings.supercell_dim[0],
+        rset.phonopy_settings.supercell_dim[1],
+        rset.phonopy_settings.supercell_dim[2]);
 }
 
 int generate_displacements(phonopy::phonopy_settings_t pset)

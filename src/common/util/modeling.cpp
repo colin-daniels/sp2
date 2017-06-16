@@ -104,9 +104,9 @@ sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
     auto add_new = [&](int i, int j, int k) {
         for (std::size_t m = 0; m < original_pos.size(); ++m)
             new_pos.push_back(original_pos[m]
-                + i * lattice[0]
-                + j * lattice[1]
-                + k * lattice[2]);
+                              + i * lattice[0]
+                              + j * lattice[1]
+                              + k * lattice[2]);
     };
 
     // starts at 0 because new_pos is empty
@@ -119,6 +119,55 @@ sp2::structure_t sp2::util::construct_supercell(const sp2::structure_t &input,
     supercell.positions = new_pos;
 
     return supercell;
+}
+
+sp2::structure_t sp2::util::deconstruct_supercell(
+    const sp2::structure_t &supercell, int na, int nb, int nc)
+{
+    int n_rep = na * nb * nc;
+
+    structure_t output = supercell;
+
+    // shorten lattice vectors
+    int dim[3] = {na, nb, nc};
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            output.lattice[i][j] /= dim[i];
+
+    // number of (actual) atoms is just the size of
+    // the supercell / number of cells
+    output.types.resize(supercell.types.size() / n_rep);
+
+    // average positions
+    vec3_t lattice[3] = {
+        vec3_t(output.lattice[0]),
+        vec3_t(output.lattice[1]),
+        vec3_t(output.lattice[2])
+    };
+
+    auto &pos = output.positions;
+    pos.resize(output.types.size());
+    std::fill(pos.begin(), pos.end(), sp2::vec3_t{0, 0, 0});
+
+    int counter = 0;
+    auto avg_old = [&](int i, int j, int k) {
+        for (std::size_t m = 0; m < pos.size(); ++m)
+            pos[m] += (supercell.positions[counter * pos.size() + m]
+                - i * lattice[0]
+                - j * lattice[1]
+                - k * lattice[2]) / n_rep;
+
+        counter++;
+    };
+
+    // starts at 0 because new_pos is empty
+    for (int i = 0; i < na; ++i)
+        for (int j = 0; j < nb; ++j)
+            for (int k = 0; k < nc; ++k)
+                avg_old(i, j, k);
+
+
+    return output;
 }
 
 sp2::structure_t sp2::util::graphene_unit_cell()

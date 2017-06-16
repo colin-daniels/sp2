@@ -32,6 +32,9 @@ structure_t center_by_avg(const structure_t &input);
 structure_t make_capped_nanotube(const structure_t &cap,
     const structure_t &segment, int n_segment);
 
+structure_t deconstruct_supercell(const structure_t &supercell,
+    int na, int nb, int nc);
+
 } // namespace util
 } // namespace sp2
 
