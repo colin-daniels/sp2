@@ -8,6 +8,7 @@
 #include "common/json/json_serializable_t.hpp"
 #include "common/enums.hpp"
 
+#include <cstdlib>
 #include <string>
 #include <utility>
 #include <iostream>
@@ -230,13 +231,14 @@ template<typename T, typename ...Args>
 bool deserialize_basic(const Json::Value &input,
     const std::string &key, T&& value, Args &&...args_left)
 {
-    // TODO: Output warning when failing to deserialize a present field
-    bool a = input.isMember(key) &&
-             get_json_as_type(input[key], std::forward<T>(value));
+    if (input.isMember(key)) {
+        if (!get_json_as_type(input[key], std::forward<T>(value))) {
+            std::cerr << "Error deserializing value for '" << key << "'" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 
-    bool b = deserialize_basic(input, std::forward<Args>(args_left)...);
-
-    return a && b;
+    return deserialize_basic(input, std::forward<Args>(args_left)...);
 }
 
 /// \brief read an enumeration-like field
