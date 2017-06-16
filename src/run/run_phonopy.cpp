@@ -27,7 +27,6 @@ using namespace sp2;
 inline std::string get_force_constant_rw()
 {
     return std::string("FORCE_CONSTANTS = ") + (
-        io::file_exists("FORCE_CONSTANTS")      ? "READ\n" :
         io::file_exists("force_constants.hdf5") ? "READ\n" :
              "WRITE\n"
     );
@@ -246,9 +245,17 @@ void relax_structure(structure_t &structure, run_settings_t rset)
 
     // just get the positions from the first primitive cell of the
     // supercell and pass it back out
-    supercell.positions.resize(structure.positions.size());
+    auto na = structure.positions.size(),
+        n_rep = supercell.positions.size() / na;
+    for (std::size_t n = 1; n < n_rep; ++n)
+        for (std::size_t i = 0; i < na; ++i)
+            supercell.positions[i] += supercell.positions[na * n + i];
 
+    supercell.positions.resize(structure.positions.size());
     structure.positions = supercell.positions;
+
+    for (auto &v : structure.positions)
+        v /= n_rep;
 }
 
 int generate_displacements(phonopy::phonopy_settings_t pset)
