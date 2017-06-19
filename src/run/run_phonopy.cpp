@@ -155,7 +155,7 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
         write_log(settings.log_filename, "Generating Displacements");
         if (generate_displacements(settings.phonopy_settings) != 0)
         {
-            std::cout << "Failed to generate displacements using phonopy."
+            std::cerr << "Failed to generate displacements using phonopy."
                       << std::endl;
             return EXIT_FAILURE;
         }
@@ -201,7 +201,7 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
     if (settings.phonopy_settings.calc_bands &&
         generate_bands(settings.phonopy_settings) != 0)
     {
-        std::cout << "Failed to generate phonon band structure using phonopy."
+        std::cerr << "Failed to generate phonon band structure using phonopy."
                   << std::endl;
         return EXIT_FAILURE;
     }
@@ -447,7 +447,7 @@ vector<pair<double, vector<vec3_t>>> read_eigs()
     ifstream infile("band.yaml");
     if (!infile)
     {
-        cout << "Error opening band.yaml" << endl;
+        cerr << "Error opening band.yaml" << endl;
         return {};
     }
 

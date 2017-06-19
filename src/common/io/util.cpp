@@ -12,7 +12,7 @@ bool io::clear_file(std::string filename)
     ofstream outfile(filename.c_str());
     if (!outfile.is_open())
     {
-        cout << "Error opening " << filename << " in clear_file()!" << endl;
+        cerr << "Error opening " << filename << " in clear_file()!" << endl;
         return false;
     }
     outfile.close();
@@ -65,12 +65,12 @@ bool io::copy_file(std::string source, std::string dest)
 {
     if (dest.empty() || source.empty())
     {
-        cout << "error, source or destination string is empty in copy_file" << endl;
+        cerr << "Error, source or destination string is empty in copy_file" << endl;
         return false;
     }
     if (source[source.size() - 1] == '/' || source[source.size() - 1] == '\\')
     {
-        cout << "error source for copy is a directory: " << source << endl;
+        cerr << "Error, source for copy is a directory: " << source << endl;
         return false;
     }
 
@@ -88,12 +88,12 @@ bool io::copy_file(std::string source, std::string dest)
 
     if (!infile.is_open())
     {
-        cout << "failed opening input file for copy " << source << endl;
+        cerr << "failed opening input file for copy " << source << endl;
         return false;
     }
     else if (!outfile.is_open())
     {
-        cout << "failed opening output file for copy " << dest << endl;
+        cerr << "failed opening output file for copy " << dest << endl;
         return false;
     }
 

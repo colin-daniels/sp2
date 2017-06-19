@@ -132,12 +132,12 @@ bool io::read_poscar(std::string filename, structure_t &output)
             output.types.push_back(types[type_n]);
         }
     } catch (const std::runtime_error ex) {
-        cout << "Error: " << ex.what()
+        cerr << "Error: " << ex.what()
              << " when reading POSCAR file " << filename << endl;
 
         return false;
     } catch (const std::invalid_argument) {
-        cout << "Error, failed parsing value when reading POSCAR file "
+        cerr << "Error, failed parsing value when reading POSCAR file "
              << filename << endl;
 
         return false;
@@ -151,7 +151,7 @@ bool io::write_poscar(std::string filename, const structure_t &input)
     ofstream outfile(filename);
     if (!outfile)
     {
-        cout << "Failed opening file : " << filename << " for read." << endl;
+        cerr << "Failed opening file : " << filename << " for read." << endl;
         return false;
     }
 

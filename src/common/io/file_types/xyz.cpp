@@ -44,7 +44,7 @@ bool io::read_xyz(std::string filename, std::string &comment_line,
     ifstream infile(filename);
     if (!infile.is_open())
     {
-        cout << "Error opening file. " << info << endl;
+        cerr << "Error opening file. " << info << endl;
         return false;
     }
 
@@ -54,7 +54,7 @@ bool io::read_xyz(std::string filename, std::string &comment_line,
 
     if (current_frame != frame)
     {
-        cout << "Failed to read frame " << frame << ". "
+        cerr << "Failed to read frame " << frame << ". "
              << info << endl;
         return false;
     }
@@ -68,7 +68,7 @@ bool io::read_xyz(std::string filename, std::string &comment_line,
     try {
         num_atoms = stoi(line);
     } catch (std::invalid_argument &e) {
-        cout << "Failed to parse number of atoms \"" <<
+        cerr << "Failed to parse number of atoms \"" <<
              line << "\". " << info << endl;
         return false;
     }
@@ -97,7 +97,7 @@ bool io::read_xyz(std::string filename, std::string &comment_line,
 
     if (num_atoms != 0)
     {
-        cout << "Error, read less than specified number of atoms. "
+        cerr << "Error, read less than specified number of atoms. "
              << info << endl;
         return false;
     }
@@ -113,7 +113,7 @@ bool io::write_xyz(std::string filename, const std::string &comment_line,
 
     if (types.size() != positions.size() / 3)
     {
-        cout << "Error, mismatch between atom type and position vector size. "
+        cerr << "Error, mismatch between atom type and position vector size. "
              << info << endl;
         return false;
     }
@@ -126,7 +126,7 @@ bool io::write_xyz(std::string filename, const std::string &comment_line,
 
     if (!outfile.is_open())
     {
-        cout << "Error opening file. " << info << endl;
+        cerr << "Error opening file. " << info << endl;
         return false;
     }
 

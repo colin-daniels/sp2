@@ -262,12 +262,12 @@ void cell_array_t::get_indices(const vector<double> &lattice_positions, vector<i
 
         if (indices[i] < -1 || indices[i] > n_cells)
         {
-            cout << i << ": out of bounds index: " << indices[i] << endl;
+            cerr << i << ": out of bounds index: " << indices[i] << endl;
             for (int j = 0; j < 3; ++j)
             {
-                cout << "(" << range[j] << ", " << low_bound[j] << ") ";
+                cerr << "(" << range[j] << ", " << low_bound[j] << ") ";
             }
-            cout << endl;
+            cerr << endl;
         }
     }
 }

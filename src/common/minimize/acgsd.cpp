@@ -149,7 +149,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         {
             if (settings.output_level > 0)
             {
-                cout << "Error, non-finite alpha." << endl;
+                cerr << "Error, non-finite alpha." << endl;
                 output_info();
             }
 
