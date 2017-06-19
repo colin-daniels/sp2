@@ -225,7 +225,17 @@ void relax_structure(structure_t &structure, run_settings_t rset)
         rset.phonopy_settings.supercell_dim[1],
         rset.phonopy_settings.supercell_dim[2]);
 
+    if (rset.phonopy_settings.min_set.intermediate_output_interval > 0)
+        io::clear_file("intermediate.xyz");
+
     auto minimize = [&](auto &&sys) {
+        rset.phonopy_settings.min_set.output_fn = [&](auto &&pos) {
+            auto cell_copy = supercell;
+            cell_copy.positions = sp2::dtov3(pos);
+
+            io::write_structure("intermediate.xyz", cell_copy, true);
+        };
+
         minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
             rset.phonopy_settings.min_set);
         supercell = sys.get_structure();
