@@ -146,6 +146,14 @@ public:
 
         return result;
     }
+
+    sp2::mat3x3_t& operator+=(const sp2::mat3x3_t &other)
+    {
+        for (int i = 0; i < 3; ++i)
+            data[i] += other.data[i];
+
+        return *this;
+    }
 };
 
 static_assert(std::is_trivial<mat3x3_t>::value, "");

@@ -1,15 +1,58 @@
 #include "env_t.hpp"
+#include <run/run_settings_t.hpp>
 
 #ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
-#include <run/run_settings_t.hpp>
-
 #endif // SP2_ENABLE_TESTS
 
 sp2::env_t::env_t(const boost::mpi::communicator &comm_in,
     const logger_t &logger_in, randutils::mt19937_rng  &&rng_in) :
         comm(comm_in), logger(logger_in), rng(rng_in) {}
 
+class maybe_error_t
+{
+public:
+    maybe_error_t() = default;
+    maybe_error_t(maybe_error_t&&) = default;
+    maybe_error_t(const maybe_error_t&) = default;
+
+    template<typename T>
+    maybe_error_t(T&& in) :
+        data_flag(true), data(std::forward<T>(in)) {}
+
+    maybe_error_t& operator=(const maybe_error_t&) = default;
+    maybe_error_t& operator=(maybe_error_t&&) = default;
+
+    void reset()
+    {
+        data_flag = false;
+        data.clear();
+    }
+
+    const std::string& value() const
+    {
+        if (!data_flag)
+            throw std::logic_error("maybe_error_t: no value");
+
+        return data;
+    }
+
+    std::string& value()
+    {
+        if (!data_flag)
+            throw std::logic_error("maybe_error_t: no value");
+
+        return data;
+    }
+
+    bool has_value() const { return data_flag; }
+
+    operator bool() const { return data_flag; }
+
+private:
+    bool data_flag = false;
+    std::string data;
+};
 
 // TODO: enable/disable MPI
 namespace mpi = boost::mpi;
@@ -24,7 +67,7 @@ int display_defaults();
 int run_tests(sp2::program_args_t pargs);
 int run_normal(sp2::program_args_t pargs, mpi::communicator comm);
 
-void verify_mpi_environment();
+maybe_error_t check_mpi_environment();
 
 int run(int argc, char *argv[])
 {
@@ -43,41 +86,48 @@ int run(int argc, char *argv[], MPI_Comm comm_in)
 
     // In the case that the environment has already been set up, we need to
     // verify that it's what we expect
-    verify_mpi_environment();
+    auto err = check_mpi_environment();
+    if (err)
+    {
+        std::cerr << err.value() << '\n';
+        return EXIT_FAILURE;
+    }
 
     // attach to the input communicator (relies on calling code to
     // manage/free the input communicator)
     mpi::communicator comm(comm_in, mpi::comm_create_kind::comm_attach);
     if (!comm)
-        throw std::runtime_error("Invalid input MPI_Comm.");
-
+    {
+        std::cerr << "Invalid input MPI_Comm.\n";
+        return EXIT_FAILURE;
+    }
 
     // Read program arguments
     sp2::program_args_t pargs;
     try {
         pargs = sp2::parse_args(argc, argv);
     } catch (const std::exception &e) {
-        std::cerr << "Error parsing options: " << e.what() << std::endl;
+        std::cerr << "Error parsing options: " << e.what() << '\n';
         return EXIT_FAILURE;
     }
 
     return run(pargs, comm);
 }
 
-void verify_mpi_environment()
+maybe_error_t check_mpi_environment()
 {
     if (mpi::environment::finalized())
-        throw std::runtime_error("MPI has already been finalized.");
+        return "MPI has already been finalized.";
 
     if (!mpi::environment::initialized())
-        throw std::runtime_error("MPI has not been initialized.");
+        return "MPI has not been initialized.";
 
     // our code is written such that it assumes the threading level is
     // funneled, so we need to check it
     switch (mpi::environment::thread_level())
     {
     case mpi::threading::level::single:
-        throw std::runtime_error("MPI_THREAD_SINGLE is not supported.");
+        return "MPI_THREAD_SINGLE is not supported.";
 
         // funneled is equivalent to serialized in our case, so its O.K.
     case mpi::threading::level::funneled:
@@ -86,8 +136,10 @@ void verify_mpi_environment()
 
     case mpi::threading::level::multiple:
         // known to be buggy, at least for OpenMPI
-        throw std::runtime_error("MPI_THREAD_MULTIPLE is not supported.");
+        return "MPI_THREAD_MULTIPLE is not supported.";
     }
+
+    return {}; // no error
 }
 
 int run(sp2::program_args_t pargs, mpi::communicator comm)
@@ -166,15 +218,14 @@ sp2::run_settings_t read_config(sp2::program_args_t pargs)
 int run_normal(sp2::program_args_t pargs, mpi::communicator comm)
 {
     // read configuration file
+    // TODO: yaml input, command-like structure?
     sp2::run_settings_t settings;
     try {
         settings = read_config(pargs);
     } catch (const std::runtime_error &e) {
-        std::cerr << e.what() << std::endl;
+        std::cerr << e.what() << '\n';
         return EXIT_FAILURE;
     }
-
-    // TODO: yaml input, command-like structure?
 
     // TODO: setup environment, const settings in env?
 

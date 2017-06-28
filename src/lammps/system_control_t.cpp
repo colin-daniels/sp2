@@ -120,7 +120,7 @@ void lammps::system_control_t::set_position(const vector<double> &input)
     transform_input(position);
 }
 
-void lammps::system_control_t::set_structure(const structure_t  &input)
+void lammps::system_control_t::set_structure(const structure_t &input)
 {
     type = input.types;
     position = sp2::v3tod(input.positions);

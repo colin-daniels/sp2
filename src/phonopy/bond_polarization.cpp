@@ -3,6 +3,7 @@
 #include <airebo/system_control_t.hpp>
 #include <common/util/random.hpp>
 #include <common/io/structure.hpp>
+#include <common/math/rotations.hpp>
 #include "bond_polarization.hpp"
 
 #include "common/math/mat3x3_t.hpp"
@@ -44,15 +45,42 @@ double sp2::phonopy::raman_intensity(double frequency, double temperature,
     return prefactor * (sum * sum);
 }
 
+#warning temp for nanotubes
+double sp2::phonopy::tilt_angle = 0;
+
 double sp2::phonopy::raman_intensity_avg(bool backscatter, double frequency,
     double temperature, const std::vector<vec3_t> &eigs,
     const std::vector<double> &masses, const graph::ud_graph_t &bond_graph,
     const std::vector<vec3_t> &bonds, const std::vector<atom_types> &types,
     const std::unordered_map<bond_types, pol_constant_t> &pol_constants)
 {
-    const mat3x3_t tensor = raman_tensor(eigs, masses, bond_graph,
-        bonds,
-        types, pol_constants);
+    mat3x3_t tensor = raman_tensor(eigs, masses, bond_graph,
+        bonds, types, pol_constants);
+
+
+#warning temp for nanotubes
+    // U^T a U
+    auto transform_tilt = util::gen_rotation(vec3_t{1, 0, 0},
+        sp2::phonopy::tilt_angle);
+
+    const int n_rot = 40320;
+    mat3x3_t tensor_avg = {};
+
+    int nr_actual = 0;
+    for (double theta = 0; theta <= M_2_PI; theta += M_2_PI / n_rot)
+    {
+        auto transform = transform_tilt
+                         * util::gen_rotation({0, 0, 1}, theta);
+
+        tensor_avg += (transform.transposed() * tensor * transform);
+        ++nr_actual;
+    }
+
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            tensor_avg[i][j] /= nr_actual;
+
+    tensor = tensor_avg;
 
     // there was probably an easier way to do this, or a simple proof, given
     // the extremely simple answer
