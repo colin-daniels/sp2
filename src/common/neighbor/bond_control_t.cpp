@@ -268,8 +268,17 @@ void bond_control_t::update(const vector<double> &positions)
 {
     // resize members if needed
     resize_members(positions.size() / 3);
-    if (na <= 1)
+    if (na < 1)
+    {
+        nb = 0;
+
+        offsets = {0};
+        bond_ids.clear();
+        delta_list.clear();
+        length_list.clear();
+        sister_ids.clear();
         return;
+    }
 
     // get the indices of atoms that moved a lot
     vector<double> delta;

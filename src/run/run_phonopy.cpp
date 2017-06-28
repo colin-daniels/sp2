@@ -92,6 +92,86 @@ void remove_hydrogen(structure_t &structure,
     }
 }
 
+std::vector<sp2::vec3_t> static_atoms;
+
+void remove_static_atoms(sp2::structure_t &structure)
+{
+
+    auto graph = [&]{
+        sp2::fbc::bond_control_t bc;
+        bc.init(structure.lattice, 1.7, 0);
+        bc.update(sp2::v3tod(structure.positions));
+
+        return bc.get_graph();
+    }();
+
+    std::vector<sp2::vec3_t> new_pos;
+    for (std::size_t i = 0; i < structure.types.size(); ++i)
+    {
+        if (structure.types[i] == atom_type::CARBON && graph.degree(i) < 3 &&
+            structure.positions[i].z() < structure.lattice[2][2] / 2)
+        {
+            static_atoms.push_back(structure.positions[i]);
+            std::cout << std::flush;
+            std::cerr << "static atom at: " << i << std::endl;
+        }
+        else
+        {
+            new_pos.push_back(structure.positions[i]);
+        }
+    }
+
+    std::cerr << "new pos size: " << new_pos.size() << std::endl;
+    std::cerr << "static pos size: " << static_atoms.size() << std::endl;
+
+    structure.types.resize(new_pos.size());
+    structure.positions = new_pos;
+
+    std::cerr << "new pos size: " << structure.positions.size() << std::endl;
+    std::cerr << "new types size: " << structure.types.size() << std::endl;
+}
+
+
+void supercell_modes(vector<pair<double, vector<sp2::vec3_t>>> &modes_in,
+    sp2::phonopy::phonopy_settings_t &pset)
+{
+    int mul = 1;
+    for (auto d : pset.supercell_dim)
+        mul *= d;
+
+
+    for (auto &mp : modes_in)
+    {
+        for (auto &v : mp.second)
+            v /= mul;
+
+        auto mode_copy = mp.second;
+        mp.second.reserve(mode_copy.size() * mul);
+
+        for (int i = 1; i < mul; ++i)
+        {
+            mp.second.insert(
+                mp.second.end(),
+                mode_copy.begin(),
+                mode_copy.end()
+            );
+        }
+    }
+}
+
+sp2::structure_t add_static_atoms(const sp2::structure_t &structure)
+{
+    auto new_structure = structure;
+
+    new_structure.positions.insert(new_structure.positions.end(),
+        static_atoms.begin(), static_atoms.end());
+
+    new_structure.types.resize(
+        new_structure.positions.size(), atom_type::CARBON);
+
+    return new_structure;
+}
+
 std::vector<double> get_phonopy_masses(const sp2::structure_t &structure)
 {
     std::vector<double> masses;
@@ -113,6 +193,61 @@ std::vector<double> get_phonopy_masses(const sp2::structure_t &structure)
     return masses;
 }
 
+vector<std::pair<double, double>> get_nanotube_avg(const run_settings_t &rset,
+    const vector<pair<double, vector<vec3_t>>> &modes,
+    const structure_t &structure, const double temperature)
+{
+    const int n_rot = 10000;
+
+    vector<pair<double, double>> spectra;
+    auto transform_structure = [&](mat3x3_t transform) {
+        auto temp = structure;
+        temp.transform(transform);
+        return temp;
+    };
+
+    auto transform_modes = [&](mat3x3_t transform) {
+        auto temp = modes;
+        for (auto &p : temp)
+            for (auto &v : p.second)
+                v = transform * v;
+
+        return temp;
+    };
+
+    // 30 degree tilt for the structure
+    auto transform_tilt = util::gen_rotation(
+        vec3_t{-1, 1, 0}.unit_vector(), M_PI / 6);
+
+    for (int i = 0; i < n_rot; ++i)
+    {
+        double random_angle = M_2_PI * rand() / (RAND_MAX + 1.0);
+        auto transform = transform_tilt
+                         * util::gen_rotation({0, 0, 1}, random_angle);
+
+        auto rotated_structure = transform_structure(transform);
+        auto rotated_modes = transform_modes(transform);
+
+        auto rotated_spectra = phonopy::raman_spectra_avg(true,
+            temperature, rotated_modes, rset.phonopy_settings.masses,
+            rotated_structure);
+
+        // average
+        if (spectra.empty())
+            spectra = rotated_spectra;
+        else
+        {
+            for (size_t j = 0; j < spectra.size(); ++j)
+                spectra[j].second += rotated_spectra[j].second;
+        }
+    }
+
+    for (auto &s : spectra)
+        s.second /= n_rot;
+
+    return spectra;
+}
+
 std::string get_phonopy_mass_command(const phonopy::phonopy_settings_t &pset)
 {
     if (pset.masses.empty())
@@ -123,6 +258,40 @@ std::string get_phonopy_mass_command(const phonopy::phonopy_settings_t &pset)
         mass_setting += " " + std::to_string(mass);
 
     return mass_setting + "\n";
+}
+
+std::string get_phonopy_pdos_command(int n_atoms,
+    std::function<int(int)> partition_func)
+{
+    std::map<int, std::string> groups;
+    std::map<int, int> group_sizes;
+
+    for (int i = 0; i < n_atoms; ++i)
+    {
+        int group_id = partition_func(i);
+        if (!groups.count(group_id))
+        {
+            groups[group_id] = "";
+            group_sizes[group_id] = 0;
+        }
+
+        // note: phonopy 1-indexes
+        groups[group_id] += " " + std::to_string(i + 1);
+        group_sizes[group_id]++;
+    }
+
+    // no need for pdos if all atoms are in the same group
+    if (groups.size() == 1 && group_sizes.begin()->second == n_atoms)
+        return "";
+
+    std::string pdos_cmd = "PDOS =";
+    for (auto &group : groups)
+        pdos_cmd += group.second + ",";
+
+    // replace trailing comma with newline
+    pdos_cmd.back() = '\n';
+
+    return pdos_cmd;
 }
 
 int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
@@ -185,6 +354,15 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
             std::cerr << "Failed to remove force_constants.hdf5.\n";
             return EXIT_FAILURE;
         }
+    }
+
+    if (settings.phonopy_settings.calc_dos &&
+        generate_dos(settings.phonopy_settings) != 0)
+    {
+        std::cerr << "Failed to generate phonon density of states "
+            "using phonopy." << std::endl;
+
+        return EXIT_FAILURE;
     }
 
     write_log(settings.log_filename, "Computing Force Constants");
@@ -616,14 +794,28 @@ int generate_dos(phonopy::phonopy_settings_t pset)
 {
     ofstream outfile("dos.conf");
 
+    // note: no partition
+    std::string pdos_command = get_phonopy_pdos_command(pset.masses.size(),
+        [](int idx) {return 0;}
+    );
+
+    std::cerr << "nmass: " << pset.masses.size() << std::endl;
+
     outfile << "DIM = " << pset.supercell_dim[0]
                 << ' ' << pset.supercell_dim[1]
                 << ' ' << pset.supercell_dim[2] << '\n'
             << get_force_constant_rw()
             << get_phonopy_mass_command(pset)
-            << "MESH = 7 7 7\n"
+            << "MESH = "
+                << pset.dos_mesh[0] << ' '
+                << pset.dos_mesh[1] << ' '
+                << pset.dos_mesh[2] << '\n'
+            << "WRITE_MESH = .FALSE.\n"
             << "DOS = .TRUE.\n"
-            << "DOS_RANGE = 0 90 0.1\n";
+            << pdos_command
+            << "DOS_RANGE = "
+                << pset.dos_range[0] << ' ' << pset.dos_range[1]
+                <<  ' ' << pset.dos_step << '\n';
 
     outfile.close();
 

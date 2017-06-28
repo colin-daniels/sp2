@@ -531,6 +531,20 @@ sp2::vec3_t get_tvec(const sp2::structure_t &input)
     return (top_avg / 6 - bottom_avg / 12).unit_vector();
 }
 
+void add_vacuum_sep(sp2::structure_t &input, double sep = 12)
+{
+    sp2::vec3_t dist = get_bound_size(input.positions)
+        + sp2::vec3_t(sep, sep, sep);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+            input.lattice[i][j] = 0;
+
+        input.lattice[i][i] = dist[i];
+    }
+}
+
 void shorten_tube(sp2::structure_t &input, double delta)
 {
     using namespace sp2;
@@ -540,55 +554,119 @@ void shorten_tube(sp2::structure_t &input, double delta)
     // sort by z
     std::sort(pos.begin(), pos.end(),
         [](auto &a, auto &b) {
-            return a.z() < b.z();
+            return a.z() > b.z();
     });
 
     auto get_delta = [bottom = pos.back().z(), &pos]() -> double {
         return pos.back().z() - bottom;
     };
 
+    // lattice is zero, non-periodic
     double lattice[3][3] = {};
-    sp2::fbc::bond_control_t bc;
-    bc.init(lattice, 1.7, 0);
-
-    std::vector<int> n_bonds;
-    auto update_bonds = [&]{
-        bc.update(sp2::v3tod(pos));
-        auto graph = bc.get_graph();
-
-        n_bonds.clear();
-        for (std::size_t i = 0; i < graph.n_vertices(); ++i)
-            n_bonds.push_back(graph.degree(i));
-    };
+    sp2::fbc::bond_control_t bc(lattice, 1.7, 0);
 
     while (!pos.empty() && get_delta() < delta)
     {
+        // remove the lowermost atom (positions sorted by z value)
         pos.pop_back();
-        update_bonds();
 
-        for (std::size_t i = 0; i < pos.size();)
-        {
-            if (n_bonds[i] > 1)
-                i += 1;
-            else
-            {
-                pos.erase(pos.begin() + i);
-                n_bonds.erase(n_bonds.begin() + i);
-                i -= 1;
-            }
-        }
+        // the removal may leave us with atoms with one or less bonds, so
+        // first we update the bond graph
+        bc.update(sp2::v3tod(pos));
+        auto graph = bc.get_graph();
+
+        std::vector<vec3_t> new_pos;
+        new_pos.reserve(pos.size());
+
+        // and then only keep atoms with more than one bond
+        for (auto id : graph.vertices())
+            if (graph.degree(id) > 1)
+                new_pos.push_back(pos[id]);
+
+        pos = new_pos;
     }
 
+    // resize types to match number of atoms, all atoms are carbon so this is OK
     input.types.resize(input.positions.size());
 }
 
-void make_dataset(const sp2::run_settings_t &, MPI_Comm)
+void recursively_shorten(const std::string prefix)
 {
     using namespace sp2;
 
+    boost::mpi::communicator comm;
+
     structure_t tube;
-    if (!io::read_structure("tube5-5.xyz", tube))
+    if (!io::read_structure(prefix + ".xyz", tube))
         throw std::runtime_error("cant open file");
 
+    // initial structure might not have correct lattice vectors, so fix that
+    add_vacuum_sep(tube);
 
+    int field_width = 0;
+    auto get_filename = [prefix, &field_width](double length) {
+        std::stringstream ss;
+        ss.fill('0');
+        ss.width(field_width);
+        // length is in picometers
+        ss << static_cast<int>(length);
+        return prefix + "-" + ss.str() + "pm.vasp";
+    };
+
+    sp2::lammps::lammps_settings_t lmp_set;
+    lmp_set.compute_lj = false;
+    lmp_set.compute_torsion = false;
+
+    sp2::minimize::acgsd_settings_t min_set;
+    if (comm.rank() != 0)
+        min_set.output_level = 0;
+    else
+    {
+        min_set.output_level = 3;
+    }
+
+    std::vector<structure_t> tubes;
+    do {
+        // relax first
+        sp2::lammps::system_control_t sys(tube, lmp_set, comm);
+        sp2::minimize::acgsd(sys.get_diff_fn(), sys.get_position(), min_set);
+
+        tube = sys.get_structure();
+
+        // length of the relaxed structure in picometers
+        double len = get_bound_size(tube.positions).z() * 100;
+
+        // the first structure will be the longest, as we shorten the tube as
+        // we go along, so we determine the width of the length field in the
+        // output filename during the first loop
+        if (field_width == 0)
+            field_width = std::ceil(std::log10(len));
+
+        // output structure after fixing it a bit
+        add_vacuum_sep(tube);
+        tube = sp2::util::center_by_avg(tube);
+
+        if (comm.rank() == 0)
+        {
+            std::cout << "na: " << tube.positions.size() << ' ' << len << std::endl;
+            io::write_structure(get_filename(len), tube);
+        }
+
+        // continue shortening until no atoms are left
+        shorten_tube(tube, 0.1);
+    } while (!tube.positions.empty());
+}
+
+void sp2::util::make_nanotube_dataset()
+{
+    for (auto str : {
+//        "tube5-5",
+//        "tube6-6",
+//        "tube5-7",
+//        "tube3-9"
+        "tube5-5-open"
+    })
+    {
+        recursively_shorten(str);
+    }
 }

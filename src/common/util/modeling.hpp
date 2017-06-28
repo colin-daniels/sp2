@@ -35,6 +35,8 @@ structure_t make_capped_nanotube(const structure_t &cap,
 structure_t deconstruct_supercell(const structure_t &supercell,
     int na, int nb, int nc);
 
+void make_nanotube_dataset();
+
 } // namespace util
 } // namespace sp2
 

@@ -73,6 +73,11 @@ struct phonopy_settings_t : public io::json_serializable_t
 
     fc_compute_type compute_force_constants = fc_compute_type::AUTO;
 
+    bool calc_dos = false;
+    int dos_mesh[3] = {1, 1, 1};
+    double dos_range[2] = {0, 60},
+        dos_step = 0.05;
+
     std::vector<qpoint_t> qpoints = {
         qpoint_t("\u0393", 0, 0, 0),
         qpoint_t("X", 0.5, 0, 0)

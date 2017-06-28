@@ -43,6 +43,8 @@ inline vec3_t max_elem(const vec3_t &a, const vec3_t &b);
 
 /// get the bounds of a set of vec3_t's (aka min/max x, y, z)
 inline std::pair<vec3_t, vec3_t> get_bounds(const std::vector<vec3_t> &input);
+/// the (x, y, z) size of the bounding box for the given inputs
+inline vec3_t get_bound_size(const std::vector<vec3_t> &input);
 
 /// convert vector of vec3_t into doubles (x1, y1, z1, x2, y2, z2, ...)
 inline std::vector<double> v3tod(const std::vector<vec3_t> &input);
@@ -126,6 +128,12 @@ inline std::pair<vec3_t, vec3_t> get_bounds(const std::vector<vec3_t> &input)
                   max_elem(result.second, v)};
 
     return result;
+}
+
+inline vec3_t get_bound_size(const std::vector<vec3_t> &input)
+{
+    auto bounds = get_bounds(input);
+    return bounds.second - bounds.first;
 }
 
 template<class URBG>
