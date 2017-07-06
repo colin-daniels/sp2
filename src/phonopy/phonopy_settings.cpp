@@ -9,16 +9,46 @@
 
 using namespace std;
 
-std::string check_pol_axes(const Json::Value &input)
+Json::Value serialize_polarization(const sp2::phonopy::phonopy_settings_t &obj)
 {
-    if (!input || !input.isString())
-        return "";
+    if (obj.calc_raman_backscatter_avg) {
+        return "backscatter_avg";
+    } else {
+        Json::Value output = Json::arrayValue;
+        output.append(obj.polarization_axes[0]);
+        output.append(obj.polarization_axes[1]);
+        return output;
+    }
+}
 
-    return input.asString();
+bool deserialize_polarization(
+    sp2::phonopy::phonopy_settings_t &obj,
+    const Json::Value &input)
+{
+    switch (input.type()) {
+        case Json::stringValue:
+            if (input.asString() == "backscatter_avg") {
+                obj.calc_raman_backscatter_avg = true;
+                return true;
+            }
+            return false;
+
+        case Json::arrayValue:
+            if (input.size() != 2)
+                return false;
+            io::get_json_as_type(input[0], obj.polarization_axes[0]);
+            io::get_json_as_type(input[1], obj.polarization_axes[1]);
+            return true;
+
+        default:
+            return false;
+    }
 }
 
 bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
 {
+    Json::Value pol = serialize_polarization(*this);
+
     io::serialize_basic(output,
         "n_samples", n_samples,
         "minimize", min_set,
@@ -27,7 +57,7 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "masses", masses,
         "calc_raman", calc_raman,
         "calc_irreps", calc_irreps,
-        "polarization_axes", polarization_axes,
+        "polarization_axes", pol,
         "calc_bands", calc_bands,
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
@@ -42,12 +72,7 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
 
 bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
 {
-    // TODO: make this not a hack, add to serialize()
-    auto pol_str = check_pol_axes(input["polarization_axes"]);
-    if (pol_str == "backscatter_avg")
-    {
-        calc_raman_backscatter_avg = true;
-    }
+    Json::Value pol;
 
     io::deserialize_basic(input,
         "n_samples", n_samples,
@@ -57,7 +82,7 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "masses", masses,
         "calc_raman", calc_raman,
         "calc_irreps", calc_irreps,
-        "polarization_axes", polarization_axes,
+        "polarization_axes", pol,
         "calc_bands", calc_bands,
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
@@ -66,6 +91,9 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "supercell_dim", supercell_dim,
         "qpoints", qpoints
     );
+
+    if (!deserialize_polarization(*this, pol))
+        return false;
 
     return true;
 }
