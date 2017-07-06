@@ -678,10 +678,6 @@ int write_spectra(run_settings_t rset,
         );
     }
 
-    // ignore acoustic modes
-    for (std::size_t i = 0; i < spectra.size() && spectra[i].first < 1; ++i)
-        spectra[i].second = 0;
-
     double maxi = 0,
         maxf = 0;
     for (auto mode : spectra)
