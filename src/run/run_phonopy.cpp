@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <phonopy/phonopy_io.hpp>
 #include <common/math/rotations.hpp>
+#include <common/util/random.hpp>
 
 using namespace std;
 using namespace sp2;
@@ -44,6 +45,7 @@ inline int run_phonopy_with_args(const phonopy::phonopy_settings_t pset,
 }
 
 void relax_structure(structure_t &structure, run_settings_t rset);
+int get_symmetric_cell(sp2::structure_t &structure, sp2::run_settings_t &rset);
 
 int generate_displacements(phonopy::phonopy_settings_t pset);
 void generate_force_sets(run_settings_t rset);
@@ -209,6 +211,73 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
     return EXIT_SUCCESS;
 }
 
+sp2::structure_t shake_structure(sp2::structure_t structure, double mag = 0.05)
+{
+    static auto rng = []{
+        sp2::util::rng_t new_rng;
+        new_rng.seed_random();
+        return new_rng;
+    }();
+
+
+    for (auto &v : structure.positions)
+        v += sp2::random_vec3(rng.get_gen()) * mag;
+
+    return structure;
+}
+
+// extremely simple orthogonal lattice relaxation
+template<class F>
+void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
+    double percent = 5, int axis = 0)
+{
+    constexpr int fail_tol = 5,
+        n_step = 100;
+    const double max_delta = percent / 100;
+
+    auto original = input;
+
+    auto get_rescaled = [&](double delta) {
+        auto new_structure = original;
+        new_structure.lattice[axis][axis] += delta;
+        const double scale = new_structure.lattice[axis][axis]
+                             / original.lattice[axis][axis];
+
+        for (auto &v : new_structure.positions)
+            v[axis] *= scale;
+
+        return new_structure;
+    };
+
+    // simple search
+    int n_fail_m = 0,
+        n_fail_p = 0;
+
+    double min_ptnl = std::numeric_limits<double>::max();
+    for (int i = 0; i < n_step; ++i)
+    {
+        auto test_structure = [&](double delta, int &n_fail) {
+            if (n_fail > fail_tol)
+                return;
+
+            auto structure = get_rescaled(delta);
+            double ptnl = min_func(structure);
+            if (ptnl >= min_ptnl)
+                n_fail++;
+            if (ptnl < min_ptnl)
+            {
+                min_ptnl = ptnl;
+                input = structure;
+                n_fail = 0;
+            }
+        };
+
+        double delta = (original.lattice[axis][axis] * max_delta * i) / n_step;
+        test_structure( delta, n_fail_p);
+        test_structure(-delta, n_fail_m);
+    }
+}
+
 void relax_structure(structure_t &structure, run_settings_t rset)
 {
     // construct system + minimize with default parameters
@@ -228,30 +297,40 @@ void relax_structure(structure_t &structure, run_settings_t rset)
     if (rset.phonopy_settings.min_set.intermediate_output_interval > 0)
         io::clear_file("intermediate.xyz");
 
-    auto minimize = [&](auto &&sys) {
+    auto minimize = [&](auto &&sys, auto &input) {
         rset.phonopy_settings.min_set.output_fn = [&](auto &&pos) {
-            auto cell_copy = supercell;
+            auto cell_copy = input;
             cell_copy.positions = sp2::dtov3(pos);
 
             io::write_structure("intermediate.xyz", cell_copy, true);
         };
 
-        minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
-            rset.phonopy_settings.min_set);
-        supercell = sys.get_structure();
+        input.positions = sp2::dtov3(
+            minimize::acgsd(
+                sys.get_diff_fn(),
+                sys.get_position(),
+                rset.phonopy_settings.min_set
+            )
+        );
+
+        return sys.get_value();
     };
 
-    switch (rset.potential)
-    {
-    case potential_type::LAMMPS:
-        minimize(lammps::system_control_t(supercell, rset.lammps_settings));
-        break;
-    case potential_type::REBO:
-        minimize(airebo::system_control_t(supercell));
-        break;
-    default:
-        return;
-    }
+    auto do_minimize = [&](sp2::structure_t &input) -> double {
+        switch (rset.potential)
+        {
+        case potential_type::LAMMPS:
+            return minimize(
+                lammps::system_control_t(input, rset.lammps_settings), input);
+        case potential_type::REBO:
+            return minimize(airebo::system_control_t(input), input);
+        default:
+            std::cerr << "Invalid potential in relax for phonopy.\n";
+            exit(EXIT_FAILURE);
+        }
+    };
+
+    do_minimize(supercell);
 
     // just get the positions from the first primitive cell of the
     // supercell and pass it back out
@@ -259,6 +338,25 @@ void relax_structure(structure_t &structure, run_settings_t rset)
         rset.phonopy_settings.supercell_dim[0],
         rset.phonopy_settings.supercell_dim[1],
         rset.phonopy_settings.supercell_dim[2]);
+}
+
+int get_symmetric_cell(sp2::structure_t &structure, sp2::run_settings_t &rset)
+{
+    int ret = run_phonopy_with_args(rset.phonopy_settings, "--symmetry");
+    if (ret != EXIT_SUCCESS)
+        return ret;
+
+    // phonopy outputs PPOSCAR which is essentially just the structure with
+    // symmetries that have been enforced, so we can use this as our input
+    // file
+    if (!io::move_file("PPOSCAR", "POSCAR"))
+        return EXIT_FAILURE;
+
+    // make sure to update the structure we are using for computation within sp2
+    if (!io::read_structure("POSCAR", structure, sp2::file_type::POSCAR))
+        return EXIT_FAILURE;
+
+    return EXIT_SUCCESS;
 }
 
 int generate_displacements(phonopy::phonopy_settings_t pset)
@@ -380,8 +478,7 @@ int write_irreps(phonopy::phonopy_settings_t pset)
             << ' ' << pset.supercell_dim[1]
             << ' ' << pset.supercell_dim[2] << '\n'
             << "IRREPS = 0 0 0 1e-2\n"
-            << get_phonopy_mass_command(pset)
-            << get_force_constant_rw();
+            << get_phonopy_mass_command(pset);
 
     outfile.close();
 
@@ -593,7 +690,7 @@ int write_spectra(run_settings_t rset,
         maxf = std::max(mode.first,  maxf);
     }
 
-    const std::size_t n_bins = std::max<std::size_t>(maxf, 1000);
+    const std::size_t n_bins = std::max<std::size_t>(std::ceil(maxf), 1000);
     const double bin_max = 1.1 * maxf,
         bin_step = bin_max / n_bins;
     std::vector<double> bins(n_bins, 0);
