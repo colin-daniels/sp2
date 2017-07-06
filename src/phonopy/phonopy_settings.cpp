@@ -36,8 +36,8 @@ bool deserialize_polarization(
         case Json::arrayValue:
             if (input.size() != 2)
                 return false;
-            io::get_json_as_type(input[0], obj.polarization_axes[0]);
-            io::get_json_as_type(input[1], obj.polarization_axes[1]);
+            sp2::io::get_json_as_type(input[0], obj.polarization_axes[0]);
+            sp2::io::get_json_as_type(input[1], obj.polarization_axes[1]);
             return true;
 
         default:
