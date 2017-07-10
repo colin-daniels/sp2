@@ -39,7 +39,7 @@ std::vector<double> minimize::metropolis(
 
         if (value_new < value_best) {
             if (settings.output_level > 1) {
-                cout << "Improved Value: " << value_new
+                cout << "Improved Value: " << setprecision(13) << value_new
                      << "   after " << mutations_since << " mutations"
                      << endl;
             }
