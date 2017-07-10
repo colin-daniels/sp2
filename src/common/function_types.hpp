@@ -33,6 +33,9 @@ using diff_fn_t = std::function<
 /// returns a pair where the first element is the value and second is the slope
 using diff1d_fn_t = std::function<std::pair<double, double>(double)>;
 
+/// Applies a single mutation to a structure in-place.
+using mutation_fn_t = std::function<void(std::vector<double>&)>;
+
 /// void function
 template<class T>
 using void_fn_t = std::function<void(T)>;

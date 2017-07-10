@@ -160,6 +160,28 @@ struct fire_settings_t : public io::json_serializable_t
     bool deserialize(const Json::Value &input);
 };
 
+
+/// input settings structure for conjugate gradient minimization
+struct metropolis_settings_t : public io::json_serializable_t
+{
+    /// exit condition: total number of mutations tested, 0 to disable
+    int iteration_limit = 0;
+    /// exit condition: number of mutations tested since last improvement, 0 to disable
+    int improve_iteration_limit = 100;
+
+    /// how much output should be sent to standard output (0-3):
+    /// 0: None
+    /// 1: Errors only
+    /// 2: Final information after minimization
+    /// 3: Information after each successful refinement
+    int output_level = 3;
+
+    bool serialize(Json::Value &output) const;
+
+    bool deserialize(const Json::Value &input);
+};
+
+
 } // namespace minimize
 } // namespace sp2
 
