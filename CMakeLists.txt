@@ -89,6 +89,7 @@ set(SOURCE_FILES
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
         src/common/minimize/acgsd.cpp
+        src/common/minimize/metropolis.cpp
         src/common/minimize/fire.cpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
