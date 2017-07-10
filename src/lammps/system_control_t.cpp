@@ -189,6 +189,7 @@ void lammps::system_control_t::init(const structure_t &info,
         return;
 
     exec_command(
+        "package omp 0",
         "units metal",                  // Angstroms, picoseconds, eV
         "processors * * *",             // automatic processor mapping
         "atom_style atomic",            // attributes to store per-atom
@@ -217,7 +218,7 @@ void lammps::system_control_t::init(const structure_t &info,
     comm.barrier();
 
     exec_command(
-        "pair_style airebo "
+        "pair_style airebo/omp "
             + to_string(lmp_set.sigma_scale) + " "          // LJ range (x3.4 A)
             + string(lmp_set.compute_lj ? "1 " : "0 ")      // LJ on/off
             + string(lmp_set.compute_torsion ? "1" : "0"),  // torsion on/off
