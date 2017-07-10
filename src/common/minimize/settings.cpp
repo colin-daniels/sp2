@@ -129,3 +129,26 @@ bool minimize::fire_settings_t::deserialize(const Json::Value &input)
 
     return true;
 }
+
+
+bool minimize::metropolis_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "iteration_limit", iteration_limit,
+        "improve_iteration_limit", improve_iteration_limit,
+        "output_level", output_level
+    );
+
+    return true;
+}
+
+bool minimize::metropolis_settings_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "iteration_limit", iteration_limit,
+        "improve_iteration_limit", improve_iteration_limit,
+        "output_level", output_level
+    );
+
+    return true;
+}
