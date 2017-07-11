@@ -11,6 +11,33 @@ namespace sp2 {
 template<class T>
 struct ni;
 
+template<class F>
+class scope_guard_t
+{
+private:
+    bool exec = false;
+    F destructor;
+
+public:
+    scope_guard_t(F destructor)
+        : exec{true}, destructor{destructor} {}
+
+    scope_guard_t(scope_guard_t &&other)
+        : exec{true}, destructor{std::move(other.destructor)}
+    {
+        other.exec = false;
+    }
+
+    ~scope_guard_t()
+    {
+        if (exec)
+            destructor();
+    }
+};
+
+template<class F>
+inline auto scope_guard(F &&func) { return scope_guard_t<F>{func}; }
+
 template<class IterBegin, class IterEnd>
 struct range_wrapper_t
 {
