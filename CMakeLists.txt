@@ -5,10 +5,11 @@ project(sp2 CXX)
 ## Options + misc                                                             ##
 ################################################################################
 
-option(SP2_ENABLE_MPI             "Enable MPI" ON)
-option(SP2_ENABLE_LAMMPS       "Enable LAMMPS" ON)
-option(SP2_ENABLE_PHONOPY     "Enable Phonopy" ON)
-option(SP2_ENABLE_TESTS   "Enable/build tests" OFF)
+option(SP2_ENABLE_MPI                "Enable MPI" ON)
+option(SP2_ENABLE_LAMMPS          "Enable LAMMPS" ON)
+option(SP2_ENABLE_PHONOPY        "Enable Phonopy" ON)
+option(SP2_ENABLE_TESTS      "Enable/build tests" OFF)
+option(SP2_ENABLE_PYTHON "Enable Python bindings" ON)
 
 option(SP2_BUILD_LIB     "Build library instead of binary" OFF)
 option(BUILD_SHARED_LIBS  "Build shared libraries (DLLs)." OFF)
@@ -167,7 +168,7 @@ set(SOURCE_FILES
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/include/sp2/sp2.h)
+        src/include/sp2/sp2.h src/common/python/bindings.cpp src/common/python/bindings.h)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
@@ -311,6 +312,13 @@ function(find_phonopy version)
         find_python_module(phonopy ${REQUIRED_STR})
     endif()
 endfunction(find_phonopy)
+
+if (SP2_ENABLE_PYTHON)
+    find_package(PythonLibs 3 REQUIRED)
+    target_link_libraries(sp2 PRIVATE ${PYTHON_LIBRARIES})
+    target_include_directories(sp2 PRIVATE ${PYTHON_INCLUDE_DIRS})
+    target_compile_definitions(sp2 PRIVATE SP2_ENABLE_PYTHON)
+endif()
 
 if(SP2_ENABLE_PHONOPY)
     target_compile_definitions(sp2 PRIVATE

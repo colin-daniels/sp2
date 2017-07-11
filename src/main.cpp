@@ -1,3 +1,8 @@
+#ifdef SP2_ENABLE_PYTHON
+#include "Python.h"
+#include "common/python/bindings.h"
+#endif // SP2_ENABLE_PYTHON
+
 #include <iostream>
 #include <functional>
 #include <map>
@@ -6,6 +11,7 @@
 #include "common/json/json.hpp"
 
 #include <boost/mpi.hpp>
+#include <common/util/templates.hpp>
 
 #ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
@@ -21,6 +27,13 @@ int main(int argc, char *argv[])
 {
     // setup program environment
     boost::mpi::environment env;
+
+    #ifdef SP2_ENABLE_PYTHON
+    sp2::python::initialize(argv[0]);
+
+    // FIXME don't use atexit
+    auto guard = scope_guard([&] { sp2::python::finalize(); });
+    #endif // SP2_ENABLE_PYTHON
 
 ////////////////////////////////////////////////////////////////////////////////
 // check command line flags for special options that bypass normal operation  //
