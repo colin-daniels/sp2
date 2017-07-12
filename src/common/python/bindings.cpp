@@ -2,9 +2,6 @@
 // Created by lampam on 7/11/17.
 //
 
-#warning TODO remove debug output
-#warning TODO prepend to sys.path, not append
-#include <iostream>
 #include <common/util/templates.hpp>
 #include "bindings.h"
 
@@ -188,12 +185,24 @@ py_scoped_t sp2::python::py_list_from_vec(std::vector<double> v)
     return list;
 }
 
-bool ::sp2::python::add_to_sys_path(const char *dir) {
+void ::sp2::python::extend_sys_path(std::vector<std::string> dirs) {
+    // reverse order so that the prepended results appear in the requested order
+    for (auto it = dirs.rbegin(); it != dirs.rend(); it++) {
+        extend_sys_path(it->c_str());
+    }
+}
 
-    // equivalent to:
+void ::sp2::python::extend_sys_path(std::string dir) {
+    extend_sys_path(dir.c_str());
+}
+
+void ::sp2::python::extend_sys_path(const char *dir) {
+
+    // python literal equivalent:
     //
-    // if d not in set(sys.path):
-    //     sys.path.append(d)
+    // if d in set(sys.path):
+    //     sys.path.remove(d)
+    // sys.path.insert(0, d)
 
     auto py_dir = scope(PyUnicode_DecodeFSDefault(dir));
     throw_on_py_err("add_to_sys_path: error decoding filesystem path");
@@ -201,27 +210,25 @@ bool ::sp2::python::add_to_sys_path(const char *dir) {
     auto sys_path = scope_dup(PySys_GetObject((char*)"path"));
     throw_on_py_err("add_to_sys_path: error reading sys.path");
 
-    wcout << "PRE: " << repr(sys_path.dup()) << endl;
-
     // make a set because I can't find where the C API exposes list.__contains__... >_>
     auto sys_path_set = scope(PySet_New(sys_path.raw()));
     throw_on_py_err("add_to_sys_path: error making set from sys.path");
 
+    // remove an existing entry
     int already_there = PySet_Contains(sys_path_set.raw(), py_dir.raw());
     throw_on_py_err("add_to_sys_path: error checking set membership");
-
-
     switch (already_there) {
         case 1:
-            return false;
-        case 0:
-            PyList_Append(sys_path.raw(), py_dir.raw());
-            throw_on_py_err("add_to_sys_path: error appending to sys.path");
-            wcout << "POST: " << repr(sys_path.dup()) << endl;
-            return true;
-        default:
-            throw logic_error("unexpected value for 'already_there'");
+            PyObject_CallMethod(sys_path.raw(), "remove", "o", py_dir.raw());
+            throw_on_py_err("add_to_sys_path: error removing existing item");
+            break;
+        case 0: break;
+        default: throw logic_error("unexpected result from __contains__");
     }
+
+    // prepend
+    PyList_Insert(sys_path.raw(), 0, py_dir.raw());
+    throw_on_py_err("add_to_sys_path: error inserting item");
 }
 
 // F should be function(PyObject *) -> PyObject * returning a new reference to a 'unicode' object
