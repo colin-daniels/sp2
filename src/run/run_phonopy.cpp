@@ -21,6 +21,7 @@
 #include <phonopy/phonopy_io.hpp>
 #include <common/math/rotations.hpp>
 #include <common/util/random.hpp>
+#include <common/python/bindings.h>
 
 using namespace std;
 using namespace sp2;
@@ -305,13 +306,34 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             io::write_structure("intermediate.xyz", cell_copy, true);
         };
 
-        input.positions = sp2::dtov3(
-            minimize::acgsd(
-                sys.get_diff_fn(),
-                sys.get_position(),
-                rset.phonopy_settings.min_set
-            )
-        );
+        auto diff_fn = sys.get_diff_fn();
+        auto positions = minimize::acgsd(
+            diff_fn,
+            sys.get_position(),
+            rset.phonopy_settings.min_set);
+
+        if (rset.phonopy_settings.metro_set.enabled) {
+            // TODO: Expose lattice to python
+            //       (It can be smuggled through metropolis by prepending it to the positions)
+
+            auto &met_set = rset.phonopy_settings.metro_set;
+            sp2::python::extend_sys_path(met_set.python_sys_path);
+
+            auto value_fn = [&](auto &carts) {
+                return diff_fn(carts).first;
+            };
+
+            auto mutation_fn = [&](auto &carts) {
+                return ::sp2::python::call_vector_function(
+                        met_set.python_module.c_str(),
+                        met_set.python_function.c_str(),
+                        carts);
+            };
+
+            positions = minimize::metropolis(value_fn, mutation_fn, positions, met_set.settings);
+        }
+
+        input.positions = sp2::dtov3(positions);
 
         return sys.get_value();
     };

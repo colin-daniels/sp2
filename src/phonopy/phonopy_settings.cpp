@@ -61,6 +61,7 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "calc_bands", calc_bands,
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
+        "metropolis", metro_set,
         "write_all_mode_anim", write_all_mode_anim,
         "write_all_mode_gplot", write_all_mode_gplot,
         "supercell_dim", supercell_dim,
@@ -86,6 +87,7 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "calc_bands", calc_bands,
         "calc_displacements", calc_displacements,
         "calc_force_sets", calc_force_sets,
+        "metropolis", metro_set,
         "write_all_mode_anim", write_all_mode_anim,
         "write_all_mode_gplot", write_all_mode_gplot,
         "supercell_dim", supercell_dim,
@@ -119,6 +121,32 @@ bool sp2::phonopy::qpoint_t::serialize(Json::Value &output) const
     output.append(x);
     output.append(y);
     output.append(z);
+
+    return true;
+}
+
+bool sp2::phonopy::phonopy_metro_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "enabled", enabled,
+        "python_sys_path", python_sys_path,
+        "python_module", python_module,
+        "python_function", python_function,
+        "settings", settings
+    );
+
+    return true;
+}
+
+bool sp2::phonopy::phonopy_metro_settings_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "enabled", enabled,
+        "python_sys_path", python_sys_path,
+        "python_module", python_module,
+        "python_function", python_function,
+        "settings", settings
+    );
 
     return true;
 }
