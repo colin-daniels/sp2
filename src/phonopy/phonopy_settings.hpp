@@ -27,7 +27,12 @@ struct qpoint_t : public io::json_serializable_t
 struct phonopy_metro_settings_t : public io::json_serializable_t
 {
     bool enabled = false;
-    std::vector<std::string> python_sys_path;
+
+    // Directories to be prepended to sys.path, where python modules may be found.
+    //
+    // The default prepends an entry of "" (the current directory), just like
+    // the python interpreter itself typically does behind the scenes.
+    std::vector<std::string> python_sys_path = {""};
     std::string python_module = "mutate";
     std::string python_function = "mutate";
     minimize::metropolis_settings_t settings;

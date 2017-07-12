@@ -21,7 +21,6 @@
 #include <phonopy/phonopy_io.hpp>
 #include <common/math/rotations.hpp>
 #include <common/util/random.hpp>
-#include <common/util/unix.h>
 #include <common/python/bindings.h>
 
 using namespace std;
@@ -318,9 +317,7 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             //       (It can be smuggled through metropolis by prepending it to the positions)
 
             auto &met_set = rset.phonopy_settings.metro_set;
-            for (auto &path : met_set.python_sys_path) {
-                sp2::python::add_to_sys_path(path.c_str());
-            }
+            sp2::python::extend_sys_path(met_set.python_sys_path);
 
             auto value_fn = [&](auto &carts) {
                 return diff_fn(carts).first;
@@ -333,7 +330,7 @@ void relax_structure(structure_t &structure, run_settings_t rset)
                         carts);
             };
 
-            positions = minimize::metropolis(value_fn, mutation_fn, positions, rset.phonopy_settings.metro_set.settings);
+            positions = minimize::metropolis(value_fn, mutation_fn, positions, met_set.settings);
         }
 
         input.positions = sp2::dtov3(positions);

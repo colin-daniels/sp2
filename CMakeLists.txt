@@ -168,7 +168,7 @@ set(SOURCE_FILES
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/include/sp2/sp2.h src/common/python/bindings.cpp src/common/python/bindings.h src/common/util/unix.cpp src/common/util/unix.h)
+        src/include/sp2/sp2.h src/common/python/bindings.cpp src/common/python/bindings.h)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
