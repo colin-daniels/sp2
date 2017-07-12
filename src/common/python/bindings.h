@@ -23,6 +23,9 @@ class py_scoped_t
 {
     PyObject *obj;
 
+    // null constructor
+    py_scoped_t() {};
+
     // private constructor
     explicit py_scoped_t(PyObject * o);
 
@@ -66,10 +69,6 @@ public:
 py_scoped_t scope_dup(PyObject * o);
 py_scoped_t scope(PyObject * o);
 
-void throw_on_py_err(const char *msg);
-
-void throw_on_py_err();
-
 std::vector<double> call_vector_function(const char *mod_name, const char *func_name, std::vector<double> input);
 
 py_scoped_t call_module_function_kw(const char *mod_name, const char *func_name, py_scoped_t kw);
@@ -99,14 +98,25 @@ positions_as_ndarray(std::vec<double> &positions)
 }
 */
 
+// Ensure that a given directory is in sys.path, so that the modules therein may be loaded.
+//
+// This function actively checks for and avoids adding duplicate entries.
+// A return value of 'false' means sys.path was not modified.
+bool add_to_sys_path(const char* dir);
+
 std::vector<double> flat_2d_from_py_sequence(size_t ncol, PyObject *o);
 
-// Never returns null (throws exceptions instead)
 py_scoped_t py_list_from_flat_2d(size_t nrow, size_t ncol, double *data);
 
 std::vector<double> vec_from_py_sequence(PyObject *o);
 
 py_scoped_t py_list_from_vec(std::vector<double> v);
+
+// get an object's repr(), mostly for debug purposes
+std::wstring repr(py_scoped_t o);
+
+// get an object's str(), mostly for debug purposes
+std::wstring str(py_scoped_t o);
 
 }
 }
