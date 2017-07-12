@@ -98,11 +98,18 @@ positions_as_ndarray(std::vec<double> &positions)
 }
 */
 
-// Ensure that a given directory is in sys.path, so that the modules therein may be loaded.
+// Ensure that the given directories are in sys.path, so that the modules therein may be loaded.
 //
-// This function actively checks for and avoids adding duplicate entries.
-// A return value of 'false' means sys.path was not modified.
-bool add_to_sys_path(const char* dir);
+// The paths are prepended, giving them higher priority over existing entries.
+// Keep in mind that built-in modules will still take absolute top priority.
+//
+// Any paths already in sys.path will be moved to the front, without creating a duplicate entry.
+void extend_sys_path(std::vector<std::string> dir);
+
+// Extend sys.path with a single directory
+void extend_sys_path(std::string dir);
+// Extend sys.path with a single directory
+void extend_sys_path(const char* dir);
 
 std::vector<double> flat_2d_from_py_sequence(size_t ncol, PyObject *o);
 
