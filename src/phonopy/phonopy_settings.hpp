@@ -24,6 +24,18 @@ struct qpoint_t : public io::json_serializable_t
     virtual bool deserialize(const Json::Value &input);
 };
 
+struct phonopy_metro_settings_t : public io::json_serializable_t
+{
+    bool enabled = false;
+    std::vector<std::string> python_sys_path;
+    std::string python_module = "mutate";
+    std::string python_function = "mutate";
+    minimize::metropolis_settings_t settings;
+
+    virtual bool serialize(Json::Value &output) const;
+    virtual bool deserialize(const Json::Value &input);
+};
+
 struct phonopy_settings_t : public io::json_serializable_t
 {
     int n_samples = 250;
@@ -34,7 +46,6 @@ struct phonopy_settings_t : public io::json_serializable_t
     bool calc_raman = false,
         calc_raman_backscatter_avg = false,
         calc_irreps = false,
-        do_metropolis = false,
         write_all_mode_anim = false,
         write_all_mode_gplot = false;
 
@@ -54,7 +65,7 @@ struct phonopy_settings_t : public io::json_serializable_t
     };
 
     minimize::acgsd_settings_t min_set;
-    minimize::metropolis_settings_t metro_set;
+    phonopy_metro_settings_t metro_set;
 
     virtual bool serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);

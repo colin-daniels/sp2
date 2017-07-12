@@ -1,3 +1,5 @@
+
+#warning FIXME need to similarly guard out use-sites of bindings.h so that this can compile without the flag
 #ifdef SP2_ENABLE_PYTHON
 #include "Python.h"
 #include "common/python/bindings.h"
