@@ -324,7 +324,7 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             };
 
             auto mutation_fn = [&](auto &carts) {
-                return ::sp2::python::call_vector_function(
+                carts = ::sp2::python::call_vector_function(
                         met_set.python_module.c_str(),
                         met_set.python_function.c_str(),
                         carts);
