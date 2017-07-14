@@ -315,8 +315,9 @@ endfunction(find_phonopy)
 
 if (SP2_ENABLE_PYTHON)
     find_package(PythonLibs 3 REQUIRED)
+    find_package(NumPy REQUIRED)
     target_link_libraries(sp2 PRIVATE ${PYTHON_LIBRARIES})
-    target_include_directories(sp2 PRIVATE ${PYTHON_INCLUDE_DIRS})
+    target_include_directories(sp2 PRIVATE ${PYTHON_INCLUDE_DIRS} ${PYTHON_NUMPY_INCLUDE_DIR})
     target_compile_definitions(sp2 PRIVATE SP2_ENABLE_PYTHON)
 endif()
 

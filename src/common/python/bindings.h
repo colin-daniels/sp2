@@ -116,6 +116,7 @@ std::vector<double> flat_2d_from_py_sequence(size_t ncol, PyObject *o);
 py_scoped_t py_list_from_flat_2d(size_t nrow, size_t ncol, double *data);
 
 std::vector<double> vec_from_py_sequence(PyObject *o);
+py_scoped_t numpy_array_from_flat(const std::vector<double> &v, size_t width);
 
 py_scoped_t py_list_from_vec(std::vector<double> v);
 
