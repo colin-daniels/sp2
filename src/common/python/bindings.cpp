@@ -4,6 +4,7 @@
 
 #include <common/util/templates.hpp>
 #include "bindings.h"
+#include "numpy/arrayobject.h"
 
 using namespace std;
 using namespace sp2::python;
@@ -183,6 +184,17 @@ py_scoped_t sp2::python::py_list_from_vec(std::vector<double> v)
         throw_on_py_err();
     }
     return list;
+}
+
+py_scoped_t sp2::python::numpy_array_from_flat(const vector<double> &v, size_t width)
+{
+    if (v.size() % width != 0) {
+        throw logic_error("flat array not divisible by width");
+    }
+
+    int ndim = 2;
+    npy_intp dims[ndim] = {v.size() / width, width};
+    return scope(PyArray_SimpleNew(ndim, dims, NPY_DOUBLE));
 }
 
 void ::sp2::python::extend_sys_path(std::vector<std::string> dirs) {
