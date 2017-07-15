@@ -93,6 +93,9 @@ set(SOURCE_FILES
         src/common/minimize/metropolis.cpp
         src/common/minimize/fire.cpp
 ################################################################################
+        IF_PYTHON_ENABLED src/common/python/bindings.cpp
+        IF_PYTHON_ENABLED src/common/python/bindings.hpp
+################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
         IF_MPI_ENABLED src/common/minimize/pso/adaptive_pso.cpp
@@ -168,7 +171,7 @@ set(SOURCE_FILES
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/include/sp2/sp2.h src/common/python/bindings.cpp src/common/python/bindings.h)
+        src/include/sp2/sp2.h)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)
