@@ -161,7 +161,7 @@ struct fire_settings_t : public io::json_serializable_t
 };
 
 
-/// input settings structure for conjugate gradient minimization
+/// input settings structure for metropolis minimization
 struct metropolis_settings_t : public io::json_serializable_t
 {
     /// exit condition: total number of mutations tested, 0 to disable
