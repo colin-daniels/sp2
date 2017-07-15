@@ -2,121 +2,169 @@
 // Created by lampam on 7/11/17.
 //
 
+// Python.h must be included prior to any other headers.
+//
+// For this reason, all references to things from the Python API are specifically
+// removed from the header and confined to this source file, so that other
+// compilation units do not need to worry about Python headers.
+#include "Python.h"
+
+#include <common/python/bindings.hpp>
+
 #include <common/util/templates.hpp>
-#include "bindings.h"
 #include "numpy/arrayobject.h"
 
 using namespace std;
 using namespace sp2::python;
 
+// anonymous namespace to prevent leaking
+namespace sp2 {
+namespace python {
+namespace impl {
+
+// A scoped reference to a python object that uses RAII to handle Py_DECREF.
+// This makes it somewhat easier to reason about exception safety,
+// though it is not a panacea.
+//
+// One should still be careful to consider destruction order (since a decref can
+//  potentially invoke arbitrary python code), and read the Python API docs
+//  carefully to understand when references are duplicated, borrowed, and stolen.
+//
+// The default PyObject * constructor does NOT perform an incref, since the
+// majority of Python API functions return a freshly-incremented reference.
+// For those rare functions that return borrowed references, you should
+// use the explicit 'scope_dup' constructor instead.
+//
+// The contained object may be NULL.
+class py_scoped_t
+{
+    PyObject *obj;
+
+public:
+
+    // null constructor
+    py_scoped_t() {};
+
+    // PyObject constructor
+    explicit py_scoped_t(PyObject * o)
+            : obj(o)
+    { }
+
+    explicit operator bool() const {
+        return (bool)obj;
+    }
+
+    // No copying.  Use dup() to make the incref explicit.
+    py_scoped_t& operator=(const py_scoped_t& other) = delete;
+    py_scoped_t(const py_scoped_t& other) = delete;
+
+    // move constructor
+    py_scoped_t(py_scoped_t&& other)
+            : obj(other.steal())
+    { }
+
+    // move assignment operator
+    py_scoped_t& operator=(py_scoped_t&& other) {
+        if (this != &other) {
+            obj = other.steal();
+        }
+        return *this;
+    }
+
+    ~py_scoped_t() {
+        destroy();
+    }
+
+    // Increment the refcount and return a new scoped reference.
+    py_scoped_t dup() {
+        Py_XINCREF(obj);
+        return py_scoped_t(obj);
+    }
+
+    // Borrow the reference without touching the refcount.
+    //
+    // This is the appropriate method for interfacing with most Python APIs.
+    PyObject * raw() {
+        return obj;
+    }
+
+    // Leak the reference, preventing the DECREF that would otherwise occur at scope exit.
+    // The scoped reference will become NULL.
+    //
+    // Necessary for working with Python API functions that steal references,
+    // such as PyTuple_SetItem.
+    PyObject * steal() {
+        auto tmp = obj;
+        obj = NULL;
+        return tmp;
+    }
+
+    // Explicit destructor.
+    //
+    // Destroy the reference early, decrementing the refcount and nulling out the pointer
+    //  so that nothing happens at scope exit.
+    //
+    // This can be used to explicitly control the destruction order in places where
+    // the natural order of destruction would not be safe.
+    void destroy() {
+        Py_XDECREF(obj);
+        obj = NULL;
+    }
+};
+
+// explicit constructor from a new ref
+py_scoped_t scope(PyObject * o) {
+    return py_scoped_t(o);
+}
+
+// explicit constructor from a borrowed ref, which makes a new reference
+py_scoped_t scope_dup(PyObject * o) {
+    Py_XINCREF(o);
+    return py_scoped_t(o);
+}
+
+/* --------------------------------------------------------------------- */
+// helper functions
+
 // Checks for python exceptions via the PyErr API and turns them into C++ exceptions.
-static void throw_on_py_err(const char *msg) {
+void throw_on_py_err(const char *msg) {
     if (PyErr_Occurred()) {
         PyErr_Print();
         throw runtime_error(msg);
     }
 }
 
-static void throw_on_py_err() {
+void throw_on_py_err() {
     throw_on_py_err("An exception was thrown in Python.");
 }
 
+// Implementation of repr() and str().
+// F is a function(PyObject *) -> PyObject * returning a new reference to a unicode 'str' object
+template <typename F>
+wstring str_impl(py_scoped_t o, F stringify) {
 
-sp2::python::py_scoped_t::py_scoped_t(PyObject *o)
-        : obj(o)
-{ }
+    auto py_str = scope(stringify(o.raw()));
+    throw_on_py_err("repr: error stringifying");
 
-sp2::python::py_scoped_t sp2::python::scope_dup(PyObject *o) {
-    Py_XINCREF(o);
-    return py_scoped_t(o);
+    wchar_t *str = PyUnicode_AsWideCharString(py_str.raw(), NULL);
+    throw_on_py_err("repr: error encoding");
+    auto guard = sp2::scope_guard([&] { PyMem_Free(str); });
+
+    return wstring(str);
 }
 
-sp2::python::py_scoped_t sp2::python::scope(PyObject *o) {
-    return py_scoped_t(o);
+// get an object's repr(), mostly for debug purposes
+wstring repr(py_scoped_t o) {
+    return str_impl(move(o), [&](auto x) { return PyObject_Repr(x); });
 }
 
-void ::sp2::python::initialize(const char *prog) {
-    if (prog) {
-        wchar_t *program = Py_DecodeLocale(prog, NULL);
-        if (program) {
-            Py_SetProgramName(program);
-        } else {
-            throw runtime_error("Warning: Could not decode program name for python bindings");
-        }
-    }
-
-    Py_Initialize();
+// get an object's str(), mostly for debug purposes
+wstring str(py_scoped_t o) {
+    return str_impl(move(o), [&](auto x) { return PyObject_Str(x); });
 }
 
-int ::sp2::python::finalize() {
-    return Py_FinalizeEx();
-}
-
-/*
-std::vector<double> sp2::python::flat_2d_from_py_sequence(size_t ncol, PyObject *o )
+py_scoped_t call_module_function(const char *mod_name, const char *func_name, py_scoped_t args, py_scoped_t kw)
 {
-    if (!PySequence_Check(o)) {
-        throw runtime_error("Python value was not a sequence");
-    }
-
-    Py_ssize_t len = PySequence_Length(o);
-    if (len == -1) {
-        throw runtime_error("Could not get python sequence length");
-    }
-
-    vector<double> positions(ncol * len);
-    for (int i=0; i < len; i++) {
-        auto item = scope(PySequence_GetItem(o, i));
-
-        auto subsequence = PySequence_Fast(item.raw(), "noniterable subsequence");
-        throw_on_py_err();
-        if (!subsequence) {
-            throw runtime_error("Unknown error constructing sequence");
-        }
-
-        if (ncol != PySequence_Length(subsequence.raw())) {
-            throw runtime_error("Expected subsequences of fixed length");
-        }
-
-        for (int k=0; k < ncol; k++) {
-            // borrowed reference; don't decref
-            PyObject *pItem = PySequence_Fast_GET_ITEM(subsequence.raw(), k);
-
-            subsequence[ncol*i + k] = PyFloat_AsDouble(pItem);
-            throw_on_py_err();
-        }
-    }
-
-    return positions;
-}
- */
-
-std::vector<double> sp2::python::vec_from_py_sequence(PyObject *o)
-{
-    if (!PySequence_Check(o)) {
-        throw runtime_error("Python value was not a sequence");
-    }
-
-    Py_ssize_t len = PySequence_Length(o);
-    if (len == -1) {
-        throw_on_py_err();
-        throw runtime_error("Could not get python sequence length");
-    }
-
-    vector<double> out(len);
-    for (int i=0; i < len; i++) {
-        auto item = scope(PySequence_GetItem(o, i));
-        throw_on_py_err();
-
-        out[i] = PyFloat_AsDouble(item.raw());
-        throw_on_py_err();
-    }
-
-    return out;
-}
-
-sp2::python::py_scoped_t sp2::python::call_module_function(const char *mod_name, const char *func_name,
-                                                            sp2::python::py_scoped_t args, sp2::python::py_scoped_t kw) {
     py_scoped_t module = [&] {
         auto name = scope(PyUnicode_DecodeFSDefault(mod_name));
         throw_on_py_err();
@@ -144,29 +192,7 @@ sp2::python::py_scoped_t sp2::python::call_module_function(const char *mod_name,
     return std::move(retval);
 }
 
-sp2::python::py_scoped_t
-sp2::python::call_module_function_kw(const char *mod_name, const char *func_name,
-                                     py_scoped_t kw) {
-    auto args = scope(PyTuple_New(0));
-    return std::move(call_module_function(mod_name, func_name, move(args), move(kw)));
-}
-
-std::vector<double> sp2::python::call_vector_function(const char *mod_name, const char *func_name, std::vector<double> input) {
-    auto kw = scope(PyDict_New());
-    throw_on_py_err("Exception constructing python dictionary.");
-
-    {
-        auto x = py_list_from_vec(input);
-        PyDict_SetItemString(kw.raw(), "x", x.raw());
-        throw_on_py_err("Exception setting python dict item.");
-    }
-
-    auto retval = call_module_function_kw(mod_name, func_name, move(kw));
-
-    return vec_from_py_sequence(retval.raw());
-}
-
-py_scoped_t sp2::python::py_list_from_vec(std::vector<double> v)
+py_scoped_t py_list_from_vec(std::vector<double> v)
 {
     auto list = scope(PyList_New(v.size()));
     if (!list) {
@@ -186,7 +212,52 @@ py_scoped_t sp2::python::py_list_from_vec(std::vector<double> v)
     return list;
 }
 
-py_scoped_t sp2::python::numpy_array_from_flat(const vector<double> &v, size_t width)
+vector<double> vec_from_py_sequence(PyObject *o)
+{
+    if (!PySequence_Check(o)) {
+        throw runtime_error("Python value was not a sequence");
+    }
+
+    Py_ssize_t len = PySequence_Length(o);
+    if (len == -1) {
+        throw_on_py_err();
+        throw runtime_error("Could not get python sequence length");
+    }
+
+    vector<double> out(len);
+    for (int i=0; i < len; i++) {
+        auto item = scope(PySequence_GetItem(o, i));
+        throw_on_py_err();
+
+        out[i] = PyFloat_AsDouble(item.raw());
+        throw_on_py_err();
+    }
+
+    return out;
+}
+
+py_scoped_t call_module_function_kw(const char *mod_name, const char *func_name, py_scoped_t kw)
+{
+    auto args = scope(PyTuple_New(0));
+    return move(call_module_function(mod_name, func_name, move(args), move(kw)));
+}
+
+vector<double> call_vector_function(const char *mod_name, const char *func_name, vector<double> input) {
+    auto kw = scope(PyDict_New());
+    throw_on_py_err("Exception constructing python dictionary.");
+
+    {
+        auto x = py_list_from_vec(input);
+        PyDict_SetItemString(kw.raw(), "x", x.raw());
+        throw_on_py_err("Exception setting python dict item.");
+    }
+
+    auto retval = call_module_function_kw(mod_name, func_name, move(kw));
+
+    return vec_from_py_sequence(retval.raw());
+}
+
+py_scoped_t numpy_array_from_flat(const vector<double> &v, size_t width)
 {
     if (v.size() % width != 0) {
         throw logic_error("flat array not divisible by width");
@@ -197,18 +268,7 @@ py_scoped_t sp2::python::numpy_array_from_flat(const vector<double> &v, size_t w
     return scope(PyArray_SimpleNew(ndim, dims, NPY_DOUBLE));
 }
 
-void ::sp2::python::extend_sys_path(std::vector<std::string> dirs) {
-    // reverse order so that the prepended results appear in the requested order
-    for (auto it = dirs.rbegin(); it != dirs.rend(); it++) {
-        extend_sys_path(it->c_str());
-    }
-}
-
-void ::sp2::python::extend_sys_path(std::string dir) {
-    extend_sys_path(dir.c_str());
-}
-
-void ::sp2::python::extend_sys_path(const char *dir) {
+void extend_sys_path(const char *dir) {
 
     // python literal equivalent:
     //
@@ -243,60 +303,51 @@ void ::sp2::python::extend_sys_path(const char *dir) {
     throw_on_py_err("add_to_sys_path: error inserting item");
 }
 
-// F should be function(PyObject *) -> PyObject * returning a new reference to a 'unicode' object
-template <typename F>
-static wstring str_impl(py_scoped_t o, F stringify) {
 
-    auto py_str = scope(stringify(o.raw()));
-    throw_on_py_err("repr: error stringifying");
-
-    wchar_t *str = PyUnicode_AsWideCharString(py_str.raw(), NULL);
-    throw_on_py_err("repr: error encoding");
-    auto guard = sp2::scope_guard([&] { PyMem_Free(str); });
-
-    return wstring(str);
-}
-
-wstring sp2::python::repr(py_scoped_t o) {
-    return str_impl(move(o), [&](auto x) { return PyObject_Repr(x); });
-}
-
-wstring sp2::python::str(py_scoped_t o) {
-    return str_impl(move(o), [&](auto x) { return PyObject_Str(x); });
-}
-
-// move constructor
-sp2::python::py_scoped_t::py_scoped_t(sp2::python::py_scoped_t &&other)
-        : obj(other.steal())
-{ }
-
-// move assignment operator
-sp2::python::py_scoped_t &sp2::python::py_scoped_t::operator=(sp2::python::py_scoped_t &&other) {
-    if (this != &other) {
-        obj = other.steal();
+void extend_sys_path(vector<string> dirs) {
+    // reverse order so that the prepended results appear in the requested order
+    for (auto it = dirs.rbegin(); it != dirs.rend(); it++) {
+        extend_sys_path(it->c_str());
     }
-    return *this;
 }
 
-sp2::python::py_scoped_t::~py_scoped_t() {
-    Py_XDECREF(obj);
+void initialize(const char *prog) {
+    if (prog) {
+        wchar_t *program = Py_DecodeLocale(prog, NULL);
+        if (program) {
+            Py_SetProgramName(program);
+        } else {
+            throw runtime_error("Warning: Could not decode program name for python bindings");
+        }
+    }
+
+    Py_Initialize();
 }
 
-sp2::python::py_scoped_t sp2::python::py_scoped_t::dup() {
-    Py_XINCREF(obj);
-    return py_scoped_t(obj);
+int finalize() {
+    return Py_FinalizeEx();
 }
 
-PyObject *sp2::python::py_scoped_t::raw() const {
-    return obj;
+} // namespace impl
+} // namespace python
+} // namespace sp2
+
+/* --------------------------------------------------------------------- */
+// Public API
+
+void sp2::python::initialize(const char *prog) {
+    return impl::initialize(prog);
 }
 
-PyObject *sp2::python::py_scoped_t::steal() {
-    auto tmp = obj;
-    obj = NULL;
-    return tmp;
+int sp2::python::finalize() {
+    return impl::finalize();
 }
 
-sp2::python::py_scoped_t::operator bool() const {
-    return (bool)obj;
+void sp2::python::extend_sys_path(vector<string> dirs) {
+    return impl::extend_sys_path(dirs);
 }
+
+vector<double> sp2::python::call_vector_function(const char *mod_name, const char *func_name, vector<double> input) {
+    return impl::call_vector_function(mod_name, func_name, input);
+}
+
