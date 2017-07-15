@@ -219,51 +219,6 @@ py_scoped_t call_module_function_kw(const char *mod_name, const char *func_name,
     return move(call_module_function(mod_name, func_name, move(args), move(kw)));
 }
 
-
-py_scoped_t py_list_from_vec(std::vector<double> v)
-{
-    auto list = scope(PyList_New(v.size()));
-    if (!list) {
-        throw new runtime_error("error constructing python list");
-    }
-    for (int i=0; i < v.size(); i++) {
-        /* FIXME
-         * if this throws then 'list' will get its refcount decremented to zero while
-         *  it still holds some NULL elements. Is the list destructor robust to this?
-         */
-        auto value = scope(PyFloat_FromDouble(v[i]));
-        throw_on_py_err();
-
-        PyList_SET_ITEM(list.raw(), i, value.steal());
-        throw_on_py_err();
-    }
-    return list;
-}
-
-vector<double> vec_from_py_sequence(PyObject *o)
-{
-    if (!PySequence_Check(o)) {
-        throw runtime_error("Python value was not a sequence");
-    }
-
-    Py_ssize_t len = PySequence_Length(o);
-    if (len == -1) {
-        throw_on_py_err();
-        throw runtime_error("Could not get python sequence length");
-    }
-
-    vector<double> out(len);
-    for (int i=0; i < len; i++) {
-        auto item = scope(PySequence_GetItem(o, i));
-        throw_on_py_err();
-
-        out[i] = PyFloat_AsDouble(item.raw());
-        throw_on_py_err();
-    }
-
-    return out;
-}
-
 py_scoped_t numpy_array_from_flat_vec(const vector<double> &v, size_t width)
 {
     if (v.size() % width != 0) {
