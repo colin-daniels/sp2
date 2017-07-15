@@ -327,10 +327,10 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             };
 
             auto mutation_fn = [&](auto &carts) {
-                carts = ::sp2::python::call_vector_function(
+                carts = ::sp2::python::call_2d_vector_function(
                         met_set.python_module.c_str(),
                         met_set.python_function.c_str(),
-                        carts);
+                        carts, 3);
             };
 
             positions = minimize::metropolis(value_fn, mutation_fn, positions, met_set.settings);

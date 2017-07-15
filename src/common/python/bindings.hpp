@@ -23,7 +23,8 @@ void initialize(const char *prog);
 // This should only be called once over the execution of a single program.
 int finalize();
 
-std::vector<double> call_vector_function(const char *mod_name, const char *func_name, std::vector<double> input);
+std::vector<double> call_2d_vector_function(const char *mod_name, const char *func_name, std::vector<double> input,
+        std::size_t width);
 
 // Ensure that the given directories are in sys.path, so that the modules therein may be loaded.
 //

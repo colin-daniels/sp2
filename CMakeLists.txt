@@ -95,6 +95,8 @@ set(SOURCE_FILES
 ################################################################################
         IF_PYTHON_ENABLED src/common/python/bindings.cpp
         IF_PYTHON_ENABLED src/common/python/bindings.hpp
+        IF_PYTHON_ENABLED src/common/python/include_numpy.cpp
+        IF_PYTHON_ENABLED src/common/python/include_numpy.hpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
