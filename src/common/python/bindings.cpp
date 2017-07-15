@@ -20,7 +20,7 @@
 using namespace std;
 using namespace sp2::python;
 
-// anonymous namespace to prevent leaking
+// namespace for private things
 namespace sp2 {
 namespace python {
 namespace impl {
@@ -199,7 +199,7 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name, py
     py_scoped_t retval = scope(PyObject_Call(func.raw(), args.raw(), kw.raw()));
     if (!retval) {
         throw_on_py_err();
-        throw runtime_error("Error getting Python retval");
+        throw runtime_error("Error during Python function call");
     }
 
     return std::move(retval);
@@ -237,7 +237,9 @@ py_scoped_t numpy_array_from_flat_vec(const vector<double> &v, size_t width)
     return move(o);
 }
 
-// returns an error message or an empty string
+// returns an empty string on success,
+// returns an error message if the object does not meet specifications,
+//  and throws if any other error occurs.
 string validate_2d_array_dims(py_scoped_t o, size_t expect_nrow, size_t expect_ncol)
 {
     if (!PyArray_Check(o.raw())) {
