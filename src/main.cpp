@@ -1,10 +1,4 @@
 
-#warning FIXME need to similarly guard out use-sites of bindings.h so that this can compile without the flag
-#ifdef SP2_ENABLE_PYTHON
-#include "Python.h"
-#include "common/python/bindings.h"
-#endif // SP2_ENABLE_PYTHON
-
 #include <iostream>
 #include <functional>
 #include <map>
@@ -14,6 +8,10 @@
 
 #include <boost/mpi.hpp>
 #include <common/util/templates.hpp>
+
+#ifdef SP2_ENABLE_PYTHON
+#include "common/python/bindings.hpp"
+#endif // SP2_ENABLE_PYTHON
 
 #ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
@@ -33,7 +31,6 @@ int main(int argc, char *argv[])
     #ifdef SP2_ENABLE_PYTHON
     sp2::python::initialize(argv[0]);
 
-    // FIXME don't use atexit
     auto guard = scope_guard([&] { sp2::python::finalize(); });
     #endif // SP2_ENABLE_PYTHON
 

@@ -21,7 +21,7 @@
 #include <phonopy/phonopy_io.hpp>
 #include <common/math/rotations.hpp>
 #include <common/util/random.hpp>
-#include <common/python/bindings.h>
+#include <common/python/bindings.hpp>
 
 using namespace std;
 using namespace sp2;
@@ -316,6 +316,9 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             // TODO: Expose lattice to python
             //       (It can be smuggled through metropolis by prepending it to the positions)
 
+#ifndef SP2_ENABLE_PYTHON
+            throw runtime_error("Python bindings must be enabled for metropolis");
+#else
             auto &met_set = rset.phonopy_settings.metro_set;
             sp2::python::extend_sys_path(met_set.python_sys_path);
 
@@ -331,6 +334,7 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             };
 
             positions = minimize::metropolis(value_fn, mutation_fn, positions, met_set.settings);
+#endif
         }
 
         input.positions = sp2::dtov3(positions);
