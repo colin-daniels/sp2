@@ -3,17 +3,12 @@
 //
 
 // Python.h must be included prior to any other headers.
-//
-// For this reason, all references to things from the Python API are specifically
-// removed from the header and confined to this source file, so that other
-// compilation units do not need to worry about Python headers.
 #include "Python.h"
-
 #include <common/python/bindings.hpp>
 
-#include <common/util/templates.hpp>
-
-#include "common/python/include_numpy.hpp"
+#include <common/python/util.hpp>
+#include <common/python/include_numpy.hpp>
+#include <common/python/modules/fake_modules.hpp>
 
 //-----------------------------
 
@@ -25,152 +20,8 @@ namespace sp2 {
 namespace python {
 namespace impl {
 
-// A scoped reference to a python object that uses RAII to handle Py_DECREF.
-// This makes it somewhat easier to reason about exception safety,
-// though it is not a panacea.
-//
-// One should still be careful to consider destruction order (since a decref can
-//  potentially invoke arbitrary python code), and read the Python API docs
-//  carefully to understand when references are duplicated, borrowed, and stolen.
-//
-// The default PyObject * constructor does NOT perform an incref, since the
-// majority of Python API functions return a freshly-incremented reference.
-// For those rare functions that return borrowed references, you should
-// use the explicit 'scope_dup' constructor instead.
-//
-// The contained object may be NULL.
-class py_scoped_t
-{
-    PyObject *obj = nullptr;
-
-public:
-
-    // null constructor
-    py_scoped_t() {};
-
-    // PyObject constructor
-    explicit py_scoped_t(PyObject * o)
-            : obj(o)
-    { }
-
-    explicit operator bool() const {
-        return (bool)obj;
-    }
-
-    // No copying.  Use dup() to make the incref explicit.
-    py_scoped_t& operator=(const py_scoped_t& other) = delete;
-    py_scoped_t(const py_scoped_t& other) = delete;
-
-    // move constructor
-    py_scoped_t(py_scoped_t&& other)
-            : obj(other.steal())
-    { }
-
-    // move assignment operator
-    py_scoped_t& operator=(py_scoped_t&& other) {
-        if (this != &other) {
-            if (obj) {
-                // we could implicitly destroy the existing reference, but with no
-                // clear use case, the conservative choice is to require explicit
-                // destruction
-                throw logic_error("attempted to overwrite occupied py_scoped_t");
-            }
-            obj = other.steal();
-        }
-        return *this;
-    }
-
-    ~py_scoped_t() {
-        destroy();
-    }
-
-    // Increment the refcount and return a new scoped reference.
-    py_scoped_t dup() {
-        Py_XINCREF(obj);
-        return py_scoped_t(obj);
-    }
-
-    // Borrow the reference without touching the refcount.
-    //
-    // This is the appropriate method for interfacing with most Python APIs.
-    PyObject * raw() {
-        return obj;
-    }
-
-    // Leak the reference, preventing the DECREF that would otherwise occur at scope exit.
-    // The scoped reference will become NULL.
-    //
-    // Necessary for working with Python API functions that steal references,
-    // such as PyTuple_SetItem.
-    PyObject * steal() {
-        auto tmp = obj;
-        obj = NULL;
-        return tmp;
-    }
-
-    // Explicit destructor.
-    //
-    // Destroy the reference early, decrementing the refcount and nulling out the pointer
-    //  so that nothing happens at scope exit.
-    //
-    // This can be used to explicitly control the destruction order in places where
-    // the natural order of destruction would not be safe.
-    void destroy() {
-        Py_XDECREF(obj);
-        obj = NULL;
-    }
-};
-
-// explicit constructor from a new ref
-py_scoped_t scope(PyObject * o) {
-    return py_scoped_t(o);
-}
-
-// explicit constructor from a borrowed ref, which makes a new reference
-py_scoped_t scope_dup(PyObject * o) {
-    Py_XINCREF(o);
-    return py_scoped_t(o);
-}
-
 /* --------------------------------------------------------------------- */
 // helper functions
-
-// Checks for python exceptions via the PyErr API and turns them into C++ exceptions.
-void throw_on_py_err(const char *msg) {
-    if (PyErr_Occurred()) {
-        PyErr_Print();
-        throw runtime_error(msg);
-    }
-}
-
-void throw_on_py_err() {
-    throw_on_py_err("An exception was thrown in Python.");
-}
-
-// Implementation of repr() and str().
-// F is a function(PyObject *) -> PyObject * returning a new reference to a unicode 'str' object
-template <typename F>
-wstring str_impl(py_scoped_t o, F stringify) {
-
-    auto py_str = scope(stringify(o.raw()));
-    throw_on_py_err("repr: error stringifying");
-
-    wchar_t *str = PyUnicode_AsWideCharString(py_str.raw(), NULL);
-    throw_on_py_err("repr: error encoding");
-    auto guard = sp2::scope_guard([&] { PyMem_Free(str); });
-
-    return wstring(str);
-}
-
-// get an object's repr(), mostly for debug purposes
-wstring repr(py_scoped_t o) {
-    return str_impl(move(o), [&](auto x) { return PyObject_Repr(x); });
-}
-
-// get an object's str(), mostly for debug purposes
-wstring str(py_scoped_t o) {
-    return str_impl(move(o), [&](auto x) { return PyObject_Str(x); });
-}
 
 // Call a named function in a named module with *args and **kw.
 // The module will be automatically imported if it isn't already loaded;
@@ -368,6 +219,8 @@ void initialize(const char *prog) {
 
     initialize_numpy();
     throw_on_py_err("error initializing numpy");
+
+    initialize_fake_modules();
 }
 
 int finalize() {

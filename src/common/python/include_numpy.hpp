@@ -6,7 +6,10 @@
 // TL;DR:
 //
 //  * Every compilation unit in 'sp2' which wants to import numpy headers
-//    should import this instead.
+//    and which is not part of an extension module should import this instead.
+//
+//    (extension modules should instead follow the recommendations here:
+//     https://docs.scipy.org/doc/numpy-1.10.1/reference/c-api.array.html#miscellaneous)
 //
 //  * initialize_numpy should be called early during program execution.
 //    If it isn't, you'll get segfaults on innocent looking numpy API calls.

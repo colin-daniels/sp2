@@ -322,8 +322,16 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             auto &met_set = rset.phonopy_settings.metro_set;
             sp2::python::extend_sys_path(met_set.python_sys_path);
 
+            // Minimize (F dot F), since phonopy uses forces instead of potential.
             auto value_fn = [&](auto &carts) {
-                return diff_fn(carts).first;
+                auto forces = diff_fn(carts).second;
+
+                double sqsum = 0;
+                for (auto x : forces) {
+                    sqsum += x*x;
+                }
+
+                return sqsum;
             };
 
             auto mutation_fn = [&](auto &carts) {
