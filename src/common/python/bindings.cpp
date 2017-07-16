@@ -224,6 +224,7 @@ void initialize(const char *prog) {
 }
 
 int finalize() {
+    finalize_fake_modules();
     return Py_FinalizeEx();
 }
 
