@@ -24,3 +24,9 @@ void ::sp2::python::initialize_fake_modules() {
         p->module = std::move(module);
     }
 }
+
+void ::sp2::python::finalize_fake_modules() {
+    for (auto p : fake_modules::all) {
+        p->module.destroy();
+    }
+}

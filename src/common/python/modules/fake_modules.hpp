@@ -31,11 +31,16 @@ struct fake_module_template_t {
 };
 
 // A loaded fake_module.
+//
+// Instances of this are declared globally because it is not yet
+// clear whether modules defined using PyImport_ExecCodeModule could
+// be safely loaded more than once, anyways.
 struct fake_module_t {
     fake_module_template_t meta;
 
     // Python module object.
-    // Null until initialized by initialized_fake_modules.
+    // This is NULL until initialize_fake_modules(),
+    // and after finalize_fake_modules().
     py_scoped_t module;
 };
 
@@ -59,6 +64,7 @@ namespace fake_modules {
 } // namespace fake_modules
 
 void initialize_fake_modules();
+void finalize_fake_modules();
 
 } // namespace python
 } // namespace sp2
