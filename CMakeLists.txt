@@ -93,10 +93,15 @@ set(SOURCE_FILES
         src/common/minimize/metropolis.cpp
         src/common/minimize/fire.cpp
 ################################################################################
+        IF_PYTHON_ENABLED src/common/python/util.cpp
+        IF_PYTHON_ENABLED src/common/python/util.hpp
         IF_PYTHON_ENABLED src/common/python/bindings.cpp
         IF_PYTHON_ENABLED src/common/python/bindings.hpp
         IF_PYTHON_ENABLED src/common/python/include_numpy.cpp
         IF_PYTHON_ENABLED src/common/python/include_numpy.hpp
+        IF_PYTHON_ENABLED src/common/python/modules/fake_modules.cpp
+        IF_PYTHON_ENABLED src/common/python/modules/fake_modules.hpp
+        IF_PYTHON_ENABLED src/common/python/modules/mutation_helper.cpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
