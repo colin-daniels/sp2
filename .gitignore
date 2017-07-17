@@ -1,2 +1,8 @@
 build/
 .idea/
+
+# vim
+.*.swp
+.*.swo
+
+cmake-build-*/
