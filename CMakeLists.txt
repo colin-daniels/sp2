@@ -99,6 +99,8 @@ set(SOURCE_FILES
         IF_PYTHON_ENABLED src/common/python/bindings.hpp
         IF_PYTHON_ENABLED src/common/python/include_numpy.cpp
         IF_PYTHON_ENABLED src/common/python/include_numpy.hpp
+        IF_PYTHON_ENABLED src/common/python/conversion.cpp
+        IF_PYTHON_ENABLED src/common/python/conversion.hpp
         IF_PYTHON_ENABLED src/common/python/modules/fake_modules.cpp
         IF_PYTHON_ENABLED src/common/python/modules/fake_modules.hpp
         IF_PYTHON_ENABLED src/common/python/modules/mutation_helper.cpp

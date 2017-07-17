@@ -107,5 +107,13 @@ wstring repr(py_scoped_t o) {
     return str_impl(std::move(o), [&](auto x) { return PyObject_Repr(x); });
 }
 
+bool print_on_py_err() {
+    if (PyErr_Occurred()) {
+        PyErr_Print(); // Note: clears the error.
+        return true;
+    }
+    return false;
+}
+
 } // namespace python
 } // namespace sp2

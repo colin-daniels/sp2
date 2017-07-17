@@ -23,9 +23,6 @@ void initialize(const char *prog);
 // This should only be called once over the execution of a single program.
 int finalize();
 
-std::vector<double> call_2d_vector_function(const char *mod_name, const char *func_name, std::vector<double> input,
-        std::size_t width);
-
 // Ensure that the given directories are in sys.path, so that the modules therein may be loaded.
 //
 // The paths are prepended, giving them higher priority over existing entries.
@@ -33,6 +30,17 @@ std::vector<double> call_2d_vector_function(const char *mod_name, const char *fu
 //
 // Any paths already in sys.path will be moved to the front, without creating a duplicate entry.
 void extend_sys_path(std::vector<std::string> dir);
+
+// A highly specialized function that is inexorably tied to business logic in run_phonopy.
+//
+// It calls a named function in a named module (which must be available on sys.path)
+// with, uh... some specific arguments, in a specific manner, and uh.... transforms the
+// result back into c++ data in a specific way.
+//
+// Any further detail is subject to change.
+std::vector<double> call_run_phonopy_mutation_function(
+        const char *mod_name, const char *func_name,
+        std::vector<double> input, std::vector<size_t> sc_to_prim);
 
 }
 }
