@@ -25,6 +25,12 @@ py_scoped_t::py_scoped_t(py_scoped_t &&other)
 
 py_scoped_t &py_scoped_t::operator=(py_scoped_t &&other) {
     if (this != &other) {
+        if (obj) {
+            // we could implicitly destroy the existing reference, but with no
+            // clear use case, the conservative choice is to require explicit
+            // destruction
+            throw logic_error("attempted to overwrite occupied py_scoped_t");
+        }
         obj = other.steal();
     }
     return *this;
