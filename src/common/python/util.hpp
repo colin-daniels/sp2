@@ -30,7 +30,7 @@ namespace python {
 // The contained object may be NULL.
 class py_scoped_t
 {
-    PyObject *obj;
+    PyObject *obj = nullptr;
 
 public:
 
