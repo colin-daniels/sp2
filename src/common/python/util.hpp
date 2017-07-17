@@ -92,6 +92,11 @@ void throw_on_py_err(const char *msg);
 
 void throw_on_py_err();
 
+// Checks for a python exception and prints it to stderr, clearing the error.
+//
+// Returns true if an error was found.
+bool print_on_py_err();
+
 // --------------------------------
 
 // get an object's repr(), mostly for debug purposes

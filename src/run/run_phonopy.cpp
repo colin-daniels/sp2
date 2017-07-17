@@ -334,11 +334,26 @@ void relax_structure(structure_t &structure, run_settings_t rset)
                 return sqsum;
             };
 
+            // communicate primitive cell indices of supercell atoms
+            vector<size_t> indices;
+            {
+                size_t n_prim = structure.positions.size();
+                size_t n_super = supercell.positions.size();
+                while (indices.size() < n_super) {
+                    for (size_t i=0; i < n_prim; i++) {
+                        indices.push_back(i);
+                    }
+                }
+
+                if (indices.size() != n_super) { throw logic_error("_/o\\_"); }
+            }
+
+
             auto mutation_fn = [&](auto &carts) {
-                carts = ::sp2::python::call_2d_vector_function(
+                carts = ::sp2::python::call_run_phonopy_mutation_function(
                         met_set.python_module.c_str(),
                         met_set.python_function.c_str(),
-                        carts, 3);
+                        carts, indices);
             };
 
             positions = minimize::metropolis(value_fn, mutation_fn, positions, met_set.settings);
