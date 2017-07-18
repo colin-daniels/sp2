@@ -104,6 +104,7 @@ set(SOURCE_FILES
         IF_PYTHON_ENABLED src/common/python/modules/fake_modules.cpp
         IF_PYTHON_ENABLED src/common/python/modules/fake_modules.hpp
         IF_PYTHON_ENABLED src/common/python/modules/mutation_helper.cpp
+        IF_PYTHON_ENABLED src/common/python/numpy_util.hpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI

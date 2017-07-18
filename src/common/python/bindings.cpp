@@ -108,72 +108,6 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name, ar
     return call_callable(func.dup(), move(args));
 }
 
-py_scoped_t numpy_array_from_flat_vec(const vector<double> &v, size_t width)
-{
-    if (v.size() % width != 0) {
-        throw logic_error("flat array not divisible by width");
-    }
-
-    // copy data into a brand new array object.
-    constexpr int ndim = 2;
-    npy_intp dims[ndim] = {npy_intp(v.size() / width), npy_intp(width)};
-    auto o2 = PyArray_SimpleNew(ndim, dims, NPY_DOUBLE);
-    auto o = scope(o2);
-
-    auto data = (double *)PyArray_DATA((PyArrayObject *)o.raw());
-    copy(v.begin(), v.end(), data);
-
-    return move(o);
-}
-
-// returns an empty string on success,
-// returns an error message if the object does not meet specifications,
-//  and throws if any other error occurs.
-string validate_2d_array_dims(py_scoped_t o, size_t expect_nrow, size_t expect_ncol)
-{
-    if (!PyArray_Check(o.raw())) {
-        return "object is not an array";
-    }
-
-    npy_intp ndim = PyArray_NDIM((PyArrayObject *)o.raw());
-    throw_on_py_err("error attempting to read numpy array ndim");
-    npy_intp *shape = PyArray_SHAPE((PyArrayObject *)o.raw());
-    throw_on_py_err("error attempting to read numpy array shape");
-
-    if (ndim != 2) {
-        return "expected a 2D numpy array";
-    }
-
-    if (expect_nrow != shape[0] || expect_ncol != shape[1]) {
-        return "array shape mismatch:\n"
-                       " expected: (" + to_string(expect_nrow) + ", " + to_string(expect_ncol) + ")\n"
-                       "   actual: (" + to_string(shape[0]) + ", " + to_string(shape[1]) + ")";
-    }
-
-    return "";
-}
-
-vector<double> flat_vec_from_numpy_array(py_scoped_t o, size_t expect_nrow, size_t expect_ncol)
-{
-    // Force the array into a contiguous layout if it isn't.
-    int min_depth = 0; // ignore
-    int max_depth = 0; // ignore
-    auto contiguous = scope(PyArray_ContiguousFromAny(o.raw(), NPY_DOUBLE, min_depth, max_depth));
-    throw_on_py_err("error making numpy array contiguous");
-
-    string err = validate_2d_array_dims(contiguous.dup(), expect_nrow, expect_ncol);
-    if (!err.empty()) {
-        throw runtime_error(err);
-    }
-
-    auto data = (double *)PyArray_DATA((PyArrayObject *)contiguous.raw());
-    throw_on_py_err("error accessing numpy array data");
-    size_t size = PyArray_SIZE((PyArrayObject *)contiguous.raw());
-    throw_on_py_err("error accessing numpy array size");
-
-    return vector<double>(data, data + size);
-}
-
 vector<double> call_run_phonopy_mutation_function(
         const char *mod_name, const char *func_name,
         vector<double> carts, vector<size_t> sc_to_prim)
@@ -187,8 +121,12 @@ vector<double> call_run_phonopy_mutation_function(
 
     py_scoped_t args;
     {
-        auto x = numpy_array_from_flat_vec(carts, width);
-        args = scope(Py_BuildValue("(O)", x.raw()));
+        auto c_arr = ndarray_serialize_t<double>(carts, {height, width});
+        py_scoped_t py_arr;
+        if (!to_python(c_arr, py_arr)) {
+            throw runtime_error("error creating numpy array");
+        }
+        args = scope(Py_BuildValue("(O)", py_arr.raw()));
         throw_on_py_err("Exception constructing python args tuple.");
     }
 
@@ -212,10 +150,19 @@ vector<double> call_run_phonopy_mutation_function(
         kw = tmp.dup();
     }
 
-    auto retval = call_module_function(mod_name, func_name,
+    auto py_retval = call_module_function(mod_name, func_name,
             args_and_kw(args.dup(), kw.dup()));
 
-    return flat_vec_from_numpy_array(retval.dup(), height, width);
+    // TODO: accept a structural_mutation_t instead
+    ndarray_serialize_t<double> c_retval;
+    if (!from_python(py_retval, c_retval))
+        throw runtime_error("error converting python return value");
+
+    vector<size_t> expected_shape = {height, width};
+    if (c_retval.shape() != expected_shape)
+        throw runtime_error("python return value has incorrect shape");
+
+    return c_retval.data();
 }
 
 void extend_sys_path(const char *dir) {

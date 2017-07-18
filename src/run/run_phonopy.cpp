@@ -279,6 +279,154 @@ void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
     }
 }
 
+//--------------------
+// define a scheme for encoding multiple pieces of data into metropolis's
+// single vector of doubles
+
+struct metropolis_pos_t {
+    double lattice[3][3] = {{1.0, 0.0, 0.0},
+                            {0.0, 1.0, 0.0},
+                            {0.0, 0.0, 1.0}};
+    vector<double> carts;
+
+    // default constructor
+    metropolis_pos_t() { }
+
+    // constructor that decodes; inverse of encode()
+    explicit metropolis_pos_t(const vector<double> &data)
+            : lattice{{data[0], data[1], data[2]},
+                      {data[3], data[4], data[5]},
+                      {data[6], data[7], data[8]}}
+            , carts(data.begin() + 9, data.end())
+    { }
+
+    vector<double> encode() const {
+        vector<double> data;
+        data.reserve(carts.size() + 9);
+
+        auto pusher = back_inserter(data);
+        copy_n(&lattice[0][0], 3, pusher);
+        copy_n(&lattice[1][0], 3, pusher);
+        copy_n(&lattice[2][0], 3, pusher);
+        copy(carts.begin(), carts.end(), pusher);
+
+        return data;
+    }
+};
+
+//--------------------
+// helpers for syncing metropolis position with the potential
+
+template<typename S>
+metropolis_pos_t metropolis_pos_from_sys(S &sys)
+{
+    metropolis_pos_t pos;
+    auto structure = sys.get_structure();
+
+    copy_n(structure.lattice[0], 9, pos.lattice[0]);
+    pos.carts = v3tod(structure.positions);
+
+    return pos;
+}
+
+template<typename S>
+void metropolis_pos_to_sys(metropolis_pos_t pos, S &sys)
+{
+    auto structure = sys.get_structure();
+
+    copy_n(pos.lattice[0], 9, structure.lattice[0]);
+    structure.positions = dtov3(pos.carts);
+
+    sys.set_structure(structure);
+    sys.update();
+}
+
+//--------------------
+
+// NOTE: This is the core logic of 'perform_structural_metropolis', which
+// has been pulled out into a value-returning function to preempt any future
+// bugs related to early returns and/or accidental modification of sys.
+//
+// This function may leave 'sys' in an arbitrary (but consistent) state on exit.
+template<typename S>
+metropolis_pos_t _perform_structural_metropolis(
+        S &sys,
+        metropolis_pos_t initial_pos,
+        size_t primitive_size,
+        phonopy::phonopy_metro_settings_t met_set)
+{
+#ifndef SP2_ENABLE_PYTHON
+    throw runtime_error("Python bindings must be enabled for metropolis");
+#else
+
+    sp2::python::extend_sys_path(met_set.python_sys_path);
+
+    // sys.diff_fn() variant that is aware of our unusual position format
+    auto diff_fn = [&](const auto &data) {
+        metropolis_pos_to_sys(metropolis_pos_t(data), sys);
+        return make_pair(sys.get_value(), sys.get_gradient());
+    };
+
+    // effective potential based on forces
+    auto value_fn = [&](auto &pos) {
+        double energy;
+        vector<double> forces;
+        tie(energy, forces) = diff_fn(pos);
+
+        // Minimize (F dot F), since phonopy uses forces instead of potential.
+        double sqsum = 0;
+        for (auto x : forces) {
+            sqsum += x*x;
+        }
+
+        return sqsum;
+    };
+
+    // primitive cell indices of supercell atoms,
+    // to be communicated to the python script
+    vector<size_t> indices;
+    {
+        size_t supercell_size = sys.get_structure().positions.size(); // FIXME
+        while (indices.size() < supercell_size) {
+            for (size_t i=0; i < primitive_size; i++) {
+                indices.push_back(i);
+            }
+        }
+
+        if (indices.size() != supercell_size) { throw logic_error("_/o\\_"); }
+    }
+
+    // mutations are provided by a user python script
+    auto mutation_fn = [&](auto &data) {
+        auto pos = metropolis_pos_t(data);
+        // TODO lattice
+        pos.carts = sp2::python::call_run_phonopy_mutation_function(
+                met_set.python_module.c_str(),
+                met_set.python_function.c_str(),
+                pos.carts, indices);
+        return pos.encode();
+    };
+
+    // do the needful
+    return metropolis_pos_t(minimize::metropolis(value_fn,
+            mutation_fn, initial_pos.encode(), met_set.settings));
+#endif
+};
+
+// Perform structure-aware metropolis minimization, leaving the optimal
+// structure in 'sys' on exit.
+template<typename S>
+void perform_structural_metropolis(S &sys, size_t primitive_size,
+        phonopy::phonopy_metro_settings_t met_set)
+{
+    auto initial = metropolis_pos_from_sys(sys);
+    auto final = _perform_structural_metropolis(sys, initial,
+            primitive_size, met_set);
+    metropolis_pos_to_sys(final, sys);
+}
+
+//--------------------
+
 void relax_structure(structure_t &structure, run_settings_t rset)
 {
     // construct system + minimize with default parameters
@@ -306,61 +454,21 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             io::write_structure("intermediate.xyz", cell_copy, true);
         };
 
-        auto diff_fn = sys.get_diff_fn();
-        auto positions = minimize::acgsd(
-            diff_fn,
-            sys.get_position(),
-            rset.phonopy_settings.min_set);
+        {
+            auto diff_fn = sys.get_diff_fn();
+            auto position = minimize::acgsd(diff_fn, sys.get_position(),
+                    rset.phonopy_settings.min_set);
+
+            sys.set_position(position);
+        }
+        // at scope exit, 'sys' is the single source of truth.
 
         if (rset.phonopy_settings.metro_set.enabled) {
-            // TODO: Expose lattice to python
-            //       (It can be smuggled through metropolis by prepending it to the positions)
-
-#ifndef SP2_ENABLE_PYTHON
-            throw runtime_error("Python bindings must be enabled for metropolis");
-#else
-            auto &met_set = rset.phonopy_settings.metro_set;
-            sp2::python::extend_sys_path(met_set.python_sys_path);
-
-            // Minimize (F dot F), since phonopy uses forces instead of potential.
-            auto value_fn = [&](auto &carts) {
-                auto forces = diff_fn(carts).second;
-
-                double sqsum = 0;
-                for (auto x : forces) {
-                    sqsum += x*x;
-                }
-
-                return sqsum;
-            };
-
-            // communicate primitive cell indices of supercell atoms
-            vector<size_t> indices;
-            {
-                size_t n_prim = structure.positions.size();
-                size_t n_super = supercell.positions.size();
-                while (indices.size() < n_super) {
-                    for (size_t i=0; i < n_prim; i++) {
-                        indices.push_back(i);
-                    }
-                }
-
-                if (indices.size() != n_super) { throw logic_error("_/o\\_"); }
-            }
-
-
-            auto mutation_fn = [&](auto &carts) {
-                carts = ::sp2::python::call_run_phonopy_mutation_function(
-                        met_set.python_module.c_str(),
-                        met_set.python_function.c_str(),
-                        carts, indices);
-            };
-
-            positions = minimize::metropolis(value_fn, mutation_fn, positions, met_set.settings);
-#endif
+            perform_structural_metropolis(sys, structure.positions.size(),
+                    rset.phonopy_settings.metro_set);
         }
 
-        input.positions = sp2::dtov3(positions);
+        input.positions = sp2::dtov3(sys.get_position());
 
         return sys.get_value();
     };
