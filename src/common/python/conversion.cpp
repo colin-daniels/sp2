@@ -1,9 +1,16 @@
 #include "Python.h" // must be first include
 
+#include "common/python/include_numpy.hpp"
 #include "conversion.hpp"
+
+using namespace std;
 
 namespace sp2 {
 namespace python {
+
+#warning these python conversion functions are all WILDLY untested
+
+/* --------------------------------------------------------------------- */
 
 void refuse_to_evict(py_scoped_t &p) {
     if (p) {
@@ -77,32 +84,32 @@ bool to_python(py_scoped_t &c, py_scoped_t &py) {
 // FIXME these implementations do not differentiate between unrecoverable
 //       failures and tolerable failures (e.g. wrong type)
 
-bool from_python(py_scoped_t py, long &c) {
+bool from_python(py_scoped_t &py, long &c) {
     c = PyLong_AsLong(py.raw());
     return !print_on_py_err();
 }
 
-bool from_python(py_scoped_t py, unsigned long &c) {
+bool from_python(py_scoped_t &py, unsigned long &c) {
     c = PyLong_AsUnsignedLong(py.raw());
     return !print_on_py_err();
 }
 
-bool from_python(py_scoped_t py, long long &c) {
+bool from_python(py_scoped_t &py, long long &c) {
     c = PyLong_AsLongLong(py.raw());
     return !print_on_py_err();
 }
 
-bool from_python(py_scoped_t py, unsigned long long &c) {
+bool from_python(py_scoped_t &py, unsigned long long &c) {
     c = PyLong_AsUnsignedLongLong(py.raw());
     return !print_on_py_err();
 }
 
-bool from_python(py_scoped_t py, double &c) {
+bool from_python(py_scoped_t &py, double &c) {
     c = PyFloat_AsDouble(py.raw());
     return !print_on_py_err();
 }
 
-bool from_python(py_scoped_t py, bool &c) {
+bool from_python(py_scoped_t &py, bool &c) {
     if (py.raw() == Py_True) {
         c = true;
         return true;
@@ -115,12 +122,12 @@ bool from_python(py_scoped_t py, bool &c) {
     return false;
 }
 
-bool from_python(py_scoped_t py, nullptr_t &c) {
+bool from_python(py_scoped_t &py, nullptr_t &c) {
     c = nullptr; // *shrug*
     return py.raw() == Py_None;
 }
 
-bool from_python(py_scoped_t py, std::string &c) {
+bool from_python(py_scoped_t &py, std::string &c) {
     std::string dummy = move(c); // evict contents
 
     // From the Python API docs:
@@ -136,7 +143,7 @@ bool from_python(py_scoped_t py, std::string &c) {
     return true;
 }
 
-bool from_python(py_scoped_t py, py_scoped_t &c) {
+bool from_python(py_scoped_t &py, py_scoped_t &c) {
     refuse_to_evict(c);
 
     c = py.dup();
