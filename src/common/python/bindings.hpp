@@ -10,6 +10,8 @@
 #include <vector>
 #include <string>
 
+#include "phonopy/structural_mutation.hpp"
+
 namespace sp2 {
 namespace python {
 
@@ -38,7 +40,7 @@ void extend_sys_path(std::vector<std::string> dir);
 // result back into c++ data in a specific way.
 //
 // Any further detail is subject to change.
-std::vector<double> call_run_phonopy_mutation_function(
+sp2::structural_mutation_t call_run_phonopy_mutation_function(
         const char *mod_name, const char *func_name,
         std::vector<double> input, std::vector<size_t> sc_to_prim);
 
