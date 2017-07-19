@@ -397,8 +397,8 @@ metropolis_pos_t _perform_structural_metropolis(
     }
 
     // mutations are provided by a user python script
-    auto mutation_fn = [&](auto &data) {
-        auto pos = metropolis_pos_t(data);
+    auto mutation_fn = [&](auto data) {
+        auto pos = metropolis_pos_t(move(data));
         // TODO lattice
         auto mutation = sp2::python::call_run_phonopy_mutation_function(
                 met_set.python_module.c_str(),

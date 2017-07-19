@@ -29,9 +29,7 @@ std::vector<double> minimize::metropolis(
     }
 
     do {
-        auto position_new = position_best;
-
-        mutation_fn(position_new);
+        auto position_new = mutation_fn(position_best);
         mutations += 1;
         mutations_since += 1;
 
