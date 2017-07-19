@@ -10,9 +10,50 @@ library headers.
 #include "common/python/util.hpp"
 #include "common/python/numpy_util.hpp"
 #include "common/python/include_numpy.hpp"
+#include "phonopy/structural_mutation.hpp"
 
 #include <cstdint>
 #include <vector>
+#include <iostream>
+
+// to_python and from_python.
+//
+// 'to_python' turns a variety of C++ data types into python equivalents.
+// 'from_python' reads python data back into strongly typed C++.
+//
+
+// to_python:
+//
+// to_python generally tries to produce types which approximate or represents
+// the C++ type in spirit.  For cases that are unclear, selection of the
+// desired python type may be accomplished through the use of wrapper types.
+// (though these don't exist yet)
+//
+// to_python is generally unlikely to fail, but when it does, all references
+// created by it are guaranteed to be cleaned up, and it will leave the
+// output argument NULL and return false.
+
+// from_python:
+//
+// 'from_python' must be able to recover an object from the output of
+// 'to_python', but beyond that it is fairly permissive in what it accepts,
+// using Python APIs that provide the conversions typically accepted in
+// python (e.g. accepting an int in place of a float, or an iterable in place
+// of a list, etc.)
+//
+// On failure, from_python returns false, and leaves the output argument in
+// an unspecified state.
+//
+// Failure is not uncommon, and in our case generally results from poor output
+// returned by a user script; hence good error messages are a must.
+// The current implementations typically try to take advantage of python's
+//  own fantastic error messages and tracebacks by using PyErr_Print
+//  before returning false.
+//
+// Of course, unconditionally printing errors makes the current implementations
+// unsuitable for use cases such as "attempt to deserialize as type A, then
+// attempt to deserialize as type B if that fails". This may be addressed in
+// the future.
 
 namespace sp2 {
 namespace python {
@@ -25,6 +66,7 @@ bool to_python(const double &c, py_scoped_t &py);
 bool to_python(const bool &c, py_scoped_t &py);
 bool to_python(const std::string &c, py_scoped_t &py);
 bool to_python(const std::nullptr_t &c, py_scoped_t &py);
+//bool to_python(const structural_mutation_t &c, py_scoped_t &py);
 bool to_python(py_scoped_t &c, py_scoped_t &py);
 
 bool from_python(py_scoped_t &py, long &c);
@@ -35,10 +77,13 @@ bool from_python(py_scoped_t &py, double &c);
 bool from_python(py_scoped_t &py, bool &c);
 bool from_python(py_scoped_t &py, std::string &c);
 bool from_python(py_scoped_t &py, std::nullptr_t &c);
+bool from_python(py_scoped_t &py, structural_mutation_t &c);
 bool from_python(py_scoped_t &py, py_scoped_t &c);
 
 /* --------------------------------------------------------------------- */
-// Generic conversions of vector <-> list
+// Generic conversions of:
+//  - std::vector ---> list
+//  - std::vector <--- sequence or iterable
 
 template <typename T>
 bool to_python(const std::vector<T> & vec, py_scoped_t &list) {
@@ -71,7 +116,7 @@ bool to_python(const std::vector<T> & vec, py_scoped_t &list) {
 
 template <typename T>
 bool from_python(py_scoped_t &o, std::vector<T> & vec) {
-    auto dummy = std::move(vec); // evict any existing contents
+    vec.clear();
 
     // NOTICE
     // Although the docs for PySequence_Fast say that it takes a sequence,
@@ -79,39 +124,35 @@ bool from_python(py_scoped_t &o, std::vector<T> & vec) {
     //
     // It's basically:  x if isinstance(x, (list, tuple)) else list(x)
     //
-    // Both of these cases are fine; but we'll check for them explicitly to
-    // ensure that any errors from PySequence_Fast are not related to them.
-    bool is_iterable = bool(scope(PyObject_GetIter(o.raw())));
-    bool is_sequence = PySequence_Check(o.raw());
-    bool is_iterator = PyIter_Check(o.raw());
-
-    if (!(is_iterable || is_sequence)) {
-        return false;
-    }
-
-    // Also, we'd rather NOT accept iterators, which would get consumed the
-    // first time we fail to deserialize them and then fail to deserialize
-    // as anything else.
-    if (is_iterator) {
+    // Both of these cases are fine; except that iterables include iterators,
+    // which we'd rather NOT accept since they would get consumed the first time
+    // we fail to deserialize them.
+    if (PyIter_Check(o.raw())) {
+        std::cerr << "error: refusing to deserialize a one-time use iterator. "
+                  << "Please use e.g. list() to strictly evaluate it."
+                  << std::endl;
         return false;
     }
 
     // With that out of the way, any errors from PySequence_Fast are
     // legitimate concerns.
-    py_scoped_t seq = scope(PySequence_Fast(o.raw(), "expected a... bah, you'll never see this."));
+    py_scoped_t seq = scope(PySequence_Fast(o.raw(), "expected a... bah, "
+        "you'll never see this."));
     throw_on_py_err();
 
-    Py_ssize_t size = PySequence_Fast_GET_SIZE(o.raw());
+    Py_ssize_t size = PySequence_Fast_GET_SIZE(seq.raw());
     vec.reserve(size);
     for (Py_ssize_t i=0; i < size; i++) {
-        auto py_item = scope(PySequence_Fast_GET_ITEM(o.raw(), i));
+        // PySequence_Fast_GET_ITEM returns a borrowed reference,
+        //  and does not ever (?) throw python exceptions.
+        auto py_item = scope_dup(PySequence_Fast_GET_ITEM(seq.raw(), i));
 
         T item;
-        if (!from_python(py_item.dup(), item)) {
+        if (!from_python(py_item, item)) {
             return false;
         }
 
-        vec.push_back(item);
+        vec.push_back(std::move(item));
     }
 
     return true;
@@ -151,9 +192,9 @@ bool to_python(const ndarray_serialize_t<T> &c, py_scoped_t &py)
     if (print_on_py_err())
         return false;
 
-    auto arr_data = (double *)PyArray_DATA((PyArrayObject *)arr.raw());
+    auto arr_data = (T *)PyArray_DATA((PyArrayObject *)arr.raw());
     throw_on_py_err("error accessing numpy array data");
-    copy(c.data().begin(), c.data().end(), arr_data);
+    std::copy(c.data().begin(), c.data().end(), arr_data);
 
     py = std::move(arr);
     return true;
@@ -163,7 +204,6 @@ bool to_python(const ndarray_serialize_t<T> &c, py_scoped_t &py)
 template <typename T, int DTYPE = numpy_dtype<T>::value>
 bool from_python(py_scoped_t &py, ndarray_serialize_t<T> &c)
 {
-
     // Force the array into a contiguous layout if it isn't.
     int min_depth = 0; // ignore
     int max_depth = 0; // ignore
@@ -174,16 +214,97 @@ bool from_python(py_scoped_t &py, ndarray_serialize_t<T> &c)
 
     auto arr = (PyArrayObject *)contiguous.raw();
     // NOTE: none of these set the python error state
-    auto arr_data = (double *)PyArray_DATA(arr);
+    auto arr_data = (T *)PyArray_DATA(arr);
     size_t arr_size = PyArray_SIZE(arr);
     size_t arr_ndim = PyArray_NDIM(arr);
     auto* arr_dims = PyArray_DIMS(arr);
 
-    std::vector<double> data(arr_data, arr_data + arr_size);
+    std::vector<T> data(arr_data, arr_data + arr_size);
     std::vector<size_t> shape(arr_dims, arr_dims + arr_ndim);
-    c = ndarray_serialize_t<double>(data, shape);
+    c = ndarray_serialize_t<T>(data, shape);
     return true;
 }
+
+/* --------------------------------------------------------------------- */
+// Generic conversions of:
+//
+//  - std::tuple ---> list (FIXME: not tuple?)
+//  - std::tuple <--- sequence or iterable
+
+template<std::size_t Idx, class ...Ts>
+constexpr bool _from_python_rec(Ts&&...) { return true; }
+
+template<std::size_t Idx = 0, class ...Ts,
+    class = std::enable_if_t<(Idx < sizeof...(Ts))>>
+bool _from_python_rec(std::vector<py_scoped_t> &pys, std::tuple<Ts...> &cs)
+{
+    return from_python(pys[Idx], std::get<Idx>(cs)) &&
+           _from_python_rec<Idx + 1>(pys, cs);
+}
+
+template <typename... Ts>
+bool from_python(py_scoped_t &py, std::tuple<Ts...> &cs)
+{
+    std::vector<py_scoped_t> pys;
+    if (!from_python(py, pys))
+        return false;
+
+    if (pys.size() != sizeof...(Ts))
+    {
+        std::cerr << "expected python sequence of length " << sizeof...(Ts)
+                  << ", got length " << pys.size() << std::endl;
+        return false;
+    }
+
+    return _from_python_rec(pys, cs);
+}
+
+// -----
+
+template<std::size_t Idx>
+constexpr bool _to_python_rec(...) { return true; }
+
+template<std::size_t Idx = 0, class ...Ts,
+    class = std::enable_if_t<(Idx < sizeof...(Ts))>>
+bool _to_python_rec(const std::tuple<Ts...> &cs, std::vector<py_scoped_t> &pys)
+{
+    return _from_python_rec(std::get<Idx>(cs), pys[Idx]) &&
+           _from_python_rec<Idx + 1>(cs, pys);
+}
+
+template <typename... Ts>
+bool to_python(const std::tuple<Ts...> &cs, py_scoped_t &py)
+{
+    std::vector<py_scoped_t> pys(sizeof...(Ts));
+
+    if (!_to_python_rec(cs, pys)) {
+        // destruct any python references that were created prior to the error
+        pys.resize(0);
+    }
+
+    return to_python(pys, py);
+}
+
+/* --------------------------------------------------------------------- */
+// Helpers for enum types with an enum_map.
+// Serializes to/from string.
+
+template<typename E>
+bool from_python_by_enum_map(py_scoped_t &py, E &out, E null_value,
+        const char* message)
+{
+    std::string s;
+    if (!from_python(py, s))
+        return false;
+
+    out = enum_from_str(s, null_value);
+    if (out == null_value) {
+        std::cerr << message << std::endl;
+        return false;
+    }
+    return true;
+}
+
 
 } // python
 } // sp2

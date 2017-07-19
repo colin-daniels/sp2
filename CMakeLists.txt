@@ -136,6 +136,7 @@ set(SOURCE_FILES
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.hpp
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.cpp
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.hpp
+        IF_PHONOPY_ENABLED src/phonopy/structural_mutation.hpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_io.cpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_io.hpp
 ################################################################################

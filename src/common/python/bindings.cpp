@@ -62,18 +62,16 @@ py_scoped_t call_callable(py_scoped_t function, args_t argpair) {
         throw logic_error("tried to call function with invalid or previously used args_t");
     }
 
-    if (!PyArg_ValidateKeywordArguments(argpair.second.raw())) {
+    if (!PyArg_ValidateKeywordArguments(kw.raw())) {
         throw logic_error("invalid keyword arguments");
     }
     throw_on_py_err();
-
-    auto f2 = getattr(function.dup(), "__call__");
 
     if (!PyCallable_Check(function.raw())) {
         throw logic_error("not callable");
     }
 
-    auto retval = scope(PyObject_Call(f2.raw(), args.raw(), kw.raw()));
+    auto retval = scope(PyObject_Call(function.raw(), args.raw(), kw.raw()));
     throw_on_py_err("error calling python callable");
     return retval;
 }
@@ -108,7 +106,7 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name, ar
     return call_callable(func.dup(), move(args));
 }
 
-vector<double> call_run_phonopy_mutation_function(
+sp2::structural_mutation_t call_run_phonopy_mutation_function(
         const char *mod_name, const char *func_name,
         vector<double> carts, vector<size_t> sc_to_prim)
 {
@@ -126,7 +124,7 @@ vector<double> call_run_phonopy_mutation_function(
         if (!to_python(c_arr, py_arr)) {
             throw runtime_error("error creating numpy array");
         }
-        args = scope(Py_BuildValue("(O)", py_arr.raw()));
+        args = scope(Py_BuildValue("(O)", py_arr.steal()));
         throw_on_py_err("Exception constructing python args tuple.");
     }
 
@@ -138,14 +136,14 @@ vector<double> call_run_phonopy_mutation_function(
         }
         auto module = fake_modules::mutation_helper.module.dup();
         auto klass = getattr(module.dup(), "supercell_index_mapper");
-        auto args = scope(Py_BuildValue("(O)", list.raw()));
+        auto args = scope(Py_BuildValue("(O)", list.steal()));
         throw_on_py_err("Exception constructing python args tuple.");
         sc_map = call_callable(klass.dup(), just_args(args.dup()));
     }
 
     py_scoped_t kw;
     {
-        auto tmp = scope(Py_BuildValue("{sO}", "supercell", sc_map.raw()));
+        auto tmp = scope(Py_BuildValue("{sO}", "supercell", sc_map.steal()));
         throw_on_py_err("Exception constructing python kw dict.");
         kw = tmp.dup();
     }
@@ -153,16 +151,18 @@ vector<double> call_run_phonopy_mutation_function(
     auto py_retval = call_module_function(mod_name, func_name,
             args_and_kw(args.dup(), kw.dup()));
 
-    // TODO: accept a structural_mutation_t instead
-    ndarray_serialize_t<double> c_retval;
+    structural_mutation_t c_retval; // ndarray_serialize_t<double> c_retval;
     if (!from_python(py_retval, c_retval))
         throw runtime_error("error converting python return value");
 
+    ndarray_serialize_t<double> arr = c_retval.data;
+
+    // FIXME validation in wrong place
     vector<size_t> expected_shape = {height, width};
-    if (c_retval.shape() != expected_shape)
+    if (arr.shape() != expected_shape)
         throw runtime_error("python return value has incorrect shape");
 
-    return c_retval.data();
+    return c_retval;
 }
 
 void extend_sys_path(const char *dir) {
@@ -253,10 +253,11 @@ void sp2::python::extend_sys_path(vector<string> dirs) {
     return impl::extend_sys_path(dirs);
 }
 
-vector<double> sp2::python::call_run_phonopy_mutation_function(
+sp2::structural_mutation_t sp2::python::call_run_phonopy_mutation_function(
         const char *mod_name, const char *func_name,
         vector<double> carts, vector<size_t> sc_to_prim)
 {
-    return impl::call_run_phonopy_mutation_function(mod_name, func_name, carts, sc_to_prim);
+    return impl::call_run_phonopy_mutation_function(mod_name, func_name, carts,
+        sc_to_prim);
 }
 

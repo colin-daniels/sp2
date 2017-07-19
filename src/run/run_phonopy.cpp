@@ -400,10 +400,13 @@ metropolis_pos_t _perform_structural_metropolis(
     auto mutation_fn = [&](auto &data) {
         auto pos = metropolis_pos_t(data);
         // TODO lattice
-        pos.carts = sp2::python::call_run_phonopy_mutation_function(
+        auto mutation = sp2::python::call_run_phonopy_mutation_function(
                 met_set.python_module.c_str(),
                 met_set.python_function.c_str(),
                 pos.carts, indices);
+
+        // TODO FRACS
+        pos.carts = mutation.data.data();
         return pos.encode();
     };
 
