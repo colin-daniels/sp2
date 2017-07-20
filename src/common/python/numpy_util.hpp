@@ -38,10 +38,8 @@ public:
             product *= x;
 
         if (product != data.size())
-        {
             throw std::length_error(
                 "Length of input data inconsistent with shape");
-        }
 
         _data = move(data);
         _shape = move(shape);

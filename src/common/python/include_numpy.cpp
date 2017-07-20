@@ -6,9 +6,11 @@
 // global object for the numpy array API.
 
 #define SP2_ACTUALLY_DO_PLEASE_IMPORT_ARRAY
+
 #include "common/python/include_numpy.hpp"
 
-int initialize_numpy() {
+int initialize_numpy()
+{
     // import_array() is strange.
     //  - It is a macro with a return statement.
     //    But only on the failing branch!

@@ -27,16 +27,19 @@ namespace impl {
 // a pair of *args and **kw
 typedef pair<py_scoped_t, py_scoped_t> args_t;
 
-args_t args_and_kw(py_scoped_t args, py_scoped_t kw) {
+args_t args_and_kw(py_scoped_t args, py_scoped_t kw)
+{
     return make_pair(move(args), move(kw));
 }
 
-args_t just_args(py_scoped_t args) {
+args_t just_args(py_scoped_t args)
+{
     auto kw = scope(PyDict_New());
     return make_pair(move(args), move(kw));
 }
 
-args_t just_kw(py_scoped_t kw) {
+args_t just_kw(py_scoped_t kw)
+{
     auto args = scope(PyTuple_New(0));
     return make_pair(move(args), move(kw));
 }
@@ -48,29 +51,28 @@ args_t just_kw(py_scoped_t kw) {
 //
 // Equivalent to 'getattr(obj, name)'.
 // Throws an exception if the attribute does not exist.
-py_scoped_t getattr(py_scoped_t &o, const char* attr) {
+py_scoped_t getattr(py_scoped_t &o, const char *attr)
+{
     auto tmp = scope(PyObject_GetAttrString(o.raw(), attr));
     throw_on_py_err();
     return move(tmp);
 }
 
 // Invoke an object's __call__.
-py_scoped_t call_callable(py_scoped_t &function, args_t argpair) {
-    auto & args = argpair.first;
-    auto & kw = argpair.second;
-    if (!(args && kw)) {
+py_scoped_t call_callable(py_scoped_t &function, args_t argpair)
+{
+    auto &args = argpair.first;
+    auto &kw = argpair.second;
+    if (!(args && kw))
         throw logic_error(
             "tried to call function with invalid or previously used args_t");
-    }
 
-    if (!PyArg_ValidateKeywordArguments(kw.raw())) {
+    if (!PyArg_ValidateKeywordArguments(kw.raw()))
         throw logic_error("invalid keyword arguments");
-    }
-    throw_on_py_err();
+    throw_on_py_err(); // errors not covered by the above
 
-    if (!PyCallable_Check(function.raw())) {
+    if (!PyCallable_Check(function.raw()))
         throw logic_error("not callable");
-    }
 
     auto retval = scope(PyObject_Call(function.raw(), args.raw(), kw.raw()));
     throw_on_py_err("error calling python callable");
@@ -100,24 +102,23 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name,
     }
 
     auto func = getattr(module, func_name);
-    if (!(PyCallable_Check(func.raw()))) {
+    if (!(PyCallable_Check(func.raw())))
         throw runtime_error(string() + mod_name + "."
                             + func_name + " is not callable");
-    }
 
     return call_callable(func, move(args));
 }
 
 sp2::structural_mutation_t call_run_phonopy_mutation_function(
-        const char *mod_name, const char *func_name,
-        vector<double> carts, double lattice[3][3],
-        vector<size_t> sc_to_prim)
+    const char *mod_name, const char *func_name,
+    vector<double> carts, double lattice[3][3],
+    vector<size_t> sc_to_prim)
 {
     // interpret as 3N cartesian coords
     size_t width = 3;
-    if (carts.size() % width != 0) {
+    if (carts.size() % width != 0)
         throw logic_error("vector not divisible by width");
-    }
+
     size_t height = carts.size() / width;
 
     auto py_carts = to_python_strict(as_ndarray(carts, {height, width}));
@@ -153,7 +154,8 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
         "error converting python return value");
 }
 
-void extend_sys_path(const char *dir) {
+void extend_sys_path(const char *dir)
+{
 
     // python literal equivalent:
     //
@@ -164,7 +166,7 @@ void extend_sys_path(const char *dir) {
     auto py_dir = scope(PyUnicode_DecodeFSDefault(dir));
     throw_on_py_err("add_to_sys_path: error decoding filesystem path");
 
-    auto sys_path = scope_dup(PySys_GetObject((char*)"path"));
+    auto sys_path = scope_dup(PySys_GetObject((char *) "path"));
     throw_on_py_err("add_to_sys_path: error reading sys.path");
 
     // make a set because I can't find where the C API exposes list.__contains__... >_>
@@ -174,13 +176,16 @@ void extend_sys_path(const char *dir) {
     // remove an existing entry
     int already_there = PySet_Contains(sys_path_set.raw(), py_dir.raw());
     throw_on_py_err("add_to_sys_path: error checking set membership");
-    switch (already_there) {
-        case 1:
-            PyObject_CallMethod(sys_path.raw(), "remove", "o", py_dir.raw());
-            throw_on_py_err("add_to_sys_path: error removing existing item");
-            break;
-        case 0: break;
-        default: throw logic_error("unexpected result from __contains__");
+    switch (already_there)
+    {
+    case 1:
+        PyObject_CallMethod(sys_path.raw(), "remove", "o", py_dir.raw());
+        throw_on_py_err("add_to_sys_path: error removing existing item");
+        break;
+    case 0:
+        break;
+    default:
+        throw logic_error("unexpected result from __contains__");
     }
 
     // prepend
@@ -189,23 +194,29 @@ void extend_sys_path(const char *dir) {
 }
 
 
-void extend_sys_path(vector<string> dirs) {
+void extend_sys_path(vector<string> dirs)
+{
     // reverse order so that the prepended results appear in the requested order
-    for (auto it = dirs.rbegin(); it != dirs.rend(); it++) {
+    for (auto it = dirs.rbegin(); it != dirs.rend(); it++)
         extend_sys_path(it->c_str());
-    }
 }
 
-void initialize(const char *prog) {
-    if (prog) {
+void initialize(const char *prog)
+{
+    if (prog)
+    {
         // NOTE: Technically, we are leaking this memory by not setting up any sort of
         //       provision to call 'PyMem_RawFree(program)' after 'Py_FinalizeEx()'.
         //       But this is no big deal since this function should only be called once.
         wchar_t *program = Py_DecodeLocale(prog, NULL);
-        if (program) {
+        if (program)
+        {
             Py_SetProgramName(program);
-        } else {
-            throw runtime_error("Warning: Could not decode program name for python bindings");
+        }
+        else
+        {
+            throw runtime_error(
+                "Warning: Could not decode program name for python bindings");
         }
     }
 
@@ -217,7 +228,8 @@ void initialize(const char *prog) {
     initialize_fake_modules();
 }
 
-int finalize() {
+int finalize()
+{
     finalize_fake_modules();
     return Py_FinalizeEx();
 }
@@ -229,22 +241,25 @@ int finalize() {
 /* --------------------------------------------------------------------- */
 // Public API
 
-void sp2::python::initialize(const char *prog) {
+void sp2::python::initialize(const char *prog)
+{
     return impl::initialize(prog);
 }
 
-int sp2::python::finalize() {
+int sp2::python::finalize()
+{
     return impl::finalize();
 }
 
-void sp2::python::extend_sys_path(vector<string> dirs) {
+void sp2::python::extend_sys_path(vector<string> dirs)
+{
     return impl::extend_sys_path(dirs);
 }
 
 sp2::structural_mutation_t sp2::python::call_run_phonopy_mutation_function(
-        const char *mod_name, const char *func_name,
-        vector<double> carts, double lattice[3][3],
-        vector<size_t> sc_to_prim)
+    const char *mod_name, const char *func_name,
+    vector<double> carts, double lattice[3][3],
+    vector<size_t> sc_to_prim)
 {
     return impl::call_run_phonopy_mutation_function(mod_name, func_name, carts,
         lattice, sc_to_prim);

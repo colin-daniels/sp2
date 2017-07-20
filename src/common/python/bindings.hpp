@@ -41,9 +41,9 @@ void extend_sys_path(std::vector<std::string> dir);
 //
 // Any further detail is subject to change.
 sp2::structural_mutation_t call_run_phonopy_mutation_function(
-        const char *mod_name, const char *func_name,
-        std::vector<double> input, double lattice[3][3],
-        std::vector<size_t> sc_to_prim);
+    const char *mod_name, const char *func_name,
+    std::vector<double> input, double lattice[3][3],
+    std::vector<size_t> sc_to_prim);
 
 }
 }

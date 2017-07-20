@@ -59,25 +59,42 @@ namespace sp2 {
 namespace python {
 
 bool to_python(const long &c, py_scoped_t &py);
+
 bool to_python(const long long &c, py_scoped_t &py);
+
 bool to_python(const unsigned long &c, py_scoped_t &py);
+
 bool to_python(const unsigned long long &c, py_scoped_t &py);
+
 bool to_python(const double &c, py_scoped_t &py);
+
 bool to_python(const bool &c, py_scoped_t &py);
+
 bool to_python(const std::string &c, py_scoped_t &py);
+
 bool to_python(const std::nullptr_t &c, py_scoped_t &py);
+
 //bool to_python(const structural_mutation_t &c, py_scoped_t &py);
 bool to_python(py_scoped_t &c, py_scoped_t &py);
 
 bool from_python(py_scoped_t &py, long &c);
+
 bool from_python(py_scoped_t &py, long long &c);
+
 bool from_python(py_scoped_t &py, unsigned long &c);
+
 bool from_python(py_scoped_t &py, unsigned long long &c);
+
 bool from_python(py_scoped_t &py, double &c);
+
 bool from_python(py_scoped_t &py, bool &c);
+
 bool from_python(py_scoped_t &py, std::string &c);
+
 bool from_python(py_scoped_t &py, std::nullptr_t &c);
+
 bool from_python(py_scoped_t &py, structural_mutation_t &c);
+
 bool from_python(py_scoped_t &py, py_scoped_t &c);
 
 /* --------------------------------------------------------------------- */
@@ -90,7 +107,8 @@ bool from_python(py_scoped_t &py, py_scoped_t &c);
 ///
 /// Errors are communicated by std::runtime_error.
 template<typename T>
-py_scoped_t to_python_strict(const T &c, const char *msg) {
+py_scoped_t to_python_strict(const T &c, const char *msg)
+{
     py_scoped_t py;
     if (!to_python(c, py))
         throw std::runtime_error(msg);
@@ -98,7 +116,8 @@ py_scoped_t to_python_strict(const T &c, const char *msg) {
 }
 
 template<typename T>
-py_scoped_t to_python_strict(const T &c) {
+py_scoped_t to_python_strict(const T &c)
+{
     return to_python_strict(c,
         "an error occurred converting data into python objects");
 }
@@ -111,7 +130,8 @@ template<
     typename T,
     typename = std::enable_if_t<std::is_default_constructible<T>::value>
 >
-T from_python_strict(py_scoped_t &py, const char *msg) {
+T from_python_strict(py_scoped_t &py, const char *msg)
+{
     auto c = T();
     if (!from_python(py, c))
         throw std::runtime_error(msg);
@@ -122,7 +142,8 @@ template<
     typename T,
     typename = std::enable_if_t<std::is_default_constructible<T>::value>
 >
-T from_python_strict(py_scoped_t &py) {
+T from_python_strict(py_scoped_t &py)
+{
     return from_python_strict<T>(py,
         "an error occurred converting data from python");
 }
@@ -133,37 +154,43 @@ T from_python_strict(py_scoped_t &py) {
 //  - std::vector ---> list
 //  - std::vector <--- sequence or iterable
 
-template <typename T>
-bool to_python(const std::vector<T> & vec, py_scoped_t &list) {
-    if (list) {
-        throw std::logic_error("attempted to serialize into occupied py_scoped_t");
-    }
+template<typename T>
+bool to_python(const std::vector<T> &vec, py_scoped_t &list)
+{
+    if (list)
+        throw std::logic_error(
+            "attempted to serialize into occupied py_scoped_t");
 
     // of course, pre-allocating a list of the right size would be faster,
     // but 'new' and 'append' keeps the object in a consistent state
     list = scope(PyList_New(0));
     throw_on_py_err("unexpected error constructing python list");
 
-    for (auto & x : vec) {
+    for (auto &x : vec)
+    {
         py_scoped_t px;
-        if (!to_python(x, px)) {
+        if (!to_python(x, px))
+        {
             // ...and here's why it's nice to keep 'list' in a consistent state
             list.destroy();
             return false;
         }
 
         PyList_Append(list.raw(), px.raw());
-        if (print_on_py_err()) {
+        if (print_on_py_err())
+        {
             list.destroy();
-            throw std::runtime_error("unexpected error appending to python list");
+            throw std::runtime_error(
+                "unexpected error appending to python list");
         }
     }
 
     return true;
 }
 
-template <typename T>
-bool from_python(py_scoped_t &o, std::vector<T> & vec) {
+template<typename T>
+bool from_python(py_scoped_t &o, std::vector<T> &vec)
+{
     vec.clear();
 
     // NOTICE
@@ -175,7 +202,8 @@ bool from_python(py_scoped_t &o, std::vector<T> & vec) {
     // Both of these cases are fine; except that iterables include iterators,
     // which we'd rather NOT accept since they would get consumed the first time
     // we fail to deserialize them.
-    if (PyIter_Check(o.raw())) {
+    if (PyIter_Check(o.raw()))
+    {
         std::cerr << "error: refusing to deserialize a one-time use iterator. "
                   << "Please use e.g. list() to strictly evaluate it."
                   << std::endl;
@@ -189,15 +217,15 @@ bool from_python(py_scoped_t &o, std::vector<T> & vec) {
 
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq.raw());
     vec.reserve(size);
-    for (Py_ssize_t i=0; i < size; i++) {
+    for (Py_ssize_t i = 0; i < size; i++)
+    {
         // PySequence_Fast_GET_ITEM returns a borrowed reference,
         //  and does not ever (?) throw python exceptions.
         auto py_item = scope_dup(PySequence_Fast_GET_ITEM(seq.raw(), i));
 
         T item;
-        if (!from_python(py_item, item)) {
+        if (!from_python(py_item, item))
             return false;
-        }
 
         vec.push_back(std::move(item));
     }
@@ -210,10 +238,10 @@ bool from_python(py_scoped_t &o, std::vector<T> & vec) {
 
 /// Helper type to obtain the numpy dtype integral constant associated
 /// with a data type.
-template <typename T>
+template<typename T>
 struct numpy_dtype {};
 
-#define SPECIALIZE_NUMPY_DTYPE(T,VAL) \
+#define SPECIALIZE_NUMPY_DTYPE(T, VAL) \
 template<> struct numpy_dtype<T> : std::integral_constant<int, VAL> {};
 
 SPECIALIZE_NUMPY_DTYPE(bool, NPY_BOOL)
@@ -229,7 +257,7 @@ SPECIALIZE_NUMPY_DTYPE(float, NPY_FLOAT)
 SPECIALIZE_NUMPY_DTYPE(double, NPY_DOUBLE)
 
 // NOTE: DTYPE doubles as SFINAE
-template <typename T, int DTYPE = numpy_dtype<T>::value>
+template<typename T, int DTYPE = numpy_dtype<T>::value>
 bool to_python(const as_ndarray_t<T> &c, py_scoped_t &py)
 {
 
@@ -239,7 +267,7 @@ bool to_python(const as_ndarray_t<T> &c, py_scoped_t &py)
     if (print_on_py_err())
         return false;
 
-    auto arr_data = (T *)PyArray_DATA((PyArrayObject *)arr.raw());
+    auto arr_data = (T *) PyArray_DATA((PyArrayObject *) arr.raw());
     throw_on_py_err("error accessing numpy array data");
     std::copy(c.data().begin(), c.data().end(), arr_data);
 
@@ -248,23 +276,23 @@ bool to_python(const as_ndarray_t<T> &c, py_scoped_t &py)
 }
 
 // NOTE: DTYPE doubles as SFINAE
-template <typename T, int DTYPE = numpy_dtype<T>::value>
+template<typename T, int DTYPE = numpy_dtype<T>::value>
 bool from_python(py_scoped_t &py, as_ndarray_t<T> &c)
 {
     // Force the array into a contiguous layout if it isn't.
     int min_depth = 0; // ignore
     int max_depth = 0; // ignore
-    auto contiguous = scope(PyArray_ContiguousFromAny(py.raw(), DTYPE, min_depth, max_depth));
-    if (print_on_py_err()) {
+    auto contiguous = scope(
+        PyArray_ContiguousFromAny(py.raw(), DTYPE, min_depth, max_depth));
+    if (print_on_py_err())
         return false;
-    }
 
-    auto arr = (PyArrayObject *)contiguous.raw();
+    auto arr = (PyArrayObject *) contiguous.raw();
     // NOTE: none of these set the python error state
-    auto arr_data = (T *)PyArray_DATA(arr);
+    auto arr_data = (T *) PyArray_DATA(arr);
     size_t arr_size = PyArray_SIZE(arr);
     size_t arr_ndim = PyArray_NDIM(arr);
-    auto* arr_dims = PyArray_DIMS(arr);
+    auto *arr_dims = PyArray_DIMS(arr);
 
     std::vector<T> data(arr_data, arr_data + arr_size);
     std::vector<size_t> shape(arr_dims, arr_dims + arr_ndim);
@@ -279,17 +307,18 @@ bool from_python(py_scoped_t &py, as_ndarray_t<T> &c)
 //  - std::tuple <--- sequence or iterable
 
 template<std::size_t Idx, class ...Ts>
-constexpr bool _from_python_rec(Ts&&...) { return true; }
+constexpr bool _from_python_rec(Ts &&...)
+{ return true; }
 
 template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
 bool _from_python_rec(std::vector<py_scoped_t> &pys, std::tuple<Ts...> &cs)
 {
     return from_python(pys[Idx], std::get<Idx>(cs)) &&
-           _from_python_rec<Idx + 1>(pys, cs);
+           _from_python_rec < Idx + 1 > (pys, cs);
 }
 
-template <typename... Ts>
+template<typename... Ts>
 bool from_python(py_scoped_t &py, std::tuple<Ts...> &cs)
 {
     std::vector<py_scoped_t> pys;
@@ -309,7 +338,8 @@ bool from_python(py_scoped_t &py, std::tuple<Ts...> &cs)
 // -----
 
 template<std::size_t Idx>
-constexpr bool _to_python_rec(...) { return true; }
+constexpr bool _to_python_rec(...)
+{ return true; }
 
 template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
@@ -319,12 +349,13 @@ bool _to_python_rec(const std::tuple<Ts...> &cs, std::vector<py_scoped_t> &pys)
            _from_python_rec<Idx + 1>(cs, pys);
 }
 
-template <typename... Ts>
+template<typename... Ts>
 bool to_python(const std::tuple<Ts...> &cs, py_scoped_t &py)
 {
     std::vector<py_scoped_t> pys(sizeof...(Ts));
 
-    if (!_to_python_rec(cs, pys)) {
+    if (!_to_python_rec(cs, pys))
+    {
         // destruct any python references that were created prior to the error
         pys.resize(0);
     }
@@ -338,14 +369,15 @@ bool to_python(const std::tuple<Ts...> &cs, py_scoped_t &py)
 
 template<typename E>
 bool from_python_by_enum_map(py_scoped_t &py, E &out, E null_value,
-        const char* message)
+    const char *message)
 {
     std::string s;
     if (!from_python(py, s))
         return false;
 
     out = enum_from_str(s, null_value);
-    if (out == null_value) {
+    if (out == null_value)
+    {
         std::cerr << message << std::endl;
         return false;
     }
