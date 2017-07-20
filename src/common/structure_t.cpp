@@ -128,6 +128,114 @@ void structure_t::transform(const mat3x3_t &transformation)
         p = transformation * p;
 }
 
+// multiply many row vectors on the right by a matrix,
+//  reusing allocated memory by 'out'
+vector<vec3_t> right_multiply(const vector<vec3_t> &in,
+    mat3x3_t mat, vector<vec3_t> out_buf)
+{
+    auto transpose = mat.transposed();
+
+    auto out = move(out_buf);
+    out.clear();
+    out.reserve(in.size());
+    for (auto vec : in)
+        out.push_back(transpose * vec);
+    return out;
+}
+
+// multiply many row vectors on the right by a matrix in-place
+void right_multiply_inplace(vector<vec3_t> &vecs, mat3x3_t mat)
+{
+    auto transpose = mat.transposed();
+    for (auto &vec : vecs)
+        vec = transpose * vec;
+}
+
+std::vector<vec3_t> structure_t::fractional_positions()
+{
+    auto inv = mat3x3_t(lattice).inverse();
+    return right_multiply(positions, inv, {});
+}
+
+std::vector<vec3_t> structure_t::reduced_fractional_positions()
+{
+    auto out = fractional_positions();
+    for (auto &x : out)
+        x -= apply_fn<std::floor>(x);
+    return out;
+}
+
+void structure_t::set_fractional_positions(const vector<vec3_t> &fracs)
+{
+    positions = right_multiply(fracs, mat3x3_t{lattice}, move(positions));
+}
+
+void structure_t::reduce_positions()
+{
+    set_fractional_positions(reduced_fractional_positions());
+}
+
+vec3_t structure_t::get_lengths() const
+{
+    return {
+        vec3_t(lattice[0]).mag(),
+        vec3_t(lattice[1]).mag(),
+        vec3_t(lattice[2]).mag()
+    };
+}
+
+// This is what all of the (re)scale functions ultimately boil down to;
+// modifying the lattice while preserving fractional positions.
+void _set_lattice_constant_fracs(structure_t &structure, mat3x3_t new_lattice)
+{
+    // For constant frac:   x' . L'^{-1} == x . L^{-1}
+    //                      x' == x . L^{-1} . L'
+    auto latt_inv = mat3x3_t(structure.lattice).inverse();
+
+    right_multiply_inplace(structure.positions, latt_inv * new_lattice);
+
+    for (int i = 0; i < 3; i++)
+        for (int k = 0; k < 3; k++)
+            structure.lattice[i][k] = new_lattice[i][k];
+}
+
+void structure_t::scale(vec3_t factors)
+{
+    // OPTIMIZATION HAZARD:
+    //
+    // This does NOT boil down to multiplication of each column in positions
+    //  by a constant, though such would appear to work for orthogonal cells.
+    //
+    // Cartesian positions in general transform as follows:
+    // (x: position row vector, L: current lattice, s: scale factors)
+    //
+    //      x' == x . L^{-1} . diag(s) . L
+    //
+    scale({{factors[0], 0.0,        0.0},
+           {0.0,        factors[1], 0.0},
+           {0.0,        0.0,        factors[2]}});
+}
+
+void structure_t::scale(mat3x3_t factor)
+{
+    _set_lattice_constant_fracs(*this, factor * mat3x3_t(lattice));
+}
+
+void structure_t::rescale(vec3_t new_lengths)
+{
+    auto cur_lengths = get_lengths();
+    return scale({
+        new_lengths[0] / cur_lengths[0],
+        new_lengths[1] / cur_lengths[1],
+        new_lengths[2] / cur_lengths[2]
+    });
+}
+
+void structure_t::rescale(mat3x3_t new_lattice)
+{
+    _set_lattice_constant_fracs(*this, new_lattice);
+}
+
 void sp2::sort_structure_types(structure_t &structure)
 {
     vector<pair<atom_type, int>> atoms;
