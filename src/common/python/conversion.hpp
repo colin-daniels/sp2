@@ -81,7 +81,55 @@ bool from_python(py_scoped_t &py, structural_mutation_t &c);
 bool from_python(py_scoped_t &py, py_scoped_t &c);
 
 /* --------------------------------------------------------------------- */
+// Value returning conversions: {to,from}_python_strict
+//
+// These can be more convenient due to not taking an in/out parameter.
+// They wrap {to,from}_python, turning conversion failures into exceptions.
+
+/// Value-returning wrapper around to_python.
+///
+/// Errors are communicated by std::runtime_error.
+template<typename T>
+py_scoped_t to_python_strict(const T &c, const char *msg) {
+    py_scoped_t py;
+    if (!to_python(c, py))
+        throw std::runtime_error(msg);
+    return py;
+}
+
+template<typename T>
+py_scoped_t to_python_strict(const T &c) {
+    return to_python_strict(c,
+        "an error occurred converting data into python objects");
+}
+
+/// Value-returning wrapper around from_python.
+/// This will require explicit type annotations.
+///
+/// Errors are communicated by std::runtime_error.
+template<
+    typename T,
+    typename = std::enable_if_t<std::is_default_constructible<T>::value>
+>
+T from_python_strict(py_scoped_t &py, const char *msg) {
+    auto c = T();
+    if (!from_python(py, c))
+        throw std::runtime_error(msg);
+    return c;
+}
+
+template<
+    typename T,
+    typename = std::enable_if_t<std::is_default_constructible<T>::value>
+>
+T from_python_strict(py_scoped_t &py) {
+    return from_python_strict<T>(py,
+        "an error occurred converting data from python");
+}
+
+/* --------------------------------------------------------------------- */
 // Generic conversions of:
+//
 //  - std::vector ---> list
 //  - std::vector <--- sequence or iterable
 
@@ -158,7 +206,7 @@ bool from_python(py_scoped_t &o, std::vector<T> & vec) {
 }
 
 /* --------------------------------------------------------------------- */
-// Generic conversions of ndarray_serialize_t <-> ndarray
+// Generic conversions of as_ndarray_t <-> ndarray
 
 /// Helper type to obtain the numpy dtype integral constant associated
 /// with a data type.
@@ -182,7 +230,7 @@ SPECIALIZE_NUMPY_DTYPE(double, NPY_DOUBLE)
 
 // NOTE: DTYPE doubles as SFINAE
 template <typename T, int DTYPE = numpy_dtype<T>::value>
-bool to_python(const ndarray_serialize_t<T> &c, py_scoped_t &py)
+bool to_python(const as_ndarray_t<T> &c, py_scoped_t &py)
 {
 
     // copy data into a brand new array object.
@@ -201,7 +249,7 @@ bool to_python(const ndarray_serialize_t<T> &c, py_scoped_t &py)
 
 // NOTE: DTYPE doubles as SFINAE
 template <typename T, int DTYPE = numpy_dtype<T>::value>
-bool from_python(py_scoped_t &py, ndarray_serialize_t<T> &c)
+bool from_python(py_scoped_t &py, as_ndarray_t<T> &c)
 {
     // Force the array into a contiguous layout if it isn't.
     int min_depth = 0; // ignore
@@ -220,7 +268,7 @@ bool from_python(py_scoped_t &py, ndarray_serialize_t<T> &c)
 
     std::vector<T> data(arr_data, arr_data + arr_size);
     std::vector<size_t> shape(arr_dims, arr_dims + arr_ndim);
-    c = ndarray_serialize_t<T>(data, shape);
+    c = as_ndarray_t<T>(data, shape);
     return true;
 }
 

@@ -187,7 +187,7 @@ bool from_python(py_scoped_t &py, structural_mutation_type &c)
 
 bool from_python(py_scoped_t &py, structural_mutation_t &c)
 {
-    tuple<structural_mutation_type, ndarray_serialize_t<double>> tup;
+    tuple<structural_mutation_type, as_ndarray_t<double>> tup;
     if (!from_python(py, tup))
         return false;
 

@@ -19,8 +19,8 @@ namespace python {
 // though it is not a panacea.
 //
 // One should still be careful to consider destruction order (since a decref can
-//  potentially invoke arbitrary python code), and read the Python API docs
-//  carefully to understand when references are duplicated, borrowed, and stolen.
+// potentially invoke arbitrary python code), and read the Python API docs
+// carefully to understand when references are duplicated, borrowed, and stolen.
 //
 // The default PyObject * constructor does NOT perform an incref, since the
 // majority of Python API functions return a freshly-incremented reference.
@@ -38,19 +38,20 @@ public:
     py_scoped_t() {};
 
     // PyObject constructor
-    explicit py_scoped_t(PyObject * o);
+    explicit py_scoped_t(PyObject *o);
 
     explicit operator bool() const;
 
     // No copying.  Use dup() to make the incref explicit.
-    py_scoped_t& operator=(const py_scoped_t& other) = delete;
-    py_scoped_t(const py_scoped_t& other) = delete;
+    py_scoped_t &operator=(const py_scoped_t &other) = delete;
+
+    py_scoped_t(const py_scoped_t &other) = delete;
 
     // move constructor
-    py_scoped_t(py_scoped_t&& other);
+    py_scoped_t(py_scoped_t &&other);
 
     // move assignment operator
-    py_scoped_t& operator=(py_scoped_t&& other);
+    py_scoped_t& operator=(py_scoped_t &&other);
 
     ~py_scoped_t();
 
@@ -60,14 +61,14 @@ public:
     // Borrow the reference without touching the refcount.
     //
     // This is the appropriate method for interfacing with most Python APIs.
-    PyObject * raw();
+    PyObject *raw();
 
     // Leak the reference, preventing the DECREF that would otherwise occur at scope exit.
     // The scoped reference will become NULL.
     //
     // Necessary for working with Python API functions that steal references,
     // such as PyTuple_SetItem.
-    PyObject * steal();
+    PyObject *steal();
 
     // Explicit destructor.
     //
@@ -80,10 +81,10 @@ public:
 };
 
 // explicit constructor from a new ref
-py_scoped_t scope(PyObject * o);
+py_scoped_t scope(PyObject *o);
 
 // explicit constructor from a borrowed ref, which makes a new reference
-py_scoped_t scope_dup(PyObject * o);
+py_scoped_t scope_dup(PyObject *o);
 
 // --------------------------------
 
@@ -99,11 +100,11 @@ bool print_on_py_err();
 
 // --------------------------------
 
-// get an object's repr(), mostly for debug purposes
-std::wstring repr(py_scoped_t o);
+/// get an object's repr() in utf8, mostly for debug purposes.
+std::string repr(py_scoped_t &o);
 
-// get an object's str(), mostly for debug purposes
-std::wstring str(py_scoped_t o);
+/// get an object's str() in utf8, mostly for debug purposes.
+std::string str(py_scoped_t &o);
 
 } // namespace python
 } // namespace sp2

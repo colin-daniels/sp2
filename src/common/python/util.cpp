@@ -87,24 +87,26 @@ void throw_on_py_err() {
 // Implementation of repr() and str().
 // F is a function(PyObject *) -> PyObject * returning a new reference to a unicode 'str' object
 template <typename F>
-std::wstring str_impl(py_scoped_t o, F stringify) {
+std::string str_impl(py_scoped_t &o, F stringify) {
 
     auto py_str = scope(stringify(o.raw()));
     throw_on_py_err("repr: error stringifying");
 
-    wchar_t *str = PyUnicode_AsWideCharString(py_str.raw(), NULL);
-    throw_on_py_err("repr: error encoding");
+    // NOTE: we are not responsible for deallocating this;
+    //       it's lifetime is bound to the py_str python object.
+    char *str = PyUnicode_AsUTF8(py_str.raw());
+    throw_on_py_err("repr: error encoding as utf8");
     auto guard = sp2::scope_guard([&] { PyMem_Free(str); });
 
-    return wstring(str);
+    return string(str);
 }
 
-wstring str(py_scoped_t o) {
-    return str_impl(std::move(o), [&](auto x) { return PyObject_Str(x); });
+string str(py_scoped_t &o) {
+    return str_impl(o, [](auto x) { return PyObject_Str(x); });
 }
 
-wstring repr(py_scoped_t o) {
-    return str_impl(std::move(o), [&](auto x) { return PyObject_Repr(x); });
+string repr(py_scoped_t &o) {
+    return str_impl(o, [](auto x) { return PyObject_Repr(x); });
 }
 
 bool print_on_py_err() {

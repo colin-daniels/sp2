@@ -30,7 +30,7 @@ constexpr enum_map_t<structural_mutation_type>
 struct structural_mutation_t
 {
     structural_mutation_type type;
-    ndarray_serialize_t<double> data;
+    as_ndarray_t<double> data;
 };
 
 

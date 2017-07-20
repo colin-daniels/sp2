@@ -48,18 +48,19 @@ args_t just_kw(py_scoped_t kw) {
 //
 // Equivalent to 'getattr(obj, name)'.
 // Throws an exception if the attribute does not exist.
-py_scoped_t getattr(py_scoped_t o, const char* attr) {
+py_scoped_t getattr(py_scoped_t &o, const char* attr) {
     auto tmp = scope(PyObject_GetAttrString(o.raw(), attr));
     throw_on_py_err();
     return move(tmp);
 }
 
 // Invoke an object's __call__.
-py_scoped_t call_callable(py_scoped_t function, args_t argpair) {
+py_scoped_t call_callable(py_scoped_t &function, args_t argpair) {
     auto & args = argpair.first;
     auto & kw = argpair.second;
     if (!(args && kw)) {
-        throw logic_error("tried to call function with invalid or previously used args_t");
+        throw logic_error(
+            "tried to call function with invalid or previously used args_t");
     }
 
     if (!PyArg_ValidateKeywordArguments(kw.raw())) {
@@ -86,7 +87,8 @@ py_scoped_t call_callable(py_scoped_t function, args_t argpair) {
 //     import mod_name
 //     return mod_name.func_name(*args, **kw)
 //
-py_scoped_t call_module_function(const char *mod_name, const char *func_name, args_t args)
+py_scoped_t call_module_function(const char *mod_name, const char *func_name,
+    args_t args)
 {
     py_scoped_t module;
     {
@@ -97,13 +99,13 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name, ar
         throw_on_py_err();
     }
 
-    auto func = getattr(module.dup(), func_name);
+    auto func = getattr(module, func_name);
     if (!(PyCallable_Check(func.raw()))) {
         throw runtime_error(string() + mod_name + "."
                             + func_name + " is not callable");
     }
 
-    return call_callable(func.dup(), move(args));
+    return call_callable(func, move(args));
 }
 
 sp2::structural_mutation_t call_run_phonopy_mutation_function(
@@ -118,37 +120,20 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
     }
     size_t height = carts.size() / width;
 
-    py_scoped_t py_carts = [&] {
-        auto c_arr = ndarray_serialize_t<double>(carts, {height, width});
+    auto py_carts = to_python_strict(as_ndarray(carts, {height, width}));
 
-        py_scoped_t py_arr;
-        if (!to_python(c_arr, py_arr)) {
-            throw runtime_error("error creating numpy array");
-        }
-        return move(py_arr);
-    }();
-
-    py_scoped_t py_lattice = [&] {
-        auto vec_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
-        auto c_arr = ndarray_serialize_t<double>(vec_lattice, {3, 3});
-
-        py_scoped_t py_arr;
-        if (!to_python(c_arr, py_arr)) {
-            throw runtime_error("error creating numpy array");
-        }
-        return move(py_arr);
-    }();
+    auto c_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
+    auto py_lattice = to_python_strict(as_ndarray(c_lattice, {3, 3}));
 
     py_scoped_t py_sc_map = [&] {
-        py_scoped_t list;
-        if (!to_python(sc_to_prim, list)) {
-            throw runtime_error("conversion to int list failed somehow!?");
-        }
-        auto module = fake_modules::mutation_helper.module.dup();
-        auto klass = getattr(module.dup(), "supercell_index_mapper");
+        py_scoped_t list = to_python_strict(sc_to_prim);
+        auto &module = fake_modules::mutation_helper.module;
+        auto klass = getattr(module, "supercell_index_mapper");
+
         auto args = scope(Py_BuildValue("(O)", list.steal()));
         throw_on_py_err("Exception constructing python args tuple.");
-        return call_callable(klass.dup(), just_args(args.dup()));
+
+        return call_callable(klass, just_args(args.dup()));
     }();
 
     py_scoped_t kw = [&] {
@@ -164,11 +149,8 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
     auto py_retval = call_module_function(mod_name, func_name,
         just_kw(kw.dup()));
 
-    structural_mutation_t c_retval;
-    if (!from_python(py_retval, c_retval))
-        throw runtime_error("error converting python return value");
-
-    return c_retval;
+    return from_python_strict<structural_mutation_t>(py_retval,
+        "error converting python return value");
 }
 
 void extend_sys_path(const char *dir) {
