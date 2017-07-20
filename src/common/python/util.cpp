@@ -12,20 +12,24 @@ namespace sp2 {
 namespace python {
 
 py_scoped_t::py_scoped_t(PyObject *o)
-        : obj(o)
-{ }
+    : obj(o)
+{}
 
-py_scoped_t::operator bool() const {
-    return (bool)obj;
+py_scoped_t::operator bool() const
+{
+    return (bool) obj;
 }
 
 py_scoped_t::py_scoped_t(py_scoped_t &&other)
-        : obj(other.steal())
-{ }
+    : obj(other.steal())
+{}
 
-py_scoped_t &py_scoped_t::operator=(py_scoped_t &&other) {
-    if (this != &other) {
-        if (obj) {
+py_scoped_t &py_scoped_t::operator=(py_scoped_t &&other)
+{
+    if (this != &other)
+    {
+        if (obj)
+        {
             // we could implicitly destroy the existing reference, but with no
             // clear use case, the conservative choice is to require explicit
             // destruction
@@ -36,58 +40,79 @@ py_scoped_t &py_scoped_t::operator=(py_scoped_t &&other) {
     return *this;
 }
 
-py_scoped_t::~py_scoped_t() {
+py_scoped_t::~py_scoped_t()
+{
     destroy();
 }
 
-py_scoped_t py_scoped_t::dup() {
+py_scoped_t py_scoped_t::dup()
+{
     Py_XINCREF(obj);
     return py_scoped_t(obj);
 }
 
-PyObject *py_scoped_t::raw() {
+PyObject *py_scoped_t::raw()
+{
     return obj;
 }
 
-PyObject *py_scoped_t::steal() {
+PyObject *py_scoped_t::steal()
+{
     auto tmp = obj;
     obj = NULL;
     return tmp;
 }
 
-void py_scoped_t::destroy() {
+void py_scoped_t::destroy()
+{
     Py_XDECREF(obj);
     obj = NULL;
 }
 
-py_scoped_t scope(PyObject *o) {
+py_scoped_t scope(PyObject *o)
+{
     return py_scoped_t(o);
 }
 
-py_scoped_t scope_dup(PyObject *o) {
+py_scoped_t scope_dup(PyObject *o)
+{
     Py_XINCREF(o);
     return py_scoped_t(o);
 }
 
 // --------------------------------
 
-void throw_on_py_err(const char *msg) {
-    if (PyErr_Occurred()) {
+void throw_on_py_err(const char *msg)
+{
+    if (PyErr_Occurred())
+    {
         PyErr_Print();
         throw runtime_error(msg);
     }
 }
 
-void throw_on_py_err() {
+void throw_on_py_err()
+{
     throw_on_py_err("An exception was thrown in Python.");
+}
+
+bool print_on_py_err()
+{
+    if (PyErr_Occurred())
+    {
+        PyErr_Print(); // Note: clears the error.
+        return true;
+    }
+    return false;
 }
 
 // --------------------------------
 
 // Implementation of repr() and str().
 // F is a function(PyObject *) -> PyObject * returning a new reference to a unicode 'str' object
-template <typename F>
-std::string str_impl(py_scoped_t &o, F stringify) {
+template<typename F>
+std::string str_impl(py_scoped_t &o, F stringify)
+{
 
     auto py_str = scope(stringify(o.raw()));
     throw_on_py_err("repr: error stringifying");
@@ -101,20 +126,14 @@ std::string str_impl(py_scoped_t &o, F stringify) {
     return string(str);
 }
 
-string str(py_scoped_t &o) {
+string str(py_scoped_t &o)
+{
     return str_impl(o, [](auto x) { return PyObject_Str(x); });
 }
 
-string repr(py_scoped_t &o) {
+string repr(py_scoped_t &o)
+{
     return str_impl(o, [](auto x) { return PyObject_Repr(x); });
-}
-
-bool print_on_py_err() {
-    if (PyErr_Occurred()) {
-        PyErr_Print(); // Note: clears the error.
-        return true;
-    }
-    return false;
 }
 
 } // namespace python
