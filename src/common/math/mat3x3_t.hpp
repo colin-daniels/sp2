@@ -66,22 +66,13 @@ public:
         }};
     }
 
-    /// non-modifying inverse, returns a new matrix
-    constexpr mat3x3_t inverse() const
+    // This is 'inline' to decrease the likelihood of missed
+    // opportunities for dead code elimination in determinant().
+    /// get the adjugate matrix
+    constexpr inline mat3x3_t adjugate() const
     {
-        // (1 / det) *
-        //
-        // |22 21| |02 01| |12 11|
-        // |12 11| |22 21| |02 01|
-        //
-        // |20 22| |00 02| |10 12|
-        // |10 12| |20 22| |00 02|
-        //
-        // |21 20| |01 00| |11 10|
-        // |11 10| |21 20| |01 00|
-        //
         auto& d = data;
-        mat3x3_t inverse_mat{{
+        return mat3x3_t{{
             {(d[2][2] * d[1][1]) - (d[1][2] * d[2][1]),
              (d[0][2] * d[2][1]) - (d[2][2] * d[0][1]),
              (d[1][2] * d[0][1]) - (d[0][2] * d[1][1])},
@@ -90,20 +81,39 @@ public:
              (d[0][0] * d[2][2]) - (d[2][0] * d[0][2]),
              (d[1][0] * d[0][2]) - (d[0][0] * d[1][2])},
 
-
             {(d[2][1] * d[1][0]) - (d[1][1] * d[2][0]),
              (d[0][1] * d[2][0]) - (d[2][1] * d[0][0]),
              (d[1][1] * d[0][0]) - (d[0][1] * d[1][0])}
         }};
+    }
 
-        auto det = inverse_mat[0][0] * inverse_mat[0][0] +
-                   inverse_mat[1][1] * inverse_mat[1][1] +
-                   inverse_mat[2][2] * inverse_mat[2][2];
+    /// non-modifying inverse, returns a new matrix
+    constexpr mat3x3_t inverse() const
+    {
+        auto adj = adjugate();
+        auto cofacs = adj.transposed();
+        double det = dot(cofacs.data[0], data[0]);
 
-        for (auto &v : inverse_mat)
+        for (auto &v : adj.data)
             v /= det;
+        return adj;
+    }
 
-        return inverse_mat;
+    /// compute the determinant
+    constexpr double determinant() const
+    {
+        // For the determinant, take any single row of the matrix, and dot
+        // it with the corresponding row from the cofactor matrix.
+
+        // This implementation relies on dead code elimination for the two
+        // thirds of adjugate() that we don't use.
+        //
+        // optimized x86_64 assembly looks approximately like this:
+        //
+        //     https://gist.github.com/ExpHP/3d24e243ad65e2c7cfcddc6116f03d93
+        //
+        auto cofacs = adjugate().transposed();
+        return dot(cofacs.data[0], data[0]);
     }
 
     /// modifying inverse, inverts the current matrix and returns a reference
