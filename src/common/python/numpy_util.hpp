@@ -7,7 +7,7 @@
 ///
 /// This mostly just exists as a target for Python (de)serialization.
 template<typename T>
-class ndarray_serialize_t
+class as_ndarray_t
 {
     // The dimensions of the array.  Slowest index first (C order).
     std::vector<std::size_t> _shape;
@@ -19,19 +19,19 @@ class ndarray_serialize_t
 public:
 
     // Make a 1D array of length 0.
-    ndarray_serialize_t() : _shape{0}
+    as_ndarray_t() : _shape{0}
     {}
 
     // Make a 0D array (scalar).
-    explicit ndarray_serialize_t(T value) : _data{value}
+    explicit as_ndarray_t(T value) : _data{value}
     {}
 
     // Make a 1D array.
-    explicit ndarray_serialize_t(std::vector<T> v) : _data(v), _shape{v.size()}
+    explicit as_ndarray_t(std::vector<T> v) : _data(v), _shape{v.size()}
     {}
 
     // Make an arbitrary ndarray.
-    ndarray_serialize_t(std::vector<T> data, std::vector<std::size_t> shape)
+    as_ndarray_t(std::vector<T> data, std::vector<std::size_t> shape)
     {
         auto product = 1;
         for (auto x : shape)
@@ -59,6 +59,20 @@ public:
     const std::vector<size_t> &shape() const
     { return _shape; }
 };
+
+// function constructor for template parameter deduction
+template<typename T>
+as_ndarray_t<T> as_ndarray(std::vector<T> data)
+{
+    return as_ndarray_t<T>(move(data));
+}
+
+template<typename T>
+as_ndarray_t<T> as_ndarray(std::vector<T> data,
+    std::vector<std::size_t> shape)
+{
+    return as_ndarray_t<T>(move(data), move(shape));
+}
 
 
 #endif //SP2_NUMPY_UTIL_HPP

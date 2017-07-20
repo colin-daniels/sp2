@@ -402,7 +402,7 @@ metropolis_pos_t _perform_structural_metropolis(
         {
         case structural_mutation_type::LATTICE:
         {
-            ndarray_serialize_t<double> &arr = mutation.data;
+            as_ndarray_t<double> &arr = mutation.data;
             const vector<double> &d = arr.data();
             if (arr.shape() != vector<size_t>{3, 3})
                 throw runtime_error("script produced wrong shape lattice");
@@ -417,7 +417,7 @@ metropolis_pos_t _perform_structural_metropolis(
 
         case structural_mutation_type::CART_COORDS:
         {
-            ndarray_serialize_t<double> &arr = mutation.data;
+            as_ndarray_t<double> &arr = mutation.data;
             if (arr.shape() != vector<size_t>{supercell_size, 3})
                 throw runtime_error("script produced wrong shape carts");
 
