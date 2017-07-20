@@ -136,8 +136,7 @@ bool from_python(py_scoped_t &o, std::vector<T> & vec) {
 
     // With that out of the way, any errors from PySequence_Fast are
     // legitimate concerns.
-    py_scoped_t seq = scope(PySequence_Fast(o.raw(), "expected a... bah, "
-        "you'll never see this."));
+    py_scoped_t seq = scope(PySequence_Fast(o.raw(), "expected a sequence!"));
     throw_on_py_err();
 
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq.raw());

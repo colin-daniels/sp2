@@ -108,7 +108,8 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name, ar
 
 sp2::structural_mutation_t call_run_phonopy_mutation_function(
         const char *mod_name, const char *func_name,
-        vector<double> carts, vector<size_t> sc_to_prim)
+        vector<double> carts, double lattice[3][3],
+        vector<size_t> sc_to_prim)
 {
     // interpret as 3N cartesian coords
     size_t width = 3;
@@ -117,19 +118,28 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
     }
     size_t height = carts.size() / width;
 
-    py_scoped_t args;
-    {
+    py_scoped_t py_carts = [&] {
         auto c_arr = ndarray_serialize_t<double>(carts, {height, width});
+
         py_scoped_t py_arr;
         if (!to_python(c_arr, py_arr)) {
             throw runtime_error("error creating numpy array");
         }
-        args = scope(Py_BuildValue("(O)", py_arr.steal()));
-        throw_on_py_err("Exception constructing python args tuple.");
-    }
+        return move(py_arr);
+    }();
 
-    py_scoped_t sc_map;
-    {
+    py_scoped_t py_lattice = [&] {
+        auto vec_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
+        auto c_arr = ndarray_serialize_t<double>(vec_lattice, {3, 3});
+
+        py_scoped_t py_arr;
+        if (!to_python(c_arr, py_arr)) {
+            throw runtime_error("error creating numpy array");
+        }
+        return move(py_arr);
+    }();
+
+    py_scoped_t py_sc_map = [&] {
         py_scoped_t list;
         if (!to_python(sc_to_prim, list)) {
             throw runtime_error("conversion to int list failed somehow!?");
@@ -138,29 +148,25 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
         auto klass = getattr(module.dup(), "supercell_index_mapper");
         auto args = scope(Py_BuildValue("(O)", list.steal()));
         throw_on_py_err("Exception constructing python args tuple.");
-        sc_map = call_callable(klass.dup(), just_args(args.dup()));
-    }
+        return call_callable(klass.dup(), just_args(args.dup()));
+    }();
 
-    py_scoped_t kw;
-    {
-        auto tmp = scope(Py_BuildValue("{sO}", "supercell", sc_map.steal()));
+    py_scoped_t kw = [&] {
+        auto kw = scope(Py_BuildValue("{sOsOsO}",
+            "carts", py_carts.steal(),
+            "lattice", py_lattice.steal(),
+            "supercell", py_sc_map.steal()
+        ));
         throw_on_py_err("Exception constructing python kw dict.");
-        kw = tmp.dup();
-    }
+        return move(kw);
+    }();
 
     auto py_retval = call_module_function(mod_name, func_name,
-            args_and_kw(args.dup(), kw.dup()));
+        just_kw(kw.dup()));
 
-    structural_mutation_t c_retval; // ndarray_serialize_t<double> c_retval;
+    structural_mutation_t c_retval;
     if (!from_python(py_retval, c_retval))
         throw runtime_error("error converting python return value");
-
-    ndarray_serialize_t<double> arr = c_retval.data;
-
-    // FIXME validation in wrong place
-    vector<size_t> expected_shape = {height, width};
-    if (arr.shape() != expected_shape)
-        throw runtime_error("python return value has incorrect shape");
 
     return c_retval;
 }
@@ -255,9 +261,10 @@ void sp2::python::extend_sys_path(vector<string> dirs) {
 
 sp2::structural_mutation_t sp2::python::call_run_phonopy_mutation_function(
         const char *mod_name, const char *func_name,
-        vector<double> carts, vector<size_t> sc_to_prim)
+        vector<double> carts, double lattice[3][3],
+        vector<size_t> sc_to_prim)
 {
     return impl::call_run_phonopy_mutation_function(mod_name, func_name, carts,
-        sc_to_prim);
+        lattice, sc_to_prim);
 }
 
