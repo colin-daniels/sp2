@@ -290,8 +290,8 @@ bool from_python(py_scoped_t &py, as_ndarray_t<T> &c)
     auto arr = (PyArrayObject *) contiguous.raw();
     // NOTE: none of these set the python error state
     auto arr_data = (T *) PyArray_DATA(arr);
-    size_t arr_size = PyArray_SIZE(arr);
-    size_t arr_ndim = PyArray_NDIM(arr);
+    auto arr_size = size_t(PyArray_SIZE(arr));
+    auto arr_ndim = size_t(PyArray_NDIM(arr));
     auto *arr_dims = PyArray_DIMS(arr);
 
     std::vector<T> data(arr_data, arr_data + arr_size);
@@ -345,8 +345,8 @@ template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
 bool _to_python_rec(const std::tuple<Ts...> &cs, std::vector<py_scoped_t> &pys)
 {
-    return _from_python_rec(std::get<Idx>(cs), pys[Idx]) &&
-           _from_python_rec<Idx + 1>(cs, pys);
+    return to_python(std::get<Idx>(cs), pys[Idx]) &&
+           _to_python_rec<Idx + 1>(cs, pys);
 }
 
 template<typename... Ts>
