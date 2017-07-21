@@ -5,10 +5,11 @@ project(sp2 CXX)
 ## Options + misc                                                             ##
 ################################################################################
 
-option(SP2_ENABLE_MPI             "Enable MPI" ON)
-option(SP2_ENABLE_LAMMPS       "Enable LAMMPS" ON)
-option(SP2_ENABLE_PHONOPY     "Enable Phonopy" ON)
-option(SP2_ENABLE_TESTS   "Enable/build tests" OFF)
+option(SP2_ENABLE_MPI                "Enable MPI" ON)
+option(SP2_ENABLE_LAMMPS          "Enable LAMMPS" ON)
+option(SP2_ENABLE_PHONOPY        "Enable Phonopy" ON)
+option(SP2_ENABLE_TESTS      "Enable/build tests" OFF)
+option(SP2_ENABLE_PYTHON "Enable Python bindings" ON)
 
 option(SP2_BUILD_LIB     "Build library instead of binary" OFF)
 option(BUILD_SHARED_LIBS  "Build shared libraries (DLLs)." OFF)
@@ -89,7 +90,21 @@ set(SOURCE_FILES
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
         src/common/minimize/acgsd.cpp
+        src/common/minimize/metropolis.cpp
         src/common/minimize/fire.cpp
+################################################################################
+        IF_PYTHON_ENABLED src/common/python/util.cpp
+        IF_PYTHON_ENABLED src/common/python/util.hpp
+        IF_PYTHON_ENABLED src/common/python/bindings.cpp
+        IF_PYTHON_ENABLED src/common/python/bindings.hpp
+        IF_PYTHON_ENABLED src/common/python/include_numpy.cpp
+        IF_PYTHON_ENABLED src/common/python/include_numpy.hpp
+        IF_PYTHON_ENABLED src/common/python/conversion.cpp
+        IF_PYTHON_ENABLED src/common/python/conversion.hpp
+        IF_PYTHON_ENABLED src/common/python/modules/fake_modules.cpp
+        IF_PYTHON_ENABLED src/common/python/modules/fake_modules.hpp
+        IF_PYTHON_ENABLED src/common/python/modules/mutation_helper.cpp
+        IF_PYTHON_ENABLED src/common/python/numpy_util.hpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
@@ -121,6 +136,7 @@ set(SOURCE_FILES
         IF_PHONOPY_ENABLED src/phonopy/phonopy_settings.hpp
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.cpp
         IF_PHONOPY_ENABLED src/phonopy/bond_polarization.hpp
+        IF_PHONOPY_ENABLED src/phonopy/structural_mutation.hpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_io.cpp
         IF_PHONOPY_ENABLED src/phonopy/phonopy_io.hpp
 ################################################################################
@@ -310,6 +326,14 @@ function(find_phonopy version)
         find_python_module(phonopy ${REQUIRED_STR})
     endif()
 endfunction(find_phonopy)
+
+if (SP2_ENABLE_PYTHON)
+    find_package(PythonLibs 3 REQUIRED)
+    find_package(NumPy REQUIRED)
+    target_link_libraries(sp2 PRIVATE ${PYTHON_LIBRARIES})
+    target_include_directories(sp2 PRIVATE ${PYTHON_INCLUDE_DIRS} ${PYTHON_NUMPY_INCLUDE_DIR})
+    target_compile_definitions(sp2 PRIVATE SP2_ENABLE_PYTHON)
+endif()
 
 if(SP2_ENABLE_PHONOPY)
     target_compile_definitions(sp2 PRIVATE
