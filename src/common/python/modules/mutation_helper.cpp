@@ -19,14 +19,20 @@ class supercell_index_mapper:                                                   
         for (image, primary) in enumerate(reverse_image_map):                              \n\
             images[primary].append(image)                                                  \n\
                                                                                            \n\
-        self._images = dict(images)                                                        \n\
+        self._prim_size = len(images)                                                      \n\
+                                                                                           \n\
+        self._images = {}                                                                  \n\
+        for star in images.values():                                                       \n\
+            for x in star:                                                                 \n\
+                self._images[x] = star                                                     \n\
+                                                                                           \n\
         self._image_rev = reverse_image_map                                                \n\
                                                                                            \n\
         self._unique_prim = sorted(set(self._image_rev))                                   \n\
                                                                                            \n\
     def primitive_size(self):                                                              \n\
         ''' Get the number of primitive cell atoms. '''                                    \n\
-        return len(self._images)                                                           \n\
+        return self._prim_size                                                             \n\
                                                                                            \n\
     def supercell_size(self):                                                              \n\
         ''' Get the number of atoms in the supercell. '''                                  \n\
@@ -34,7 +40,8 @@ class supercell_index_mapper:                                                   
                                                                                            \n\
     def images_of(self, idx):                                                              \n\
         '''                                                                                \n\
-        Get supercell indices from primitive cell indices.                                 \n\
+        Get all indices in the supercell equivalant to an index under                      \n\
+        the primitive lattice.                                                             \n\
                                                                                            \n\
         :param idx: primitive cell atom index, or iterable of indices                      \n\
         :return: list of indices                                                           \n\
