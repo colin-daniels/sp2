@@ -131,7 +131,7 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
         auto &module = fake_modules::mutation_helper.module;
         auto klass = getattr(module, "supercell_index_mapper");
 
-        auto args = scope(Py_BuildValue("(O)", list.steal()));
+        auto args = scope(Py_BuildValue("(O)", list.raw()));
         throw_on_py_err("Exception constructing python args tuple.");
 
         return call_callable(klass, just_args(args.dup()));
@@ -139,9 +139,9 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
 
     py_scoped_t kw = [&] {
         auto kw = scope(Py_BuildValue("{sOsOsO}",
-            "carts", py_carts.steal(),
-            "lattice", py_lattice.steal(),
-            "supercell", py_sc_map.steal()
+            "carts", py_carts.raw(),
+            "lattice", py_lattice.raw(),
+            "supercell", py_sc_map.raw()
         ));
         throw_on_py_err("Exception constructing python kw dict.");
         return move(kw);
