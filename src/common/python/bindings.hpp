@@ -16,14 +16,31 @@
 namespace sp2 {
 namespace python {
 
-/// An opaque, pImpl-style wrapper around a python pointer.
-struct py_opaque_t
+struct py_scoped_t;
+
+/// An opaque, pImpl-style wrapper around a python pointer
+/// for safe encapsulation even in code that does not import
+/// the cPython headers.
+class py_opaque_t
 {
-    struct impl_t;
-    std::unique_ptr<impl_t> impl;
+public:
+    /// pImpl target type.
+    ///
+    /// Code where 'sp2::python::py_scoped_t' is visible is allowed to
+    /// assume that this type is a typedef for py_scoped_t.
+    typedef py_scoped_t impl_t;
 
-    py_opaque_t(std::unique_ptr<impl_t>&&);
+private:
+    std::unique_ptr<impl_t> _impl;
 
+public:
+
+    py_scoped_t& inner();
+    const py_scoped_t& inner() const;
+
+    py_opaque_t(std::unique_ptr<py_scoped_t>&&);
+
+    // FIXME this might actually be wrong
     // the default implementations for these suffice, but we need to make sure
     // they are generated in a location where 'impl_t' is fully defined.
     py_opaque_t();
@@ -32,6 +49,9 @@ struct py_opaque_t
     ~py_opaque_t();
     py_opaque_t(const py_opaque_t&) = delete;
     py_opaque_t& operator=(const py_opaque_t&) = delete;
+
+private:
+    void debug_null() const;
 };
 
 // Initialize the python interpreter.

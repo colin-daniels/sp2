@@ -15,15 +15,28 @@
 
 using namespace std;
 using namespace sp2::python;
+namespace sp2 {
+namespace python {
 
-struct sp2::python::py_opaque_t::impl_t: public py_scoped_t
+py_scoped_t& sp2::python::py_opaque_t::inner()
 {
-    impl_t(py_scoped_t &&s)
-        :py_scoped_t(move(s))
-    { }
+    if (!_impl) {
+        throw std::logic_error("detected py_opaque_t with a NULL unique_ptr!"
+            " The inner py_scoped_t should be NULL instead.");
+    }
 
-    impl_t(impl_t &&s) = default;
-};
+    return *_impl;
+}
+
+const py_scoped_t& sp2::python::py_opaque_t::inner() const
+{
+    if (!_impl) {
+        throw std::logic_error("detected py_opaque_t with a NULL unique_ptr!"
+            " The inner py_scoped_t should be NULL instead.");
+    }
+
+    return *_impl;
+}
 
 //
 py_opaque_t::py_opaque_t() = default;
@@ -31,7 +44,13 @@ py_opaque_t::~py_opaque_t() = default;
 py_opaque_t::py_opaque_t(py_opaque_t &&) = default;
 py_opaque_t& py_opaque_t::operator=(py_opaque_t &&) = default;
 py_opaque_t::py_opaque_t(unique_ptr<py_opaque_t::impl_t> &&impl)
-    : impl(move(impl)) {}
+    : _impl(move(impl))
+{
+    if (!_impl) {
+        throw std::logic_error("cannot construct py_opaque_t from "
+            "NULL unique_ptr. (the py_scoped_t should be null instead)");
+    }
+}
 
 // anonymous namespace for private things
 namespace {
@@ -123,8 +142,7 @@ py_scoped_t call_callable(py_scoped_t &function, py_scoped_t &args,
 py_scoped_t call_module_function(const char *mod_name, const char *func_name,
     args_t args)
 {
-    auto func_ = lookup_required(mod_name, func_name);
-    auto &func = *func_.impl;
+    auto func = lookup_required(mod_name, func_name).inner().move();
 
     if (!(PyCallable_Check(func.raw())))
         throw runtime_error(string() + mod_name + "."
@@ -230,7 +248,7 @@ py_scoped_t import_named_module(const char *mod_name) {
 /* --------------------------------------------------------------------- */
 // Public API
 
-void sp2::python::initialize(const char *prog)
+void initialize(const char *prog)
 {
     if (prog)
     {
@@ -257,32 +275,32 @@ void sp2::python::initialize(const char *prog)
     initialize_fake_modules();
 }
 
-int sp2::python::finalize()
+int finalize()
 {
     finalize_fake_modules();
     return Py_FinalizeEx();
 }
 
-void sp2::python::extend_sys_path(vector<string> dirs)
+void extend_sys_path(vector<string> dirs)
 {
     // reverse order so that the prepended results appear in the requested order
     for (auto it = dirs.rbegin(); it != dirs.rend(); it++)
         extend_sys_path_single(it->c_str());
 }
 
-py_opaque_t sp2::python::lookup_required(const char *mod_name, const char *attr)
+py_opaque_t lookup_required(const char *mod_name, const char *attr)
 {
     auto module = import_named_module(mod_name);
     return opaque(getattr(module, attr));
 }
 
-py_opaque_t sp2::python::lookup_optional(const char *mod_name, const char *attr)
+py_opaque_t lookup_optional(const char *mod_name, const char *attr)
 {
     auto module = import_named_module(mod_name);
     return opaque(getattr(module, attr, {}));
 }
 
-py_opaque_t sp2::python::run_phonopy::make_param_pack(
+py_opaque_t run_phonopy::make_param_pack(
     vector<double> carts, const double lattice[3][3],
     vector<size_t> sc_to_prim)
 {
@@ -290,29 +308,29 @@ py_opaque_t sp2::python::run_phonopy::make_param_pack(
     return opaque(py);
 }
 
-sp2::structural_mutation_t sp2::python::run_phonopy::call_mutate(
+sp2::structural_mutation_t run_phonopy::call_mutate(
     const py_opaque_t &function,
     const py_opaque_t &param_pack)
 {
-    auto &callable = *function.impl;
-    auto &kw = *param_pack.impl;
+    auto callable = function.inner().dup();
+    auto kw = param_pack.inner().dup();
     if (!callable)
         throw logic_error("mutate function must not be NULL");
 
-    auto out = call_callable(*function.impl, just_kw(kw.dup()));
+    auto out = call_callable(callable, just_kw(kw.move()));
 
     return from_python_strict<structural_mutation_t>(out,
         "error converting python return value");
 }
 
-sp2::structural_mutation_t sp2::python::run_phonopy::call_apply(
+sp2::structural_mutation_t run_phonopy::call_apply(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
     const py_opaque_t &param_pack)
 {
-    auto & callable = *function.impl;
-    auto & py_mutation = *mutation.impl;
-    auto & kw = *param_pack.impl;
+    auto callable = function.inner().dup();
+    auto py_mutation = mutation.inner().dup();
+    auto kw = param_pack.inner().dup();
 
     py_scoped_t py_cxx_mutation;
     if (callable) {
@@ -327,14 +345,14 @@ sp2::structural_mutation_t sp2::python::run_phonopy::call_apply(
         "error converting python return value");
 }
 
-void sp2::python::run_phonopy::call_accept(
+void run_phonopy::call_accept(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
     const py_opaque_t &param_pack)
 {
-    auto & callable = *function.impl;
-    auto & py_mutation = *mutation.impl;
-    auto & kw = *param_pack.impl;
+    auto callable = function.inner().dup();
+    auto py_mutation = mutation.inner().dup();
+    auto kw = param_pack.inner().dup();
     if (!callable)
         return; // default definition
 
@@ -342,14 +360,17 @@ void sp2::python::run_phonopy::call_accept(
     call_callable(callable, args, kw);
 }
 
-sp2::python::py_opaque_t sp2::python::run_phonopy::call_generate(
+py_opaque_t run_phonopy::call_generate(
     const py_opaque_t &function,
     const py_opaque_t &param_pack)
 {
-    auto &callable = *function.impl;
-    auto &kw = *param_pack.impl;
+    auto callable = function.inner().dup();
+    auto kw = param_pack.inner().dup();
     if (!callable)
         throw logic_error("mutate function must not be NULL");
 
     return opaque(call_callable(callable, just_kw(kw.dup())));
 }
+
+} // namespace sp2
+} // namespace python

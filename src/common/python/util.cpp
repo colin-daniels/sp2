@@ -45,15 +45,20 @@ py_scoped_t::~py_scoped_t()
     destroy();
 }
 
-py_scoped_t py_scoped_t::dup()
+py_scoped_t py_scoped_t::dup() const
 {
     Py_XINCREF(obj);
     return py_scoped_t(obj);
 }
 
-PyObject *py_scoped_t::raw()
+PyObject *py_scoped_t::raw() const
 {
     return obj;
+}
+
+py_scoped_t py_scoped_t::move()
+{
+    return std::move(*this);
 }
 
 PyObject *py_scoped_t::steal()
