@@ -333,11 +333,65 @@ metropolis_pos_t _perform_structural_metropolis(
 #ifndef SP2_ENABLE_PYTHON
     throw runtime_error("Python bindings must be enabled for metropolis");
 #else
+    using namespace sp2::python;
+    using namespace sp2::python::run_phonopy;
+
+    extend_sys_path(met_set.python_sys_path);
+
+    struct py_mutation_functions_t
+    {
+        bool advanced = false;
+        py_opaque_t mutate;
+        py_opaque_t generate;
+        py_opaque_t apply;
+        py_opaque_t accept;
+
+        py_mutation_functions_t(phonopy::phonopy_metro_settings_t &met_set)
+        {
+            const char *mod = met_set.python_module.c_str();
+            auto &func_set = met_set.python_functions;
+            advanced = func_set.advanced;
+            if (advanced) {
+
+                generate = lookup_required(mod, func_set.generate.c_str());
+
+                // The logic for resolving these next two pieces of
+                // configuration is spread all over the place.
+                //
+                // 'apply' and 'accept' follow the following rules:
+                // - If specified in config, the function must exist.
+                // - If not specified, a default name is assumed.
+                // - If not specified and no function is present with this
+                //    default name, a default implementation is used.
+                //
+                // Logic for the default implementation is currently provided
+                // by the run_phonopy::call_XXX family of functions, and is
+                // triggered by the function pointer being NULL.
+                //
+                // lookup_optional is what produces the NULL pointer.
+
+                if (func_set.apply.empty())
+                    apply = lookup_optional(mod, "apply");
+                else
+                    apply = lookup_required(mod, func_set.apply.c_str());
+
+                if (func_set.accept.empty())
+                    accept = lookup_optional(mod, "accept");
+                else
+                    accept = lookup_required(mod, func_set.accept.c_str());
+
+            }
+            else
+            {
+                // basic interface
+                mutate = lookup_required(mod, func_set.mutate.c_str());
+            }
+        }
+    } py_mutation_functions(met_set);
+
     initial_pos.structure.reduce_positions();
 
     size_t supercell_size = sys.get_structure().positions.size(); // FIXME
-
-    sp2::python::extend_sys_path(met_set.python_sys_path);
 
     auto pos_from_data = [&](const auto &data) {
         // make a pos with the right atom assignments, etc.
@@ -387,22 +441,25 @@ metropolis_pos_t _perform_structural_metropolis(
         { throw logic_error("_/o\\_"); }
     }
 
-    // mutations are provided by a user python script
-    auto mutation_fn = [&](auto in_data) {
-        auto pos = pos_from_data(in_data);
+    auto get_param_pack = [&](const auto &pos) {
+        return make_param_pack(v3tod(pos.structure.positions),
+            pos.structure.lattice, indices);
+    };
 
-        auto mutation = sp2::python::call_run_phonopy_mutation_function(
-            met_set.python_module.c_str(),
-            met_set.python_function.c_str(),
-            v3tod(pos.structure.positions),
-            pos.structure.lattice,
-            indices);
+    // mutations are provided by a user python script
+    auto basic_generate_fn = [&](const auto &in_data) {
+        auto pp = get_param_pack(pos_from_data(in_data));
+        return call_mutate(py_mutation_functions.mutate, pp);
+    };
+
+    auto basic_apply_fn = [&](const auto &in_data, const auto &mutation) {
+        auto pos = pos_from_data(in_data);
 
         switch (mutation.type)
         {
         case structural_mutation_type::LATTICE:
         {
-            as_ndarray_t<double> &arr = mutation.data;
+            const as_ndarray_t<double> &arr = mutation.data;
             const vector<double> &d = arr.data();
             if (arr.shape() != vector<size_t>{3, 3})
                 throw runtime_error("script produced wrong shape lattice");
@@ -417,7 +474,7 @@ metropolis_pos_t _perform_structural_metropolis(
 
         case structural_mutation_type::CART_COORDS:
         {
-            as_ndarray_t<double> &arr = mutation.data;
+            const as_ndarray_t<double> &arr = mutation.data;
             if (arr.shape() != vector<size_t>{supercell_size, 3})
                 throw runtime_error("script produced wrong shape carts");
 
@@ -437,9 +494,58 @@ metropolis_pos_t _perform_structural_metropolis(
         return pos.encode();
     };
 
-    // do the needful
-    return pos_from_data(minimize::metropolis(value_fn,
-        mutation_fn, initial_pos.encode(), met_set.settings));
+    auto advanced_generate_fn = [&](const auto &in_data) -> py_opaque_t
+    {
+        auto pp = get_param_pack(pos_from_data(in_data));
+        return call_generate(py_mutation_functions.generate, pp);
+    };
+
+    auto advanced_apply_fn = [&](
+        const auto &in_data,
+        const auto &mutation)
+        -> vector<double>
+    {
+        auto pp = get_param_pack(pos_from_data(in_data));
+        auto cxx_mutation =
+            call_apply(py_mutation_functions.apply, mutation, pp);
+        return basic_apply_fn(in_data, cxx_mutation);
+    };
+
+    auto advanced_accept_fn = [&](const auto &in_data, const auto &mutation) {
+        auto pp = get_param_pack(pos_from_data(in_data));
+        return call_accept(py_mutation_functions.accept, mutation, pp);
+    };
+
+    vector<double> final_data;
+    if (met_set.python_functions.advanced)
+    {
+        using pos_t = vector<double>;
+        using diff_t = py_opaque_t;
+        minimize::metropolis::callbacks_t<pos_t, diff_t> callbacks{
+            advanced_generate_fn,
+            advanced_apply_fn,
+            advanced_accept_fn,
+        };
+        final_data = minimize::metropolis::advanced<pos_t, diff_t>
+            (value_fn, callbacks, initial_pos.encode(), met_set.settings);
+    }
+    else
+    {
+        // Simple script interface.
+        // Ironically, this still uses the advanced metropolis interface.
+        // (perhaps we don't need metropolis::basic?)
+        using pos_t = vector<double>;
+        using diff_t = structural_mutation_t;
+        minimize::metropolis::callbacks_t<pos_t, diff_t> callbacks{
+            basic_generate_fn,
+            basic_apply_fn,
+            [&](...) { },
+        };
+        final_data = minimize::metropolis::advanced<pos_t, diff_t>
+            (value_fn, callbacks, initial_pos.encode(), met_set.settings);
+    }
+
+    return pos_from_data(final_data);
 #endif
 };
 

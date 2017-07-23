@@ -16,10 +16,38 @@
 using namespace std;
 using namespace sp2::python;
 
-// namespace for private things
-namespace sp2 {
-namespace python {
-namespace impl {
+struct sp2::python::py_opaque_t::impl_t: public py_scoped_t
+{
+    impl_t(py_scoped_t &&s)
+        :py_scoped_t(move(s))
+    { }
+
+    impl_t(impl_t &&s) = default;
+};
+
+//
+py_opaque_t::py_opaque_t() = default;
+py_opaque_t::~py_opaque_t() = default;
+py_opaque_t::py_opaque_t(py_opaque_t &&) = default;
+py_opaque_t& py_opaque_t::operator=(py_opaque_t &&) = default;
+py_opaque_t::py_opaque_t(unique_ptr<py_opaque_t::impl_t> &&impl)
+    : impl(move(impl)) {}
+
+// anonymous namespace for private things
+namespace {
+
+// less typing to construct 'py_opaque_t's
+
+py_opaque_t opaque(py_scoped_t &&scoped) {
+    typedef py_opaque_t::impl_t impl_t;
+    return py_opaque_t{make_unique<impl_t>(move(scoped))};
+}
+
+py_opaque_t opaque(py_scoped_t &scoped) {
+    return opaque(scoped.dup());
+}
+
+
 
 /* --------------------------------------------------------------------- */
 // helper type for python function arguments
@@ -47,18 +75,7 @@ args_t just_kw(py_scoped_t kw)
 /* --------------------------------------------------------------------- */
 // helper functions
 
-// Access an attribute of a python object.
-//
-// Equivalent to 'getattr(obj, name)'.
-// Throws an exception if the attribute does not exist.
-py_scoped_t getattr(py_scoped_t &o, const char *attr)
-{
-    auto tmp = scope(PyObject_GetAttrString(o.raw(), attr));
-    throw_on_py_err();
-    return move(tmp);
-}
-
-// Invoke an object's __call__.
+/// Invoke an object's __call__.
 py_scoped_t call_callable(py_scoped_t &function, args_t argpair)
 {
     auto &args = argpair.first;
@@ -74,10 +91,24 @@ py_scoped_t call_callable(py_scoped_t &function, args_t argpair)
     if (!PyCallable_Check(function.raw()))
         throw logic_error("not callable");
 
+    cerr << "DEBUG!!" << endl;
+    cerr << repr(function) << endl;
+    cerr << "ARG: " << repr(args) << endl;
+    cerr << "KWS: " << repr(kw) << endl;
     auto retval = scope(PyObject_Call(function.raw(), args.raw(), kw.raw()));
     throw_on_py_err("error calling python callable");
     return retval;
 }
+
+// Overload for convenience when there are both kw and args.
+// (having only one would be ambiguous)
+py_scoped_t call_callable(py_scoped_t &function, py_scoped_t &args,
+    py_scoped_t &kw)
+{
+    auto argpair = args_and_kw(args.dup(), kw.dup());
+    return call_callable(function, move(argpair));
+}
+
 
 // Call a named function in a named module with *args and **kw.
 // The module will be automatically imported if it isn't already loaded;
@@ -92,16 +123,9 @@ py_scoped_t call_callable(py_scoped_t &function, args_t argpair)
 py_scoped_t call_module_function(const char *mod_name, const char *func_name,
     args_t args)
 {
-    py_scoped_t module;
-    {
-        auto name = scope(PyUnicode_DecodeFSDefault(mod_name));
-        throw_on_py_err();
+    auto func_ = lookup_required(mod_name, func_name);
+    auto &func = *func_.impl;
 
-        module = scope(PyImport_Import(name.raw()));
-        throw_on_py_err();
-    }
-
-    auto func = getattr(module, func_name);
     if (!(PyCallable_Check(func.raw())))
         throw runtime_error(string() + mod_name + "."
                             + func_name + " is not callable");
@@ -109,9 +133,8 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name,
     return call_callable(func, move(args));
 }
 
-sp2::structural_mutation_t call_run_phonopy_mutation_function(
-    const char *mod_name, const char *func_name,
-    vector<double> carts, double lattice[3][3],
+py_scoped_t make_run_phonopy_param_pack(
+    vector<double> carts, const double lattice[3][3],
     vector<size_t> sc_to_prim)
 {
     // interpret as 3N cartesian coords
@@ -134,6 +157,9 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
         auto args = scope(Py_BuildValue("(O)", list.raw()));
         throw_on_py_err("Exception constructing python args tuple.");
 
+        cerr << "WOAH LIST: " << repr(list) << endl;
+        cerr << "WOAH ARGS: " << repr(args) << endl;
+
         return call_callable(klass, just_args(args.dup()));
     }();
 
@@ -147,14 +173,10 @@ sp2::structural_mutation_t call_run_phonopy_mutation_function(
         return move(kw);
     }();
 
-    auto py_retval = call_module_function(mod_name, func_name,
-        just_kw(kw.dup()));
-
-    return from_python_strict<structural_mutation_t>(py_retval,
-        "error converting python return value");
+    return kw;
 }
 
-void extend_sys_path(const char *dir)
+void extend_sys_path_single(const char *dir)
 {
 
     // python literal equivalent:
@@ -193,15 +215,22 @@ void extend_sys_path(const char *dir)
     throw_on_py_err("add_to_sys_path: error inserting item");
 }
 
+py_scoped_t import_named_module(const char *mod_name) {
+    auto name = scope(PyUnicode_DecodeFSDefault(mod_name));
+    throw_on_py_err();
 
-void extend_sys_path(vector<string> dirs)
-{
-    // reverse order so that the prepended results appear in the requested order
-    for (auto it = dirs.rbegin(); it != dirs.rend(); it++)
-        extend_sys_path(it->c_str());
+    auto module = scope(PyImport_Import(name.raw()));
+    throw_on_py_err();
+
+    return module;
 }
 
-void initialize(const char *prog)
+} // anonymous namespace
+
+/* --------------------------------------------------------------------- */
+// Public API
+
+void sp2::python::initialize(const char *prog)
 {
     if (prog)
     {
@@ -228,40 +257,99 @@ void initialize(const char *prog)
     initialize_fake_modules();
 }
 
-int finalize()
+int sp2::python::finalize()
 {
     finalize_fake_modules();
     return Py_FinalizeEx();
 }
 
-} // namespace impl
-} // namespace python
-} // namespace sp2
-
-/* --------------------------------------------------------------------- */
-// Public API
-
-void sp2::python::initialize(const char *prog)
-{
-    return impl::initialize(prog);
-}
-
-int sp2::python::finalize()
-{
-    return impl::finalize();
-}
-
 void sp2::python::extend_sys_path(vector<string> dirs)
 {
-    return impl::extend_sys_path(dirs);
+    // reverse order so that the prepended results appear in the requested order
+    for (auto it = dirs.rbegin(); it != dirs.rend(); it++)
+        extend_sys_path_single(it->c_str());
 }
 
-sp2::structural_mutation_t sp2::python::call_run_phonopy_mutation_function(
-    const char *mod_name, const char *func_name,
-    vector<double> carts, double lattice[3][3],
+py_opaque_t sp2::python::lookup_required(const char *mod_name, const char *attr)
+{
+    auto module = import_named_module(mod_name);
+    return opaque(getattr(module, attr));
+}
+
+py_opaque_t sp2::python::lookup_optional(const char *mod_name, const char *attr)
+{
+    auto module = import_named_module(mod_name);
+    return opaque(getattr(module, attr, {}));
+}
+
+py_opaque_t sp2::python::run_phonopy::make_param_pack(
+    vector<double> carts, const double lattice[3][3],
     vector<size_t> sc_to_prim)
 {
-    return impl::call_run_phonopy_mutation_function(mod_name, func_name, carts,
-        lattice, sc_to_prim);
+    auto py = make_run_phonopy_param_pack(carts, lattice, sc_to_prim);
+    return opaque(py);
 }
 
+sp2::structural_mutation_t sp2::python::run_phonopy::call_mutate(
+    const py_opaque_t &function,
+    const py_opaque_t &param_pack)
+{
+    auto &callable = *function.impl;
+    auto &kw = *param_pack.impl;
+    if (!callable)
+        throw logic_error("mutate function must not be NULL");
+
+    auto out = call_callable(*function.impl, just_kw(kw.dup()));
+
+    return from_python_strict<structural_mutation_t>(out,
+        "error converting python return value");
+}
+
+sp2::structural_mutation_t sp2::python::run_phonopy::call_apply(
+    const py_opaque_t &function,
+    const py_opaque_t &mutation,
+    const py_opaque_t &param_pack)
+{
+    auto & callable = *function.impl;
+    auto & py_mutation = *mutation.impl;
+    auto & kw = *param_pack.impl;
+
+    py_scoped_t py_cxx_mutation;
+    if (callable) {
+        auto args = scope(Py_BuildValue("(O)", py_mutation.raw()));
+        py_cxx_mutation = call_callable(callable, args, kw);
+    } else {
+        // default definition: return mutation
+        py_cxx_mutation = py_mutation.dup();
+    }
+
+    return from_python_strict<structural_mutation_t>(py_cxx_mutation,
+        "error converting python return value");
+}
+
+void sp2::python::run_phonopy::call_accept(
+    const py_opaque_t &function,
+    const py_opaque_t &mutation,
+    const py_opaque_t &param_pack)
+{
+    auto & callable = *function.impl;
+    auto & py_mutation = *mutation.impl;
+    auto & kw = *param_pack.impl;
+    if (!callable)
+        return; // default definition
+
+    auto args = scope(Py_BuildValue("(O)", py_mutation.raw()));
+    call_callable(callable, args, kw);
+}
+
+sp2::python::py_opaque_t sp2::python::run_phonopy::call_generate(
+    const py_opaque_t &function,
+    const py_opaque_t &param_pack)
+{
+    auto &callable = *function.impl;
+    auto &kw = *param_pack.impl;
+    if (!callable)
+        throw logic_error("mutate function must not be NULL");
+
+    return opaque(call_callable(callable, just_kw(kw.dup())));
+}

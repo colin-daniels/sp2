@@ -24,6 +24,61 @@ struct qpoint_t : public io::json_serializable_t
     virtual bool deserialize(const Json::Value &input);
 };
 
+struct phonopy_metro_funcs_t : public io::json_serializable_t {
+    bool advanced = true;
+
+    /// Name for an all-in-one mutation function.
+    /// Only meaningful if 'advanced == false'.
+    ///
+    /// This should return a value which can be recognized
+    ///  as a 'structural_mutation_t'.
+    std::string mutate = "mutate";
+
+    /// Name for a mutation generation function.
+    /// Only meaningful if 'advanced == true'.
+    ///
+    /// If defined, then it should accept the same arguments
+    /// as 'mutate', but can return any arbitrary python object.
+    /// The other callbacks will decide how to interpret this object.
+    std::string generate = "generate";
+
+    /// Name for a mutation-applying function.
+    /// Only meaningful if 'advanced == true'.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) the output of generate, as a positional argument, followed by
+    ///  (2) the standard kw arguments provided to 'mutate'
+    /// It should produce a 'structural_mutation_t'
+    ///
+    /// If omitted, will search for a function named 'apply',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def apply(mutation, **kw):
+    ///     return mutation  # assume mutation is 'structural_mutation_t'
+    std::string apply;
+
+    /// Name for a 'mutation accepted' callback.
+    /// Only meaningful if 'advanced == true'.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) the output of generate, as a positional argument, followed by
+    ///  (2) the standard kw arguments provided to 'mutate'
+    /// It should produce 'None'.
+    ///
+    /// This function will be called when a mutation is accepted by the
+    /// metropolis algorithm.
+    ///
+    /// If omitted, will search for a function named 'apply',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def accept(mutation, **kw):
+    ///     pass
+    std::string accept;
+
+    virtual bool serialize(Json::Value &output) const;
+    virtual bool deserialize(const Json::Value &input);
+};
+
 struct phonopy_metro_settings_t : public io::json_serializable_t
 {
     bool enabled = false;
@@ -34,7 +89,7 @@ struct phonopy_metro_settings_t : public io::json_serializable_t
     // the python interpreter itself typically does behind the scenes.
     std::vector<std::string> python_sys_path = {""};
     std::string python_module = "mutate";
-    std::string python_function = "mutate";
+    phonopy_metro_funcs_t python_functions;
     minimize::metropolis_settings_t settings;
 
     virtual bool serialize(Json::Value &output) const;

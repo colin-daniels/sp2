@@ -136,5 +136,27 @@ string repr(py_scoped_t &o)
     return str_impl(o, [](auto x) { return PyObject_Repr(x); });
 }
 
+py_scoped_t getattr(py_scoped_t &o, const char *attr)
+{
+    auto tmp = scope(PyObject_GetAttrString(o.raw(), attr));
+    throw_on_py_err();
+    return move(tmp);
+}
+
+py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &def)
+{
+    return getattr(o, attr, def.dup());
+}
+
+py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &&def)
+{
+    // According to HasAttrString docs, "this function always succeeds."
+    if (PyObject_HasAttrString(o.raw(), attr)) {
+        return scope(PyObject_GetAttrString(o.raw(), attr));
+    } else {
+        return move(def);
+    }
+}
+
 } // namespace python
 } // namespace sp2

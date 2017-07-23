@@ -90,7 +90,7 @@ set(SOURCE_FILES
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
         src/common/minimize/acgsd.cpp
-        src/common/minimize/metropolis.cpp
+        src/common/minimize/metropolis.hpp
         src/common/minimize/fire.cpp
 ################################################################################
         IF_PYTHON_ENABLED src/common/python/util.cpp

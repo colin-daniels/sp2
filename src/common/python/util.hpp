@@ -106,6 +106,24 @@ std::string repr(py_scoped_t &o);
 /// get an object's str() in utf8, mostly for debug purposes.
 std::string str(py_scoped_t &o);
 
+// --------------------------------
+
+/// Access an attribute of a python object.
+///
+/// Equivalent to 'getattr(obj, name)'.
+/// Throws an exception if the attribute does not exist.
+py_scoped_t getattr(py_scoped_t &o, const char *attr);
+
+/// Access an attribute of a python object, or a default value.
+///
+/// Equivalent to 'getattr(obj, name, def)'.
+/// Throws an exception if the attribute does not exist.
+py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &def);
+py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &&def);
+
+
+
+
 } // namespace python
 } // namespace sp2
 

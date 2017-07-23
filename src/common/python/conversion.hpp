@@ -177,6 +177,11 @@ bool to_python(const std::vector<T> &vec, py_scoped_t &list)
         }
 
         PyList_Append(list.raw(), px.raw());
+        //std::cerr << "ITEMS: " << std::endl;
+        //int n = PyList_GET_SIZE(list.raw());
+        //for (int i=0; i < n; i++) {
+        //    std::cerr << "- " << PyList_GET_ITEM(list.raw(), i) << std::endl;
+        //}
         if (print_on_py_err())
         {
             list.destroy();

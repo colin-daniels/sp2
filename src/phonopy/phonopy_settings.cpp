@@ -131,7 +131,7 @@ bool sp2::phonopy::phonopy_metro_settings_t::serialize(Json::Value &output) cons
         "enabled", enabled,
         "python_sys_path", python_sys_path,
         "python_module", python_module,
-        "python_function", python_function,
+        "python_functions", python_functions,
         "settings", settings
     );
 
@@ -144,8 +144,33 @@ bool sp2::phonopy::phonopy_metro_settings_t::deserialize(const Json::Value &inpu
         "enabled", enabled,
         "python_sys_path", python_sys_path,
         "python_module", python_module,
-        "python_function", python_function,
+        "python_functions", python_functions,
         "settings", settings
+    );
+
+    return true;
+}
+
+
+bool sp2::phonopy::phonopy_metro_funcs_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "generate", generate,
+        "apply", apply,
+        "mutate", mutate,
+        "accept", accept
+    );
+
+    return true;
+}
+
+bool sp2::phonopy::phonopy_metro_funcs_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "generate", generate,
+        "apply", apply,
+        "mutate", mutate,
+        "accept", accept
     );
 
     return true;

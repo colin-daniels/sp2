@@ -25,7 +25,7 @@ int run_normal(string config_filename, MPI_Comm comm);
 int main(int argc, char *argv[])
 {
     // setup program environment
-    boost::mpi::environment env;
+    boost::mpi::environment env(argc, argv);
 
     #ifdef SP2_ENABLE_PYTHON
     sp2::python::initialize(argv[0]);

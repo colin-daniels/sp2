@@ -13,6 +13,7 @@
 
 #include "common/minimize/settings.hpp"
 #include "common/function_types.hpp"
+#include "common/minimize/metropolis.hpp" // re-export
 
 namespace sp2 {
 /// Minimization method namespace.
@@ -55,16 +56,6 @@ std::vector<double> linear_cg(vector_fn_t matrix_fn,
 std::vector<double> fire(diff_fn_t grad_fn,
     double mass, std::vector<double> initial_position,
     const fire_settings_t &settings = {});
-
-/// \brief Minimization algorithm using random mutations
-/// \param objective_fn : Function to be minimized
-/// \param mutation_fn : Function that applies a random mutation in-place
-/// \returns The position of the minimal value found
-std::vector<double> metropolis(
-    scalar_fn_t objective_fn,
-    mutation_fn_t mutation_fn,
-    std::vector<double> initial_position,
-    const metropolis_settings_t &settings = {});
 
 // PSO currently cannot be run without MPI
 #ifdef SP2_ENABLE_MPI

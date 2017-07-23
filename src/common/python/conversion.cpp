@@ -182,7 +182,10 @@ bool from_python(py_scoped_t &py, structural_mutation_type &c)
 {
     return from_python_by_enum_map(py, c,
         structural_mutation_type::INVALID,
-        "Invalid value for structural mutation type.");
+        (std::string()
+         + "Invalid value for structural mutation type: "
+         + repr(py)
+        ).c_str());
 }
 
 bool from_python(py_scoped_t &py, structural_mutation_t &c)
