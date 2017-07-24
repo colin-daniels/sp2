@@ -126,7 +126,6 @@ std::string str_impl(py_scoped_t &o, F stringify)
     //       it's lifetime is bound to the py_str python object.
     char *str = PyUnicode_AsUTF8(py_str.raw());
     throw_on_py_err("repr: error encoding as utf8");
-    auto guard = sp2::scope_guard([&] { PyMem_Free(str); });
 
     return string(str);
 }
