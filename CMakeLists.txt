@@ -37,6 +37,10 @@ include(PreventInSourceBuilds)
 include(DownloadProject)
 include(FindPythonModule)
 
+# setup special per-file compilation flags
+# This should be present on any .cpp file that imports CPython headers.
+set(SP2_PYTHON_O_FLAGS -fno-strict-aliasing)
+
 # enable ctest
 enable_testing()
 
@@ -93,18 +97,18 @@ set(SOURCE_FILES
         src/common/minimize/metropolis.hpp
         src/common/minimize/fire.cpp
 ################################################################################
-        IF_PYTHON_ENABLED src/common/python/util.cpp
-        IF_PYTHON_ENABLED src/common/python/util.hpp
-        IF_PYTHON_ENABLED src/common/python/bindings.cpp
-        IF_PYTHON_ENABLED src/common/python/bindings.hpp
-        IF_PYTHON_ENABLED src/common/python/include_numpy.cpp
-        IF_PYTHON_ENABLED src/common/python/include_numpy.hpp
-        IF_PYTHON_ENABLED src/common/python/conversion.cpp
-        IF_PYTHON_ENABLED src/common/python/conversion.hpp
-        IF_PYTHON_ENABLED src/common/python/modules/fake_modules.cpp
-        IF_PYTHON_ENABLED src/common/python/modules/fake_modules.hpp
-        IF_PYTHON_ENABLED src/common/python/modules/mutation_helper.cpp
-        IF_PYTHON_ENABLED src/common/python/numpy_util.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/bindings.cpp
+        IF_PYTHON_ENABLED                     src/common/python/bindings.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/util.cpp
+        IF_PYTHON_ENABLED                     src/common/python/util.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/include_numpy.cpp
+        IF_PYTHON_ENABLED                     src/common/python/include_numpy.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/conversion.cpp
+        IF_PYTHON_ENABLED                     src/common/python/conversion.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/fake_modules.cpp
+        IF_PYTHON_ENABLED                     src/common/python/modules/fake_modules.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/mutation_helper.cpp
+        IF_PYTHON_ENABLED                     src/common/python/numpy_util.hpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
