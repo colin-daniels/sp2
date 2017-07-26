@@ -31,24 +31,21 @@ public:
     typedef py_scoped_t impl_t;
 
 private:
-    std::unique_ptr<impl_t> _impl;
+    std::shared_ptr<impl_t> _impl;
 
 public:
 
     py_scoped_t& inner();
     const py_scoped_t& inner() const;
 
-    py_opaque_t(std::unique_ptr<py_scoped_t>&&);
+    py_opaque_t(std::shared_ptr<py_scoped_t>&&);
 
-    // FIXME this might actually be wrong
-    // the default implementations for these suffice, but we need to make sure
-    // they are generated in a location where 'impl_t' is fully defined.
     py_opaque_t();
     py_opaque_t(py_opaque_t&&);
     py_opaque_t& operator=(py_opaque_t&&);
     ~py_opaque_t();
-    py_opaque_t(const py_opaque_t&) = delete;
-    py_opaque_t& operator=(const py_opaque_t&) = delete;
+    py_opaque_t(const py_opaque_t&);
+    py_opaque_t& operator=(const py_opaque_t&);
 
 private:
     void debug_null() const;
@@ -119,6 +116,19 @@ void call_accept(
 // function must NOT be NULL
 py_opaque_t call_generate(
     const py_opaque_t &function,
+    const py_opaque_t &param_pack);
+
+// function can be NULL
+bool call_is_repeatable(
+    const py_opaque_t &function,
+    const py_opaque_t &mutation,
+    const py_opaque_t &param_pack);
+
+// function can be NULL
+py_opaque_t call_scale(
+    const py_opaque_t &function,
+    const py_opaque_t &mutation,
+    double factor,
     const py_opaque_t &param_pack);
 
 } // namespace run_phonopy

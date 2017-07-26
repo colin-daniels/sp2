@@ -49,10 +49,8 @@ public:
 
     explicit operator bool() const;
 
-    // No copying.  Use dup() to make the incref explicit.
-    py_scoped_t &operator=(const py_scoped_t &other) = delete;
-
-    py_scoped_t(const py_scoped_t &other) = delete;
+    py_scoped_t &operator=(const py_scoped_t &other);
+    py_scoped_t(const py_scoped_t &other);
 
     // move constructor
     py_scoped_t(py_scoped_t &&other);
@@ -63,6 +61,7 @@ public:
     ~py_scoped_t();
 
     // Increment the refcount and return a new scoped reference.
+    // FIXME this is pointless now that there's a copy constructor
     py_scoped_t dup() const;
 
     // Borrow the reference without touching the refcount.

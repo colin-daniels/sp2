@@ -345,6 +345,8 @@ metropolis_pos_t _perform_structural_metropolis(
         py_opaque_t generate;
         py_opaque_t apply;
         py_opaque_t accept;
+        py_opaque_t is_repeatable;
+        py_opaque_t scale;
 
         py_mutation_functions_t(phonopy::phonopy_metro_settings_t &met_set)
         {
@@ -358,7 +360,7 @@ metropolis_pos_t _perform_structural_metropolis(
                 // The logic for resolving these next two pieces of
                 // configuration is spread all over the place.
                 //
-                // 'apply' and 'accept' follow the following rules:
+                // All except 'generate' follow the following rules:
                 // - If specified in config, the function must exist.
                 // - If not specified, a default name is assumed.
                 // - If not specified and no function is present with this
@@ -379,6 +381,16 @@ metropolis_pos_t _perform_structural_metropolis(
                     accept = lookup_optional(mod, "accept");
                 else
                     accept = lookup_required(mod, func_set.accept.c_str());
+
+                if (func_set.is_repeatable.empty())
+                    is_repeatable = lookup_optional(mod, "is_repeatable");
+                else
+                    is_repeatable = lookup_required(mod, func_set.is_repeatable.c_str());
+
+                if (func_set.scale.empty())
+                    scale = lookup_optional(mod, "scale");
+                else
+                    scale = lookup_required(mod, func_set.scale.c_str());
 
             }
             else
@@ -511,9 +523,21 @@ metropolis_pos_t _perform_structural_metropolis(
         return basic_apply_fn(in_data, cxx_mutation);
     };
 
-    auto advanced_accept_fn = [&](const auto &in_data, const auto &mutation) {
+    auto advanced_accept_fn = [&](const auto &in_data, const auto &mutation, bool success) {
+        if (success) {
+            auto pp = get_param_pack(pos_from_data(in_data));
+            call_accept(py_mutation_functions.accept, mutation, pp);
+        }
+    };
+
+    auto advanced_is_repeatable_fn = [&](const auto &in_data, const auto &mutation) {
         auto pp = get_param_pack(pos_from_data(in_data));
-        return call_accept(py_mutation_functions.accept, mutation, pp);
+        return call_is_repeatable(py_mutation_functions.is_repeatable, mutation, pp);
+    };
+
+    auto advanced_scale_fn = [&](const auto &in_data, const auto &mutation, double factor) {
+        auto pp = get_param_pack(pos_from_data(in_data));
+        return call_scale(py_mutation_functions.scale, mutation, factor, pp);
     };
 
     vector<double> final_data;
@@ -521,11 +545,21 @@ metropolis_pos_t _perform_structural_metropolis(
     {
         using pos_t = vector<double>;
         using diff_t = py_opaque_t;
-        minimize::metropolis::callbacks_t<pos_t, diff_t> callbacks{
+        minimize::metropolis::callbacks_t<pos_t, diff_t> raw_callbacks{
             advanced_generate_fn,
             advanced_apply_fn,
             advanced_accept_fn,
         };
+
+        auto scaling_control =
+            minimize::metropolis::scaling_control_t<pos_t, diff_t>{
+                met_set.scaling_settings,
+                raw_callbacks,
+                advanced_is_repeatable_fn,
+                advanced_scale_fn,
+        };
+        auto callbacks = scaling_control.get_callbacks();
+
         final_data = minimize::metropolis::advanced<pos_t, diff_t>
             (value_fn, callbacks, initial_pos.encode(), met_set.settings);
     }

@@ -48,7 +48,7 @@ struct phonopy_metro_funcs_t : public io::json_serializable_t {
     /// If defined, then it should accept:
     ///  (1) the output of generate, as a positional argument, followed by
     ///  (2) the standard kw arguments provided to 'mutate'
-    /// It should produce a 'structural_mutation_t'
+    /// It should produce a value parsable as 'structural_mutation_t'.
     ///
     /// If omitted, will search for a function named 'apply',
     /// and then if that is not found, the following definition is assumed:
@@ -61,19 +61,49 @@ struct phonopy_metro_funcs_t : public io::json_serializable_t {
     /// Only meaningful if 'advanced == true'.
     ///
     /// If defined, then it should accept:
-    ///  (1) the output of generate, as a positional argument, followed by
+    ///  (1) a mutation,
     ///  (2) the standard kw arguments provided to 'mutate'
     /// It should produce 'None'.
     ///
     /// This function will be called when a mutation is accepted by the
     /// metropolis algorithm.
     ///
-    /// If omitted, will search for a function named 'apply',
+    /// If omitted, will search for a function named 'accept',
     /// and then if that is not found, the following definition is assumed:
     ///
     /// def accept(mutation, **kw):
     ///     pass
     std::string accept;
+
+    /// Name for a predicate that determines if mutations are worth
+    /// repeating a second time on success.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) a mutation,
+    ///  (2) the standard kw arguments provided to 'mutate'
+    /// It should produce a 'bool'
+    ///
+    /// If omitted, will search for a function named 'is_repeatable',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def is_repeatable(mutation, **kw):
+    ///     return false  # never repeat anything.
+    std::string is_repeatable;
+
+    /// Name for a mutation scaling callback.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) a mutation,
+    ///  (2) a float 'strength' factor (< 1 or > 1),
+    ///  (3) the standard kw arguments provided to 'mutate'
+    /// It should produce a mutation.
+    ///
+    /// If omitted, will search for a function named 'scale',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def scale(mutation, factor, **kw):
+    ///     return mutation
+    std::string scale;
 
     virtual bool serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
@@ -91,6 +121,7 @@ struct phonopy_metro_settings_t : public io::json_serializable_t
     std::string python_module = "mutate";
     phonopy_metro_funcs_t python_functions;
     minimize::metropolis_settings_t settings;
+    minimize::metropolis::scaling_settings_t scaling_settings;
 
     virtual bool serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);

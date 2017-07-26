@@ -181,6 +181,18 @@ struct metropolis_settings_t : public io::json_serializable_t
     bool deserialize(const Json::Value &input);
 };
 
+namespace metropolis {
+struct scaling_settings_t : public io::json_serializable_t
+{
+    double upscale_by = 1.1;
+    double downscale_by = 0.5;
+    int downscale_max_attempts = 3;
+
+    bool serialize(Json::Value &output) const;
+
+    bool deserialize(const Json::Value &input);
+};
+} // namespace metropolis
 
 } // namespace minimize
 } // namespace sp2

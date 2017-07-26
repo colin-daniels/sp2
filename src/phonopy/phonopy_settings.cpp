@@ -158,7 +158,9 @@ bool sp2::phonopy::phonopy_metro_funcs_t::serialize(Json::Value &output) const
         "generate", generate,
         "apply", apply,
         "mutate", mutate,
-        "accept", accept
+        "accept", accept,
+        "is_repeatable", is_repeatable,
+        "scale", scale
     );
 
     return true;
@@ -170,7 +172,9 @@ bool sp2::phonopy::phonopy_metro_funcs_t::deserialize(const Json::Value &input)
         "generate", generate,
         "apply", apply,
         "mutate", mutate,
-        "accept", accept
+        "accept", accept,
+        "is_repeatable", is_repeatable,
+        "scale", scale
     );
 
     return true;

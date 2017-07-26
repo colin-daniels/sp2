@@ -38,12 +38,17 @@ const py_scoped_t& sp2::python::py_opaque_t::inner() const
     return *_impl;
 }
 
-//
-py_opaque_t::py_opaque_t() = default;
+py_opaque_t::py_opaque_t()
+    // make a wrapped nullptr, not an actual nullptr
+    : _impl(make_shared<py_scoped_t>(py_scoped_t()))
+{ }
+
 py_opaque_t::~py_opaque_t() = default;
 py_opaque_t::py_opaque_t(py_opaque_t &&) = default;
 py_opaque_t& py_opaque_t::operator=(py_opaque_t &&) = default;
-py_opaque_t::py_opaque_t(unique_ptr<py_opaque_t::impl_t> &&impl)
+py_opaque_t::py_opaque_t(const py_opaque_t &) = default;
+py_opaque_t &py_opaque_t::operator=(const py_opaque_t &) = default;
+py_opaque_t::py_opaque_t(shared_ptr<py_opaque_t::impl_t> &&impl)
     : _impl(move(impl))
 {
     if (!_impl) {
@@ -59,7 +64,7 @@ namespace {
 
 py_opaque_t opaque(py_scoped_t &&scoped) {
     typedef py_opaque_t::impl_t impl_t;
-    return py_opaque_t{make_unique<impl_t>(move(scoped))};
+    return py_opaque_t{make_shared<impl_t>(move(scoped))};
 }
 
 py_opaque_t opaque(py_scoped_t &scoped) {
@@ -110,10 +115,6 @@ py_scoped_t call_callable(py_scoped_t &function, args_t argpair)
     if (!PyCallable_Check(function.raw()))
         throw logic_error("not callable");
 
-    cerr << "DEBUG!!" << endl;
-    cerr << repr(function) << endl;
-    cerr << "ARG: " << repr(args) << endl;
-    cerr << "KWS: " << repr(kw) << endl;
     auto retval = scope(PyObject_Call(function.raw(), args.raw(), kw.raw()));
     throw_on_py_err("error calling python callable");
     return retval;
@@ -174,9 +175,6 @@ py_scoped_t make_run_phonopy_param_pack(
 
         auto args = scope(Py_BuildValue("(O)", list.raw()));
         throw_on_py_err("Exception constructing python args tuple.");
-
-        cerr << "WOAH LIST: " << repr(list) << endl;
-        cerr << "WOAH ARGS: " << repr(args) << endl;
 
         return call_callable(klass, just_args(args.dup()));
     }();
@@ -370,6 +368,38 @@ py_opaque_t run_phonopy::call_generate(
         throw logic_error("mutate function must not be NULL");
 
     return opaque(call_callable(callable, just_kw(kw.dup())));
+}
+
+bool run_phonopy::call_is_repeatable(
+    const py_opaque_t &function,
+    const py_opaque_t &mutation,
+    const py_opaque_t &param_pack)
+{
+    auto callable = function.inner().dup();
+    auto py_mutation = mutation.inner().dup();
+    auto kw = param_pack.inner().dup();
+    if (!callable)
+        return false;
+
+    auto args = scope(Py_BuildValue("(O)", py_mutation.raw()));
+    auto py_out = call_callable(callable, args, kw);
+    return from_python_strict<bool>(py_out);
+}
+
+py_opaque_t run_phonopy::call_scale(
+    const py_opaque_t &function,
+    const py_opaque_t &mutation,
+    double factor,
+    const py_opaque_t &param_pack)
+{
+    auto callable = function.inner().dup();
+    auto py_mutation = mutation.inner().dup();
+    auto kw = param_pack.inner().dup();
+    if (!callable)
+        return opaque(mutation.inner().dup());
+
+    auto args = scope(Py_BuildValue("(Od)", py_mutation.raw(), factor));
+    return opaque(call_callable(callable, args, kw));
 }
 
 } // namespace sp2

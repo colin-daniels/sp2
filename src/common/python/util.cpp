@@ -74,6 +74,15 @@ void py_scoped_t::destroy()
     obj = NULL;
 }
 
+py_scoped_t &py_scoped_t::operator=(const py_scoped_t &other)
+{
+    *this = other.dup();
+}
+
+py_scoped_t::py_scoped_t(const py_scoped_t &other)
+    :py_scoped_t(other.dup())
+{}
+
 py_scoped_t scope(PyObject *o)
 {
     return py_scoped_t(o);

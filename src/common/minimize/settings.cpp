@@ -152,3 +152,26 @@ bool minimize::metropolis_settings_t::deserialize(const Json::Value &input)
 
     return true;
 }
+
+
+bool minimize::metropolis::scaling_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "upscale_by", upscale_by,
+        "downscale_by", downscale_by,
+        "downscale_max_attempts", downscale_max_attempts
+    );
+
+    return true;
+}
+
+bool minimize::metropolis::scaling_settings_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "upscale_by", upscale_by,
+        "downscale_by", downscale_by,
+        "downscale_max_attempts", downscale_max_attempts
+    );
+
+    return true;
+}
