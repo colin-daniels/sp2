@@ -506,7 +506,7 @@ structure_t _structural_metropolis(
 /// Perform structure-aware metropolis minimization, leaving the optimal
 /// structure in 'sys' on exit.
 template<typename S>
-void structural_metropolis(S &sys,
+void structural(S &sys,
     python::py_opaque_t extra_kw,
     structural_metropolis_settings_t met_set)
 {

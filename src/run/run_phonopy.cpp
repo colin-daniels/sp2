@@ -305,7 +305,7 @@ void perform_structural_metropolis(S &sys,
     { throw logic_error("_/o\\_"); }
 
     auto extra_kw = python::run_phonopy::make_extra_kw(indices);
-    structural_metropolis(sys, extra_kw, met_set);
+    minimize::metropolis::structural(sys, extra_kw, met_set);
 #endif // SP2_ENABLE_PYTHON
 }
 
