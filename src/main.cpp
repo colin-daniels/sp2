@@ -25,12 +25,10 @@ int run_normal(string config_filename, MPI_Comm comm);
 int main(int argc, char *argv[])
 {
     // setup program environment
-    boost::mpi::environment env(argc, argv);
+    boost::mpi::environment mpi_env(argc, argv);
 
     #ifdef SP2_ENABLE_PYTHON
-    sp2::python::initialize(argv[0]);
-
-    auto guard = scope_guard([&] { sp2::python::finalize(); });
+    sp2::python::environment py_env(argv[0]);
     #endif // SP2_ENABLE_PYTHON
 
 ////////////////////////////////////////////////////////////////////////////////

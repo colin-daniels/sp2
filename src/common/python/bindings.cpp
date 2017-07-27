@@ -206,17 +206,24 @@ py_scoped_t import_named_module(const char *mod_name) {
 /* --------------------------------------------------------------------- */
 // Public API
 
-void initialize(const char *prog)
+void environment::ensure_run_once()
 {
+    static bool has_run = false;
+    if (has_run)
+        throw logic_error("Initialized py interpreter more than once!");
+    has_run = true;
+}
+
+environment::environment(const char *prog)
+{
+    ensure_run_once();
+
     if (prog)
     {
-        // NOTE: Technically, we are leaking this memory by not setting up any sort of
-        //       provision to call 'PyMem_RawFree(program)' after 'Py_FinalizeEx()'.
-        //       But this is no big deal since this function should only be called once.
-        wchar_t *program = Py_DecodeLocale(prog, NULL);
-        if (program)
+        py_allocated_program = Py_DecodeLocale(prog, NULL);
+        if (py_allocated_program)
         {
-            Py_SetProgramName(program);
+            Py_SetProgramName(py_allocated_program);
         }
         else
         {
@@ -233,11 +240,31 @@ void initialize(const char *prog)
     initialize_fake_modules();
 }
 
-int finalize()
+int environment::finalize()
 {
     finalize_fake_modules();
-    return Py_FinalizeEx();
+    if (int code = Py_FinalizeEx())
+        return code;
+    if (py_allocated_program)
+        PyMem_RawFree(py_allocated_program);
+    return 0;
 }
+
+environment::~environment()
+{
+    try {
+        if (finalize()) {
+            std::cerr << "WARNING: Unknown errors occurred in Python while"
+                      << " cleaning up the python interpreter." << std::endl;
+        }
+    } catch (std::exception e) {
+        // don't throw from destructor
+        std::cerr << "WARNING: An uncaught exception was thrown while cleaning"
+                  << " up the python interpreter: " << e.what() << std::endl;
+    }
+}
+
+
 
 void extend_sys_path(vector<string> dirs)
 {

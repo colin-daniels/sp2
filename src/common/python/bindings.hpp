@@ -51,22 +51,33 @@ private:
     void debug_null() const;
 };
 
-// Initialize the python interpreter.
-//
-// This should only be called once over the execution of a single program.
-void initialize(const char *prog);
+/// Handles state of the global python interpreter through RAII.
+class environment
+{
+    wchar_t *py_allocated_program = nullptr;
 
-// Clean up the interpreter after initialize, ensuring that destructors are called, etc.
-//
-// This should only be called once over the execution of a single program.
-int finalize();
+    void ensure_run_once();
+    int finalize();
 
-// Ensure that the given directories are in sys.path, so that the modules therein may be loaded.
-//
-// The paths are prepended, giving them higher priority over existing entries.
-// Keep in mind that built-in modules will still take absolute top priority.
-//
-// Any paths already in sys.path will be moved to the front, without creating a duplicate entry.
+public:
+    /// Initialize the python interpreter.  Expects to receive argv[0].
+    ///
+    /// Only one environment may be constructed over the course of a program's
+    /// execution.
+    environment(const char *prog);
+
+    /// Clean up the interpreter, ensuring that __del__ methods are called, etc.
+    ~environment();
+};
+
+/// Ensure that the given directories are in sys.path,
+/// so that the modules therein may be loaded.
+///
+/// The paths are prepended, giving them higher priority over existing entries.
+/// Keep in mind that built-in modules will still take absolute top priority.
+///
+/// Any paths already in sys.path will be moved to the front,
+/// without creating a duplicate entry.
 void extend_sys_path(std::vector<std::string> dir);
 
 /// Obtain module.attr, which must exist (else an exception is thrown)
