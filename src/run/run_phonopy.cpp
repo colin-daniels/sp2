@@ -280,43 +280,6 @@ void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
 }
 
 //--------------------
-// define a scheme for encoding multiple pieces of data into metropolis's
-// single vector of doubles
-
-struct metropolis_pos_t {
-
-    structure_t structure;
-
-    // Read the metropolis position data into the wrapped structure.
-    void decode(const vector<double> &data)
-    {
-        vector<double> new_pos(data.begin() + 9, data.end());
-
-        // just set everything raw; like recovering a snapshot
-        copy_n(&data[0], 9, &structure.lattice[0][0]);
-        structure.positions = dtov3(new_pos);
-    }
-
-    // Obtain a metropolis position vector from the wrapped structure.
-    vector<double> encode() const
-    {
-        auto carts = v3tod(structure.positions);
-        auto & lattice = structure.lattice;
-
-        vector<double> data;
-        data.reserve(carts.size() + 9);
-
-        auto pusher = back_inserter(data);
-        copy_n(&lattice[0][0], 3, pusher);
-        copy_n(&lattice[1][0], 3, pusher);
-        copy_n(&lattice[2][0], 3, pusher);
-        copy(carts.begin(), carts.end(), pusher);
-
-        return data;
-    }
-};
-
-//--------------------
 
 // NOTE: This is the core logic of 'perform_structural_metropolis', which
 // has been pulled out into a value-returning function to preempt any future
@@ -324,9 +287,9 @@ struct metropolis_pos_t {
 //
 // This function may leave 'sys' in an arbitrary (but consistent) state on exit.
 template<typename S>
-metropolis_pos_t _perform_structural_metropolis(
+structure_t _perform_structural_metropolis(
     S &sys,
-    metropolis_pos_t initial_pos,
+    structure_t initial_pos,
     size_t primitive_size,
     phonopy::phonopy_metro_settings_t met_set)
 {
@@ -401,24 +364,13 @@ metropolis_pos_t _perform_structural_metropolis(
         }
     } py_mutation_functions(met_set);
 
-    initial_pos.structure.reduce_positions();
+    initial_pos.reduce_positions();
 
     size_t supercell_size = sys.get_structure().positions.size(); // FIXME
 
-    auto pos_from_data = [&](const auto &data) {
-        // make a pos with the right atom assignments, etc.
-        metropolis_pos_t pos{sys.get_structure()};
-        // write over the lattice and positions with info stored in data
-        pos.decode(data);
-
-        return pos;
-    };
-
     // sys.diff_fn() variant that is aware of our unusual position format
-    auto diff_fn = [&](const auto &data) {
-        auto pos = pos_from_data(data);
-
-        sys.set_structure(pos.structure);
+    auto diff_fn = [&](const auto &in_pos) {
+        sys.set_structure(in_pos);
         sys.update();
         return make_pair(sys.get_value(), sys.get_gradient());
     };
@@ -444,9 +396,7 @@ metropolis_pos_t _perform_structural_metropolis(
         while (indices.size() < supercell_size)
         {
             for (size_t i = 0; i < primitive_size; i++)
-            {
                 indices.push_back(i);
-            }
         }
 
         if (indices.size() != supercell_size)
@@ -454,18 +404,17 @@ metropolis_pos_t _perform_structural_metropolis(
     }
 
     auto get_param_pack = [&](const auto &pos) {
-        return make_param_pack(v3tod(pos.structure.positions),
-            pos.structure.lattice, indices);
+        return make_param_pack(v3tod(pos.positions), pos.lattice, indices);
     };
 
     // mutations are provided by a user python script
-    auto basic_generate_fn = [&](const auto &in_data) {
-        auto pp = get_param_pack(pos_from_data(in_data));
+    auto basic_generate_fn = [&](const auto &in_pos) {
+        auto pp = get_param_pack(in_pos);
         return call_mutate(py_mutation_functions.mutate, pp);
     };
 
-    auto basic_apply_fn = [&](const auto &in_data, const auto &mutation) {
-        auto pos = pos_from_data(in_data);
+    auto basic_apply_fn = [&](const auto &in_pos, const auto &mutation) {
+        auto pos = in_pos;
 
         switch (mutation.type)
         {
@@ -479,7 +428,7 @@ metropolis_pos_t _perform_structural_metropolis(
             auto new_lattice = mat3x3_t{{d[0], d[1], d[2]},
                                         {d[3], d[4], d[5]},
                                         {d[6], d[7], d[8]}};
-            pos.structure.rescale(new_lattice);
+            pos.rescale(new_lattice);
 
             break;
         }
@@ -490,60 +439,59 @@ metropolis_pos_t _perform_structural_metropolis(
             if (arr.shape() != vector<size_t>{supercell_size, 3})
                 throw runtime_error("script produced wrong shape carts");
 
-            pos.structure.positions = dtov3(arr.data());
-            pos.structure.reduce_positions();
+            pos.positions = dtov3(arr.data());
+            pos.reduce_positions();
 
             break;
         }
 
         case structural_mutation_type::FRAC_COORDS:
+            // TODO maybe
             throw runtime_error("mutation of frac coords not yet implemented");
 
         default:
             throw runtime_error("unreachable");
         }
 
-        return pos.encode();
+        return pos;
     };
 
-    auto advanced_generate_fn = [&](const auto &in_data) -> py_opaque_t
+    auto advanced_generate_fn = [&](const auto &in_pos) -> py_opaque_t
     {
-        auto pp = get_param_pack(pos_from_data(in_data));
+        auto pp = get_param_pack(in_pos);
         return call_generate(py_mutation_functions.generate, pp);
     };
 
     auto advanced_apply_fn = [&](
-        const auto &in_data,
+        const auto &in_pos,
         const auto &mutation)
-        -> vector<double>
     {
-        auto pp = get_param_pack(pos_from_data(in_data));
+        auto pp = get_param_pack(in_pos);
         auto cxx_mutation =
             call_apply(py_mutation_functions.apply, mutation, pp);
-        return basic_apply_fn(in_data, cxx_mutation);
+        return basic_apply_fn(in_pos, cxx_mutation);
     };
 
-    auto advanced_accept_fn = [&](const auto &in_data, const auto &mutation, bool success) {
+    auto advanced_accept_fn = [&](const auto &in_pos, const auto &mutation, bool success) {
         if (success) {
-            auto pp = get_param_pack(pos_from_data(in_data));
+            auto pp = get_param_pack(in_pos);
             call_accept(py_mutation_functions.accept, mutation, pp);
         }
     };
 
-    auto advanced_is_repeatable_fn = [&](const auto &in_data, const auto &mutation) {
-        auto pp = get_param_pack(pos_from_data(in_data));
+    auto advanced_is_repeatable_fn = [&](const auto &in_pos, const auto &mutation) {
+        auto pp = get_param_pack(in_pos);
         return call_is_repeatable(py_mutation_functions.is_repeatable, mutation, pp);
     };
 
-    auto advanced_scale_fn = [&](const auto &in_data, const auto &mutation, double factor) {
-        auto pp = get_param_pack(pos_from_data(in_data));
+    auto advanced_scale_fn = [&](const auto &in_pos, const auto &mutation, double factor) {
+        auto pp = get_param_pack(in_pos);
         return call_scale(py_mutation_functions.scale, mutation, factor, pp);
     };
 
-    vector<double> final_data;
     if (met_set.python_functions.advanced)
     {
-        using pos_t = vector<double>;
+        using pos_t = structure_t;
         using diff_t = py_opaque_t;
         minimize::metropolis::callbacks_t<pos_t, diff_t> raw_callbacks{
             advanced_generate_fn,
@@ -560,26 +508,24 @@ metropolis_pos_t _perform_structural_metropolis(
         };
         auto callbacks = scaling_control.get_callbacks();
 
-        final_data = minimize::metropolis::advanced<pos_t, diff_t>
-            (value_fn, callbacks, initial_pos.encode(), met_set.settings);
+        return minimize::metropolis::advanced<pos_t, diff_t>
+            (value_fn, callbacks, initial_pos, met_set.settings);
     }
     else
     {
         // Simple script interface.
         // Ironically, this still uses the advanced metropolis interface.
         // (perhaps we don't need metropolis::basic?)
-        using pos_t = vector<double>;
+        using pos_t = structure_t;
         using diff_t = structural_mutation_t;
         minimize::metropolis::callbacks_t<pos_t, diff_t> callbacks{
             basic_generate_fn,
             basic_apply_fn,
             [&](...) { },
         };
-        final_data = minimize::metropolis::advanced<pos_t, diff_t>
-            (value_fn, callbacks, initial_pos.encode(), met_set.settings);
+        return minimize::metropolis::advanced<pos_t, diff_t>
+            (value_fn, callbacks, initial_pos, met_set.settings);
     }
-
-    return pos_from_data(final_data);
 #endif
 };
 
@@ -589,10 +535,10 @@ template<typename S>
 void perform_structural_metropolis(S &sys, size_t primitive_size,
         phonopy::phonopy_metro_settings_t met_set)
 {
-    auto initial = metropolis_pos_t { sys.get_structure() };
+    auto initial = sys.get_structure();
     auto final = _perform_structural_metropolis(sys, initial,
             primitive_size, met_set);
-    sys.set_structure(final.structure);
+    sys.set_structure(final);
     sys.update();
 }
 
