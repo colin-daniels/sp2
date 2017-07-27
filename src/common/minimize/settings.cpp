@@ -206,6 +206,7 @@ bool minimize::structural_metropolis_settings_t::deserialize(const Json::Value &
 bool minimize::structural_metropolis_funcs_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
+        "advanced", advanced,
         "generate", generate,
         "apply", apply,
         "mutate", mutate,
@@ -220,6 +221,7 @@ bool minimize::structural_metropolis_funcs_t::serialize(Json::Value &output) con
 bool minimize::structural_metropolis_funcs_t::deserialize(const Json::Value &input)
 {
     io::deserialize_basic(input,
+        "advanced", advanced,
         "generate", generate,
         "apply", apply,
         "mutate", mutate,

@@ -1,11 +1,12 @@
 #ifndef SP2_STRUCTURAL_MUTATION_HPP
 #define SP2_STRUCTURAL_MUTATION_HPP
 
+// This belongs to metropolis.  However, apparently it is illegal to specialize
+// sp2::enum_map from within sp2::minimize, so it has its own file to avoid the
+// whole namespace song and dance.
+
 #include "common/enums.hpp"
-
 #include "common/python/numpy_util.hpp"
-
-#include <vector>
 
 namespace sp2 {
 
@@ -32,7 +33,6 @@ struct structural_mutation_t
     structural_mutation_type type;
     as_ndarray_t<double> data;
 };
-
 
 } // namespace sp2
 

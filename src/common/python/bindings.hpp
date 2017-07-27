@@ -11,7 +11,7 @@
 #include <string>
 #include <memory>
 
-#include "phonopy/structural_mutation.hpp"
+#include "common/minimize/structural_mutation.hpp"
 
 namespace sp2 {
 namespace python {
