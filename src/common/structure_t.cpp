@@ -160,8 +160,11 @@ std::vector<vec3_t> structure_t::fractional_positions()
 std::vector<vec3_t> structure_t::reduced_fractional_positions()
 {
     auto out = fractional_positions();
-    for (auto &x : out)
-        x -= apply_fn<std::floor>(x);
+    for (auto &vec : out)
+    {
+        vec -= floor(vec); // into interval [0,1]; consider x = -1e-20
+        vec -= floor(vec); // into interval [0,1)
+    }
     return out;
 }
 
