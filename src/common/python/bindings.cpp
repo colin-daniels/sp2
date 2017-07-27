@@ -285,7 +285,7 @@ py_opaque_t lookup_optional(const char *mod_name, const char *attr)
     return opaque(getattr(module, attr, {}));
 }
 
-py_opaque_t run_phonopy::make_param_pack(vector<double> carts,
+py_opaque_t structural_metropolis::make_param_pack(vector<double> carts,
     const double lattice[3][3], vector<double> force)
 {
     // interpret as 3N cartesian coords
@@ -339,7 +339,7 @@ py_opaque_t run_phonopy::make_extra_kw(vector<size_t> sc_to_prim)
     return opaque(kw);
 }
 
-py_opaque_t run_phonopy::merge_dictionaries(const py_opaque_t &a,
+py_opaque_t merge_dictionaries(const py_opaque_t &a,
     const py_opaque_t &b, merge_strategy strategy)
 {
     auto size = [](auto &dict) {
@@ -372,7 +372,7 @@ py_opaque_t run_phonopy::merge_dictionaries(const py_opaque_t &a,
     }
 }
 
-sp2::structural_mutation_t run_phonopy::call_mutate(
+sp2::structural_mutation_t structural_metropolis::call_mutate(
     const py_opaque_t &function,
     const py_opaque_t &param_pack)
 {
@@ -387,7 +387,7 @@ sp2::structural_mutation_t run_phonopy::call_mutate(
         "error converting python return value");
 }
 
-sp2::structural_mutation_t run_phonopy::call_apply(
+sp2::structural_mutation_t structural_metropolis::call_apply(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
     const py_opaque_t &param_pack)
@@ -409,7 +409,7 @@ sp2::structural_mutation_t run_phonopy::call_apply(
         "error converting python return value");
 }
 
-void run_phonopy::call_accept(
+void structural_metropolis::call_accept(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
     const py_opaque_t &param_pack)
@@ -424,7 +424,7 @@ void run_phonopy::call_accept(
     call_callable(callable, args, kw);
 }
 
-py_opaque_t run_phonopy::call_generate(
+py_opaque_t structural_metropolis::call_generate(
     const py_opaque_t &function,
     const py_opaque_t &param_pack)
 {
@@ -436,7 +436,7 @@ py_opaque_t run_phonopy::call_generate(
     return opaque(call_callable(callable, just_kw(kw.dup())));
 }
 
-bool run_phonopy::call_is_repeatable(
+bool structural_metropolis::call_is_repeatable(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
     const py_opaque_t &param_pack)
@@ -452,7 +452,7 @@ bool run_phonopy::call_is_repeatable(
     return from_python_strict<bool>(py_out);
 }
 
-py_opaque_t run_phonopy::call_scale(
+py_opaque_t structural_metropolis::call_scale(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
     double factor,

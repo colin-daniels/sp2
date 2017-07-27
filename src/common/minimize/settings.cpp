@@ -154,7 +154,7 @@ bool minimize::metropolis_settings_t::deserialize(const Json::Value &input)
 }
 
 
-bool minimize::metropolis::scaling_settings_t::serialize(Json::Value &output) const
+bool minimize::metropolis_scaling_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
         "upscale_by", upscale_by,
@@ -165,12 +165,67 @@ bool minimize::metropolis::scaling_settings_t::serialize(Json::Value &output) co
     return true;
 }
 
-bool minimize::metropolis::scaling_settings_t::deserialize(const Json::Value &input)
+bool minimize::metropolis_scaling_settings_t::deserialize(const Json::Value &input)
 {
     io::deserialize_basic(input,
         "upscale_by", upscale_by,
         "downscale_by", downscale_by,
         "downscale_max_attempts", downscale_max_attempts
+    );
+
+    return true;
+}
+
+bool minimize::structural_metropolis_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "enabled", enabled,
+        "python_sys_path", python_sys_path,
+        "python_module", python_module,
+        "python_functions", python_functions,
+        "settings", settings
+    );
+
+    return true;
+}
+
+bool minimize::structural_metropolis_settings_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "enabled", enabled,
+        "python_sys_path", python_sys_path,
+        "python_module", python_module,
+        "python_functions", python_functions,
+        "settings", settings
+    );
+
+    return true;
+}
+
+
+bool minimize::structural_metropolis_funcs_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "generate", generate,
+        "apply", apply,
+        "mutate", mutate,
+        "accept", accept,
+        "is_repeatable", is_repeatable,
+        "scale", scale
+    );
+
+    return true;
+}
+
+bool minimize::structural_metropolis_funcs_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "generate", generate,
+        "apply", apply,
+        "mutate", mutate,
+        "accept", accept,
+        "is_repeatable", is_repeatable,
+        "scale", scale
     );
 
     return true;

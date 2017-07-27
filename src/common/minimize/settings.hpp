@@ -181,8 +181,102 @@ struct metropolis_settings_t : public io::json_serializable_t
     bool deserialize(const Json::Value &input);
 };
 
-namespace metropolis {
-struct scaling_settings_t : public io::json_serializable_t
+
+struct structural_metropolis_funcs_t : public io::json_serializable_t
+{
+    /// When false, "basic callbacks" are used.
+    /// When true, "advanced callbacks" are used.
+    bool advanced = false;
+
+    /// Basic callback for an all-in-one mutation function.
+    ///
+    /// All arguments supplied to this are keyword arguments.
+    /// They are not currently documented (sorry).
+    /// For future compatibility, the callback should always take a **kw
+    ///  argument to collect any remainder not explicitly of interest.
+    ///
+    /// This should return a value which can be recognized
+    ///  as a 'structural_mutation_t'.
+    std::string mutate = "mutate";
+
+    /// Advanced callback for generating mutations.
+    ///
+    /// If defined, then it should accept the same arguments
+    /// as 'mutate', but can return any arbitrary python object.
+    /// The other callbacks will decide how to interpret this object.
+    ///
+    /// Documentation for other advanced callbacks will use the term "mutation"
+    /// to indicate whatever form of data is returned by this function.
+    std::string generate = "generate";
+
+    /// Advanced callback for applying a mutation to a structure.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) a mutation,
+    ///  (2) the standard kw arguments provided to 'mutate'
+    /// It should produce a value parsable as 'structural_mutation_t'.
+    ///
+    /// If omitted, will search for a function named 'apply',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def apply(mutation, **kw):
+    ///     return mutation  # assume mutation is 'structural_mutation_t'
+    std::string apply;
+
+    /// Advanced callback for signaling successful mutations. (lower energy)
+    ///
+    /// If defined, then it should accept:
+    ///  (1) a mutation,
+    ///  (2) the standard kw arguments provided to 'mutate'
+    /// It should produce 'None'.
+    ///
+    /// This function will be called when a mutation is accepted by the
+    /// metropolis algorithm.
+    ///
+    /// If omitted, will search for a function named 'accept',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def accept(mutation, **kw):
+    ///     pass
+    std::string accept;
+
+    /// Advanced callback for determining if mutations are worth repeating.
+    /// (i.e., if the mutation decreases total energy, might we expect that
+    ///        repeating the mutation decreases energy again?)
+    ///
+    /// If defined, then it should accept:
+    ///  (1) a mutation,
+    ///  (2) the standard kw arguments provided to 'mutate'
+    /// It should produce a 'bool'
+    ///
+    /// If omitted, will search for a function named 'is_repeatable',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def is_repeatable(mutation, **kw):
+    ///     return false  # never repeat anything.
+    std::string is_repeatable;
+
+    /// Advanced callback for modifying a mutation's strength.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) a mutation,
+    ///  (2) a float 'strength' factor (< 1 or > 1),
+    ///  (3) the standard kw arguments provided to 'mutate'
+    /// It should produce a mutation.
+    ///
+    /// If omitted, will search for a function named 'scale',
+    /// and then if that is not found, the following definition is assumed:
+    ///
+    /// def scale(mutation, factor, **kw):
+    ///     return mutation
+    std::string scale;
+
+    virtual bool serialize(Json::Value &output) const;
+    virtual bool deserialize(const Json::Value &input);
+};
+
+
+struct metropolis_scaling_settings_t : public io::json_serializable_t
 {
     double upscale_by = 1.1;
     double downscale_by = 0.5;
@@ -192,7 +286,25 @@ struct scaling_settings_t : public io::json_serializable_t
 
     bool deserialize(const Json::Value &input);
 };
-} // namespace metropolis
+
+struct structural_metropolis_settings_t : public io::json_serializable_t
+{
+    bool enabled = false;
+
+    // Directories to be prepended to sys.path, where python modules may be found.
+    //
+    // The default prepends an entry of "" (the current directory), just like
+    // the python interpreter itself typically does behind the scenes.
+    std::vector<std::string> python_sys_path = {""};
+    std::string python_module = "mutate";
+    structural_metropolis_funcs_t python_functions;
+    minimize::metropolis_settings_t settings;
+    minimize::metropolis_scaling_settings_t scaling_settings;
+
+    virtual bool serialize(Json::Value &output) const;
+    virtual bool deserialize(const Json::Value &input);
+};
+
 
 } // namespace minimize
 } // namespace sp2

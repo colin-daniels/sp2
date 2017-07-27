@@ -94,29 +94,48 @@ py_opaque_t lookup_required(const char *mod_name, const char *attr);
 /// Like 'lookup_required', this may or may not invoke 'module.__init__()'.
 py_opaque_t lookup_optional(const char *mod_name, const char *attr);
 
-/// Highly specialized functions that are inexorably tied to business
-/// logic in run_phonopy.
-namespace run_phonopy {
-
-// It calls a named function in a named module (which must be available on sys.path)
-// with, uh... some specific arguments, in a specific manner, and uh.... transforms the
-// result back into c++ data in a specific way.
-//
-// Any further detail is subject to change.
-py_opaque_t make_param_pack(std::vector<double> carts,
-    const double lattice[3][3], std::vector<double> force);
-
-py_opaque_t make_extra_kw(std::vector<size_t> sc_to_prim);
-
+/// Conflict-resolution strategies for merge_dictionaries.
 enum class merge_strategy : int
 {
+    /// Resolve key conflicts by taking the first dict's value.
     USE_FIRST = 0,
+    /// Resolve key conflicts by taking the second dict's value.
     USE_SECOND = 1,
+    /// Don't resolve key conflicts; throw a runtime_exception
     ERROR = 2
 };
 
-py_opaque_t merge_dictionaries(const py_opaque_t &a, const py_opaque_t &b,
-    merge_strategy strategy = merge_strategy::ERROR);
+/// Perform a union-like operation on two python dictionaries that produces a
+/// dict with all of their (key, value) pairs.
+py_opaque_t merge_dictionaries(
+    const py_opaque_t &a, const py_opaque_t &b,
+    merge_strategy strategy = merge_strategy::USE_SECOND);
+
+/*----------------------------------------------------------------------------*/
+
+/// Highly specialized functions that are inexorably tied to business
+/// logic in run_phonopy.
+namespace run_phonopy
+{
+
+/// Produce extra structural_metropolis kw args for run_phonopy.
+///
+/// These will not conflict with any of structural_metropolis' own kw args.
+py_opaque_t make_extra_kw(std::vector<size_t> sc_to_prim);
+
+} // namespace run_phonopy
+
+/*----------------------------------------------------------------------------*/
+
+/// Functions that interface with the Python interpreter to run
+/// callbacks for structural_metropolis.
+namespace structural_metropolis
+{
+
+/// Produce the standard kw arguments that are given to the majority of
+/// structural_metropolis' python callbacks.
+py_opaque_t make_param_pack(std::vector<double> carts,
+    const double lattice[3][3], std::vector<double> force);
 
 // function must NOT be NULL
 sp2::structural_mutation_t call_mutate(
@@ -153,7 +172,10 @@ py_opaque_t call_scale(
     double factor,
     const py_opaque_t &param_pack);
 
-} // namespace run_phonopy
+} // namespace structural_metropolis
+
+/*----------------------------------------------------------------------------*/
+
 } // namespace python
 } // namespace sp2
 
