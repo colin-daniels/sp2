@@ -104,8 +104,19 @@ namespace run_phonopy {
 //
 // Any further detail is subject to change.
 py_opaque_t make_param_pack(std::vector<double> carts,
-    const double lattice[3][3], std::vector<size_t> sc_to_prim,
-    std::vector<double> force);
+    const double lattice[3][3], std::vector<double> force);
+
+py_opaque_t make_extra_kw(std::vector<size_t> sc_to_prim);
+
+enum class merge_strategy : int
+{
+    USE_FIRST = 0,
+    USE_SECOND = 1,
+    ERROR = 2
+};
+
+py_opaque_t merge_dictionaries(const py_opaque_t &a, const py_opaque_t &b,
+    merge_strategy strategy = merge_strategy::ERROR);
 
 // function must NOT be NULL
 sp2::structural_mutation_t call_mutate(

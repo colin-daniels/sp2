@@ -286,7 +286,7 @@ py_opaque_t lookup_optional(const char *mod_name, const char *attr)
 }
 
 py_opaque_t run_phonopy::make_param_pack(vector<double> carts,
-    const double lattice[3][3], vector<size_t> sc_to_prim, vector<double> force)
+    const double lattice[3][3], vector<double> force)
 {
     // interpret as 3N cartesian coords
     size_t width = 3;
@@ -302,6 +302,21 @@ py_opaque_t run_phonopy::make_param_pack(vector<double> carts,
 
     auto py_force = to_python_strict(as_ndarray(force, {height, width}));
 
+    py_scoped_t kw = [&] {
+        auto kw = scope(Py_BuildValue("{sOsOsO}",
+            "carts", py_carts.raw(),
+            "lattice", py_lattice.raw(),
+            "force", py_force.raw()
+        ));
+        throw_on_py_err("Exception constructing python kw dict.");
+        return move(kw);
+    }();
+
+    return opaque(kw);
+}
+
+py_opaque_t run_phonopy::make_extra_kw(vector<size_t> sc_to_prim)
+{
     py_scoped_t py_sc_map = [&] {
         py_scoped_t list = to_python_strict(sc_to_prim);
         auto &module = fake_modules::mutation_helper.module;
@@ -314,17 +329,47 @@ py_opaque_t run_phonopy::make_param_pack(vector<double> carts,
     }();
 
     py_scoped_t kw = [&] {
-        auto kw = scope(Py_BuildValue("{sOsOsOsO}",
-            "carts", py_carts.raw(),
-            "lattice", py_lattice.raw(),
-            "force", py_force.raw(),
+        auto kw = scope(Py_BuildValue("{sO}",
             "supercell", py_sc_map.raw()
         ));
         throw_on_py_err("Exception constructing python kw dict.");
-        return move(kw);
+        return kw.move();
     }();
 
     return opaque(kw);
+}
+
+py_opaque_t run_phonopy::merge_dictionaries(const py_opaque_t &a,
+    const py_opaque_t &b, merge_strategy strategy)
+{
+    auto size = [](auto &dict) {
+        Py_ssize_t s = PyDict_Size(dict.inner().raw());
+        throw_on_py_err("error obtaining Python dictionary size");
+        return s;
+    };
+
+    auto merge_into_copy = [&](bool override) {
+        auto c = scope(PyDict_Copy(a.inner().raw()));
+        throw_on_py_err("error copying Python dictionary");
+
+        PyDict_Merge(c.raw(), b.inner().raw(), override ? 1:0);
+        throw_on_py_err("error merging Python dictionaries");
+
+        return c;
+    };
+
+    switch (strategy) {
+    case merge_strategy::USE_FIRST:  return opaque(merge_into_copy(false));
+    case merge_strategy::USE_SECOND: return opaque(merge_into_copy(true));
+    case merge_strategy::ERROR:
+        auto c = merge_dictionaries(a, b, merge_strategy::USE_FIRST);
+
+        if (size(c) != size(a) + size(b)) {
+            throw std::runtime_error("Conflicting key in dict merge!");
+        }
+
+        return c;
+    }
 }
 
 sp2::structural_mutation_t run_phonopy::call_mutate(

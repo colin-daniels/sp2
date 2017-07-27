@@ -281,21 +281,20 @@ void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
 
 //--------------------
 
-// NOTE: This is the core logic of 'perform_structural_metropolis', which
+#ifdef SP2_ENABLE_PYTHON
+
+// NOTE: This is the core logic of 'structural_metropolis', which
 // has been pulled out into a value-returning function to preempt any future
 // bugs related to early returns and/or accidental modification of sys.
 //
 // This function may leave 'sys' in an arbitrary (but consistent) state on exit.
 template<typename S>
-structure_t _perform_structural_metropolis(
+structure_t _structural_metropolis(
     S &sys,
     structure_t initial_pos,
-    size_t primitive_size,
+    python::py_opaque_t extra_kw,
     phonopy::phonopy_metro_settings_t met_set)
 {
-#ifndef SP2_ENABLE_PYTHON
-    throw runtime_error("Python bindings must be enabled for metropolis");
-#else
     using namespace sp2::python;
     using namespace sp2::python::run_phonopy;
 
@@ -356,7 +355,7 @@ structure_t _perform_structural_metropolis(
 
     initial_pos.reduce_positions();
 
-    size_t supercell_size = sys.get_structure().positions.size(); // FIXME
+    size_t natom = sys.get_structure().positions.size(); // FIXME
 
     auto grad_fn = [&](const auto &pos) {
         sys.set_structure(pos);
@@ -374,27 +373,14 @@ structure_t _perform_structural_metropolis(
         return sqsum;
     };
 
-    // primitive cell indices of supercell atoms,
-    // to be communicated to the python script
-    vector<size_t> indices;
-    {
-        while (indices.size() < supercell_size)
-        {
-            for (size_t i = 0; i < primitive_size; i++)
-                indices.push_back(i);
-        }
-
-        if (indices.size() != supercell_size)
-        { throw logic_error("_/o\\_"); }
-    }
-
     auto get_param_pack = [&](const auto &pos) {
         auto carts = v3tod(pos.positions);
         auto force = grad_fn(pos);
         for (auto & x : force)
             x *= -1.0;
 
-        return make_param_pack(carts, pos.lattice, indices, force);
+        auto pp = make_param_pack(carts, pos.lattice, force);
+        return merge_dictionaries(pp, extra_kw, merge_strategy::ERROR);
     };
 
     // mutations are provided by a user python script
@@ -426,7 +412,7 @@ structure_t _perform_structural_metropolis(
         case structural_mutation_type::CART_COORDS:
         {
             const as_ndarray_t<double> &arr = mutation.data;
-            if (arr.shape() != vector<size_t>{supercell_size, 3})
+            if (arr.shape() != vector<size_t>{natom, 3})
                 throw runtime_error("script produced wrong shape carts");
 
             pos.positions = dtov3(arr.data());
@@ -516,20 +502,48 @@ structure_t _perform_structural_metropolis(
         return minimize::metropolis::advanced<pos_t, diff_t>
             (value_fn, callbacks, initial_pos, met_set.settings);
     }
-#endif
 };
 
 // Perform structure-aware metropolis minimization, leaving the optimal
 // structure in 'sys' on exit.
 template<typename S>
-void perform_structural_metropolis(S &sys, size_t primitive_size,
+void structural_metropolis(S &sys, python::py_opaque_t extra_kw,
         phonopy::phonopy_metro_settings_t met_set)
 {
     auto initial = sys.get_structure();
-    auto final = _perform_structural_metropolis(sys, initial,
-            primitive_size, met_set);
+    auto final = _structural_metropolis(sys, initial, extra_kw, met_set);
     sys.set_structure(final);
     sys.update();
+}
+
+#endif // SP2_ENABLE_PYTHON
+
+// Perform structure-aware metropolis minimization, with extra data
+//  specific to run_phonopy.
+template<typename S>
+void perform_structural_metropolis(S &sys, size_t primitive_size,
+    phonopy::phonopy_metro_settings_t met_set)
+{
+#ifndef SP2_ENABLE_PYTHON
+    throw runtime_error("Python bindings must be enabled for metropolis");
+#else
+    size_t supercell_size = sys.get_structure().positions.size(); // FIXME
+
+    // primitive cell indices of supercell atoms,
+    // to be communicated to the python script
+    vector<size_t> indices;
+    while (indices.size() < supercell_size)
+    {
+        for (size_t i = 0; i < primitive_size; i++)
+            indices.push_back(i);
+    }
+
+    if (indices.size() != supercell_size)
+    { throw logic_error("_/o\\_"); }
+
+    auto extra_kw = python::run_phonopy::make_extra_kw(indices);
+    structural_metropolis(sys, extra_kw, met_set);
+#endif // SP2_ENABLE_PYTHON
 }
 
 //--------------------
