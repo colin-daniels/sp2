@@ -92,9 +92,9 @@ namespace run_phonopy {
 // result back into c++ data in a specific way.
 //
 // Any further detail is subject to change.
-sp2::python::py_opaque_t make_param_pack(
-    std::vector<double> carts, const double lattice[3][3],
-    std::vector<size_t> sc_to_prim);
+py_opaque_t make_param_pack(std::vector<double> carts,
+    const double lattice[3][3], std::vector<size_t> sc_to_prim,
+    std::vector<double> force);
 
 // function must NOT be NULL
 sp2::structural_mutation_t call_mutate(

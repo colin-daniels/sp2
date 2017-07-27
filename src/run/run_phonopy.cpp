@@ -334,27 +334,17 @@ structure_t _perform_structural_metropolis(
                 // triggered by the function pointer being NULL.
                 //
                 // lookup_optional is what produces the NULL pointer.
+                auto lookup = [&](auto &member, const auto &fs_member, const char* default_name) {
+                    if (fs_member.empty())
+                        member = lookup_optional(mod, default_name);
+                    else
+                        member = lookup_required(mod, fs_member.c_str());
+                };
 
-                if (func_set.apply.empty())
-                    apply = lookup_optional(mod, "apply");
-                else
-                    apply = lookup_required(mod, func_set.apply.c_str());
-
-                if (func_set.accept.empty())
-                    accept = lookup_optional(mod, "accept");
-                else
-                    accept = lookup_required(mod, func_set.accept.c_str());
-
-                if (func_set.is_repeatable.empty())
-                    is_repeatable = lookup_optional(mod, "is_repeatable");
-                else
-                    is_repeatable = lookup_required(mod, func_set.is_repeatable.c_str());
-
-                if (func_set.scale.empty())
-                    scale = lookup_optional(mod, "scale");
-                else
-                    scale = lookup_required(mod, func_set.scale.c_str());
-
+                lookup(apply, func_set.apply, "apply");
+                lookup(accept, func_set.accept, "accept");
+                lookup(is_repeatable, func_set.is_repeatable, "is_repeatable");
+                lookup(scale, func_set.scale, "scale");
             }
             else
             {
@@ -368,22 +358,17 @@ structure_t _perform_structural_metropolis(
 
     size_t supercell_size = sys.get_structure().positions.size(); // FIXME
 
-    // sys.diff_fn() variant that is aware of our unusual position format
-    auto diff_fn = [&](const auto &in_pos) {
-        sys.set_structure(in_pos);
+    auto grad_fn = [&](const auto &pos) {
+        sys.set_structure(pos);
         sys.update();
-        return make_pair(sys.get_value(), sys.get_gradient());
+        return sys.get_gradient();
     };
 
     // effective potential based on forces
-    auto value_fn = [&](auto &pos) {
-        double energy;
-        vector<double> forces;
-        tie(energy, forces) = diff_fn(pos);
-
+    auto value_fn = [&](const auto &pos) {
         // Minimize (F dot F), since phonopy uses forces instead of potential.
         double sqsum = 0;
-        for (auto x : forces)
+        for (auto x : grad_fn(pos))
             sqsum += x * x;
 
         return sqsum;
@@ -404,7 +389,12 @@ structure_t _perform_structural_metropolis(
     }
 
     auto get_param_pack = [&](const auto &pos) {
-        return make_param_pack(v3tod(pos.positions), pos.lattice, indices);
+        auto carts = v3tod(pos.positions);
+        auto force = grad_fn(pos);
+        for (auto & x : force)
+            x *= -1.0;
+
+        return make_param_pack(carts, pos.lattice, indices, force);
     };
 
     // mutations are provided by a user python script

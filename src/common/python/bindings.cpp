@@ -152,46 +152,6 @@ py_scoped_t call_module_function(const char *mod_name, const char *func_name,
     return call_callable(func, move(args));
 }
 
-py_scoped_t make_run_phonopy_param_pack(
-    vector<double> carts, const double lattice[3][3],
-    vector<size_t> sc_to_prim)
-{
-    // interpret as 3N cartesian coords
-    size_t width = 3;
-    if (carts.size() % width != 0)
-        throw logic_error("vector not divisible by width");
-
-    size_t height = carts.size() / width;
-
-    auto py_carts = to_python_strict(as_ndarray(carts, {height, width}));
-
-    auto c_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
-    auto py_lattice = to_python_strict(as_ndarray(c_lattice, {3, 3}));
-
-    py_scoped_t py_sc_map = [&] {
-        py_scoped_t list = to_python_strict(sc_to_prim);
-        auto &module = fake_modules::mutation_helper.module;
-        auto klass = getattr(module, "supercell_index_mapper");
-
-        auto args = scope(Py_BuildValue("(O)", list.raw()));
-        throw_on_py_err("Exception constructing python args tuple.");
-
-        return call_callable(klass, just_args(args.dup()));
-    }();
-
-    py_scoped_t kw = [&] {
-        auto kw = scope(Py_BuildValue("{sOsOsO}",
-            "carts", py_carts.raw(),
-            "lattice", py_lattice.raw(),
-            "supercell", py_sc_map.raw()
-        ));
-        throw_on_py_err("Exception constructing python kw dict.");
-        return move(kw);
-    }();
-
-    return kw;
-}
-
 void extend_sys_path_single(const char *dir)
 {
 
@@ -298,12 +258,46 @@ py_opaque_t lookup_optional(const char *mod_name, const char *attr)
     return opaque(getattr(module, attr, {}));
 }
 
-py_opaque_t run_phonopy::make_param_pack(
-    vector<double> carts, const double lattice[3][3],
-    vector<size_t> sc_to_prim)
+py_opaque_t run_phonopy::make_param_pack(vector<double> carts,
+    const double lattice[3][3], vector<size_t> sc_to_prim, vector<double> force)
 {
-    auto py = make_run_phonopy_param_pack(carts, lattice, sc_to_prim);
-    return opaque(py);
+    // interpret as 3N cartesian coords
+    size_t width = 3;
+    if (carts.size() % width != 0)
+        throw logic_error("vector not divisible by width");
+
+    size_t height = carts.size() / width;
+
+    auto py_carts = to_python_strict(as_ndarray(carts, {height, width}));
+
+    auto c_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
+    auto py_lattice = to_python_strict(as_ndarray(c_lattice, {3, 3}));
+
+    auto py_force = to_python_strict(as_ndarray(force, {height, width}));
+
+    py_scoped_t py_sc_map = [&] {
+        py_scoped_t list = to_python_strict(sc_to_prim);
+        auto &module = fake_modules::mutation_helper.module;
+        auto klass = getattr(module, "supercell_index_mapper");
+
+        auto args = scope(Py_BuildValue("(O)", list.raw()));
+        throw_on_py_err("Exception constructing python args tuple.");
+
+        return call_callable(klass, just_args(args.dup()));
+    }();
+
+    py_scoped_t kw = [&] {
+        auto kw = scope(Py_BuildValue("{sOsOsOsO}",
+            "carts", py_carts.raw(),
+            "lattice", py_lattice.raw(),
+            "force", py_force.raw(),
+            "supercell", py_sc_map.raw()
+        ));
+        throw_on_py_err("Exception constructing python kw dict.");
+        return move(kw);
+    }();
+
+    return opaque(kw);
 }
 
 sp2::structural_mutation_t run_phonopy::call_mutate(
