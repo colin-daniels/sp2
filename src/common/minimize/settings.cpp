@@ -180,6 +180,7 @@ bool minimize::structural_metropolis_settings_t::serialize(Json::Value &output) 
 {
     io::serialize_basic(output,
         "enabled", enabled,
+        "objective", objective,
         "python_sys_path", python_sys_path,
         "python_module", python_module,
         "python_functions", python_functions,
@@ -193,6 +194,7 @@ bool minimize::structural_metropolis_settings_t::deserialize(const Json::Value &
 {
     io::deserialize_basic(input,
         "enabled", enabled,
+        "objective", objective,
         "python_sys_path", python_sys_path,
         "python_module", python_module,
         "python_functions", python_functions,

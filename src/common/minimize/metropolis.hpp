@@ -355,25 +355,19 @@ structure_t _structural_metropolis(
 
     size_t natom = sys.get_structure().positions.size(); // FIXME
 
-    auto grad_fn = [&](const auto &pos) {
+    auto diff_fn = [&](const auto &pos) -> std::pair<double, std::vector<double>> {
         sys.set_structure(pos);
         sys.update();
-        return sys.get_gradient();
+        return std::make_pair(sys.get_value(), sys.get_gradient());
     };
 
-    // effective potential based on forces
     auto value_fn = [&](const auto &pos) {
-        // Minimize (F dot F), since phonopy uses forces instead of potential.
-        double sqsum = 0;
-        for (auto x : grad_fn(pos))
-            sqsum += x * x;
-
-        return sqsum;
+        return compute_objective(met_set.objective, diff_fn(pos));
     };
 
     auto get_param_pack = [&](const auto &pos) {
         auto carts = v3tod(pos.positions);
-        auto force = grad_fn(pos);
+        auto force = diff_fn(pos).second;
         for (auto & x : force)
             x *= -1.0;
 

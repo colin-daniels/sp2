@@ -10,7 +10,7 @@ library headers.
 #include "common/python/util.hpp"
 #include "common/python/numpy_util.hpp"
 #include "common/python/include_numpy.hpp"
-#include "common/minimize/structural_mutation.hpp"
+#include "common/minimize/metropolis_enums.hpp"
 
 #include <cstdint>
 #include <vector>

@@ -6,6 +6,7 @@
 
 #include "common/json/json_serializable_t.hpp"
 #include "common/function_types.hpp"
+#include "common/minimize/metropolis_enums.hpp"
 
 namespace sp2 {
 namespace minimize {
@@ -287,9 +288,12 @@ struct metropolis_scaling_settings_t : public io::json_serializable_t
     bool deserialize(const Json::Value &input);
 };
 
+
 struct structural_metropolis_settings_t : public io::json_serializable_t
 {
     bool enabled = false;
+
+    objective_type objective = objective_type::POTENTIAL;
 
     // Directories to be prepended to sys.path, where python modules may be found.
     //

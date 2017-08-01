@@ -91,11 +91,11 @@ set(SOURCE_FILES
         src/common/minimize/settings.hpp
         src/common/minimize/test/test_functions.cpp
         src/common/minimize/test/test_functions.hpp
-        src/common/minimize/structural_mutation.hpp
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
         src/common/minimize/acgsd.cpp
         src/common/minimize/metropolis.hpp
+        src/common/minimize/metropolis_enums.hpp
         src/common/minimize/fire.cpp
 ################################################################################
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/bindings.cpp
