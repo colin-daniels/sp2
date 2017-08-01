@@ -1,13 +1,15 @@
-// FIXME ugh, the intent was to avoid this import, but I didn't manage
-//       to break up fake_modules.hpp quite enough for that.
-#include "Python.h"
+#include "Python.h" // must be first import.
 
-#include "common/python/modules/fake_modules.hpp"
+#include "common/python/fake_modules.hpp"
 
-namespace {
+namespace sp2 {
+namespace python {
+namespace fake_modules {
+namespace mutation_helper {
 
-const char* name = "mutation_helper";
-const char* text = "\n\
+fake_module_t fake_module({
+    "mutation_helper",
+    "\n\
 from collections import defaultdict                                                        \n\
                                                                                            \n\
 class supercell_index_mapper:                                                              \n\
@@ -56,8 +58,9 @@ class supercell_index_mapper:                                                   
     def primitive_index(self, idx):                                                        \n\
         ''' Look up primitive cell index for a given atom in the supercell. '''            \n\
         return self._image_rev[idx]                                                        \n\
-";
+"});
 
-} // anonymous namespace
-
-sp2::python::fake_module_t sp2::python::fake_modules::mutation_helper = {name, text};
+} // namespace mutation_helper
+} // namespace fake_modules
+} // namespace python
+} // namespace sp2

@@ -1,15 +1,13 @@
 #include "Python.h" // must be first include
 
-#include "common/python/modules/fake_modules.hpp"
-
-#include "common/python/util.hpp"
-#include <stdexcept>
-#include <utility>
+#include "common/python/fake_modules.hpp"
 
 using std::string;
 
-void ::sp2::python::initialize_fake_modules() {
-    for (auto p : fake_modules::all) {
+void sp2::python::fake_modules::initialize()
+{
+    for (auto p : fake_modules::all)
+    {
         // This just shows up in debugging info... probably.
         auto fake_path = string() + "sp2/common/python/fake_modules/" + p->meta.name + ".cpp";
 
@@ -25,8 +23,8 @@ void ::sp2::python::initialize_fake_modules() {
     }
 }
 
-void ::sp2::python::finalize_fake_modules() {
-    for (auto p : fake_modules::all) {
+void sp2::python::fake_modules::finalize()
+{
+    for (auto p : fake_modules::all)
         p->module.destroy();
-    }
 }

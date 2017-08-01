@@ -9,7 +9,8 @@
 #include <common/python/util.hpp>
 #include <common/python/conversion.hpp>
 #include <common/python/include_numpy.hpp>
-#include <common/python/modules/fake_modules.hpp>
+#include <common/python/fake_modules.hpp>
+#include <common/python/ext_modules.hpp>
 
 //-----------------------------
 
@@ -205,6 +206,7 @@ environment::environment(const char *prog)
 {
     ensure_run_once();
 
+
     if (prog)
     {
         py_allocated_program = Py_DecodeLocale(prog, NULL);
@@ -219,17 +221,19 @@ environment::environment(const char *prog)
         }
     }
 
+    ext_modules::pre_py_initialize();
     Py_Initialize();
+    ext_modules::post_py_initialize();
 
     initialize_numpy();
     throw_on_py_err("error initializing numpy");
 
-    initialize_fake_modules();
+    fake_modules::initialize();
 }
 
 int environment::finalize()
 {
-    finalize_fake_modules();
+    fake_modules::finalize();
     if (int code = Py_FinalizeEx())
         return code;
     if (py_allocated_program)
@@ -306,7 +310,7 @@ py_opaque_t run_phonopy::make_extra_kw(vector<size_t> sc_to_prim)
 {
     py_scoped_t py_sc_map = [&] {
         py_scoped_t list = to_python_strict(sc_to_prim);
-        auto &module = fake_modules::mutation_helper.module;
+        auto &module = fake_modules::mutation_helper::fake_module.module;
         auto klass = getattr(module, "supercell_index_mapper");
 
         auto args = scope(Py_BuildValue("(O)", list.raw()));

@@ -106,10 +106,16 @@ set(SOURCE_FILES
         IF_PYTHON_ENABLED                     src/common/python/include_numpy.hpp
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/conversion.cpp
         IF_PYTHON_ENABLED                     src/common/python/conversion.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/fake_modules.cpp
-        IF_PYTHON_ENABLED                     src/common/python/modules/fake_modules.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/mutation_helper.cpp
         IF_PYTHON_ENABLED                     src/common/python/numpy_util.hpp
+
+        IF_PYTHON_ENABLED                     src/common/python/ext_modules.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/ext_modules.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/ext_modules/example.cpp
+
+        IF_PYTHON_ENABLED                     src/common/python/fake_modules.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/fake_modules.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/fake_modules/example.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/fake_modules/mutation_helper.cpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
