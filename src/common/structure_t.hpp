@@ -62,14 +62,14 @@ struct structure_t : public io::json_serializable_t
     /// - Non-periodic axes are not currently supported.
     /// - The positions may not necessarily lay within [0.0, 1.0).
     ///   (See reduced_fractional_positions()).
-    std::vector<vec3_t> fractional_positions();
+    std::vector<vec3_t> fractional_positions() const;
 
     /// Compute fractional positions for the atoms, reduced into
     /// the primitive cell.
     ///
     /// Caveats:
     /// - Non-periodic axes are not currently supported.
-    std::vector<vec3_t> reduced_fractional_positions();
+    std::vector<vec3_t> reduced_fractional_positions() const;
 
     /// Set fractional positions for the atoms.
     ///

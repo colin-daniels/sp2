@@ -151,13 +151,13 @@ void right_multiply_inplace(vector<vec3_t> &vecs, mat3x3_t mat)
         vec = transpose * vec;
 }
 
-std::vector<vec3_t> structure_t::fractional_positions()
+std::vector<vec3_t> structure_t::fractional_positions() const
 {
     auto inv = mat3x3_t(lattice).inverse();
     return right_multiply(positions, inv, {});
 }
 
-std::vector<vec3_t> structure_t::reduced_fractional_positions()
+std::vector<vec3_t> structure_t::reduced_fractional_positions() const
 {
     auto out = fractional_positions();
     for (auto &vec : out)
