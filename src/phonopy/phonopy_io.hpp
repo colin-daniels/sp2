@@ -22,7 +22,7 @@ void write_force_sets(
 );
 
 void draw_normal_mode(std::string filename,
-    structure_t structure, std::pair<double, std::vector<sp2::vec3_t>> mode);
+    structure_t structure, std::vector<sp2::vec3_t> mode);
 
 } // namespace phonopy
 } // namespace sp2

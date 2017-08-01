@@ -99,7 +99,7 @@ std::vector<std::string> sp2::phonopy::read_irreps(std::string filename)
 
 void sp2::phonopy::draw_normal_mode(std::string filename,
     sp2::structure_t structure,
-    std::pair<double, std::vector<sp2::vec3_t>> mode)
+    std::vector<sp2::vec3_t> mode)
 {
     constexpr double atom_radius = 0.2,
         bond_radius = atom_radius,
@@ -119,7 +119,7 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
 
         pos.erase(pos.begin() + i);
         structure.types.erase(structure.types.begin() + i);
-        mode.second.erase(mode.second.begin() + i);
+        mode.erase(mode.begin() + i);
 
         i -= 1;
     }
@@ -127,11 +127,11 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
 
     // rescale eigenvectors by largest magnitude
     double mag_max = 0;
-    for (auto &eig : mode.second)
+    for (auto &eig : mode)
         mag_max = std::max(mag_max, eig.mag_sq());
 
     mag_max = std::sqrt(mag_max);
-    for (auto &eig : mode.second)
+    for (auto &eig : mode)
         eig /= mag_max;
 
     std::ofstream outfile(filename);
@@ -165,11 +165,11 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
         atom_radius, bond_radius,
         // for each atom
         [&](int atom_id, std::ostream &oss) {
-            if (mode.second[atom_id].mag() == 0)
+            if (mode[atom_id].mag() == 0)
                 return;
 
-            auto eigenvector = mode.second[atom_id] * amplification
-                    + mode.second[atom_id].unit_vector() * arrow_radius,
+            auto eigenvector = mode[atom_id] * amplification
+                    + mode[atom_id].unit_vector() * arrow_radius,
                 arrow_start = pos[atom_id]
                     + eigenvector.unit_vector() * atom_radius;
 

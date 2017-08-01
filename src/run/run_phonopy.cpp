@@ -794,7 +794,7 @@ int write_spectra(run_settings_t rset,
         {
             phonopy::draw_normal_mode(
                 "mode_" + get_id_suffix(mode_id) + ".gplot",
-                structure, modes[i]);
+                structure, modes[i].second);
         }
 
         // animation file
