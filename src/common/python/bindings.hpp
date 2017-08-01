@@ -44,6 +44,50 @@ public:
     py_opaque_t(const py_opaque_t&);
     py_opaque_t& operator=(const py_opaque_t&);
 
+    //-----------------------
+    // Provide a core of high-level functionality.
+    //
+    // Together, attribute access and the ability to call functions enables 99%
+    // of all use cases for manipulating python objects and lets us move a lot
+    // of logic out of bindings.cpp and closer to where it belongs.
+
+    /// Test if a python object has an attribute.
+    ///
+    /// Equivalent to 'hasattr(obj, name)'. Never fails.
+    // FIXME though I don't know what it does if your object is NULL...
+    bool hasattr(const char *attr) const;
+    bool hasattr(const std::string &attr) const
+    { return hasattr(attr.c_str()); }
+
+    /// Access an attribute of a python object.
+    ///
+    /// Equivalent to 'getattr(obj, name)'.
+    /// Throws an exception if the attribute does not exist.
+    py_opaque_t getattr(const char *attr) const;
+    py_opaque_t getattr(const std::string &attr) const
+    { return getattr(attr.c_str()); }
+
+    /// Access an attribute of a python object, or a default value.
+    ///
+    /// Equivalent to 'getattr(obj, name, def)'.
+    py_opaque_t getattr(const char *attr, const py_opaque_t &def) const;
+    py_opaque_t getattr(const std::string &attr, const py_opaque_t &def) const
+    { return getattr(attr.c_str(), def); }
+
+    /// Set an attribute of a python object.
+    void setattr(const char *attr, const py_opaque_t &value);
+    void setattr(const std::string &attr, const py_opaque_t &value)
+    { return setattr(attr.c_str(), value); }
+
+    /// Call a python callable.
+    ///
+    /// This takes an args tuple and a keyword dict. Either or both can be null,
+    /// unlike *cough* some APIs...
+    py_opaque_t call(const py_opaque_t &args, const py_opaque_t &kw);
+
+    py_opaque_t call()
+    { return call({}, {}); }
+
 private:
     void debug_null() const;
 };
@@ -77,19 +121,13 @@ public:
 /// without creating a duplicate entry.
 void extend_sys_path(std::vector<std::string> dir);
 
-/// Obtain module.attr, which must exist (else an exception is thrown)
-///
-/// This implicitly imports the module through the standard python
+/// Import a (package-qualified) module through the standard python
 /// module-loading machinery, which caches imports.
 ///
 /// In other words, this MAY invoke module.__init__() (and therefore one should
 ///  be prepared for arbitrary python errors), but it will only do so once.
-py_opaque_t lookup_required(const char *mod_name, const char *attr);
-
-/// Obtain module.attr, or a NULL pointer.
-///
-/// Like 'lookup_required', this may or may not invoke 'module.__init__()'.
-py_opaque_t lookup_optional(const char *mod_name, const char *attr);
+py_opaque_t import(const char *mod_name);
+py_opaque_t import(const std::string &mod_name);
 
 /// Conflict-resolution strategies for merge_dictionaries.
 enum class merge_strategy : int
@@ -146,9 +184,16 @@ sp2::structural_mutation_t call_apply(
     const py_opaque_t &param_pack);
 
 // function can be NULL
-void call_accept(
+void call_applied(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
+    double was, double now,
+    const py_opaque_t &param_pack);
+
+// function can be NULL
+void call_visit(
+    const py_opaque_t &function,
+    double value, bool better,
     const py_opaque_t &param_pack);
 
 // function must NOT be NULL

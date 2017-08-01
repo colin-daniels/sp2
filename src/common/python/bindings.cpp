@@ -21,7 +21,8 @@ namespace python {
 
 py_scoped_t& sp2::python::py_opaque_t::inner()
 {
-    if (!_impl) {
+    if (!_impl)
+    {
         throw std::logic_error("detected py_opaque_t with a NULL unique_ptr!"
             " The inner py_scoped_t should be NULL instead.");
     }
@@ -31,7 +32,8 @@ py_scoped_t& sp2::python::py_opaque_t::inner()
 
 const py_scoped_t& sp2::python::py_opaque_t::inner() const
 {
-    if (!_impl) {
+    if (!_impl)
+    {
         throw std::logic_error("detected py_opaque_t with a NULL unique_ptr!"
             " The inner py_scoped_t should be NULL instead.");
     }
@@ -52,7 +54,8 @@ py_opaque_t &py_opaque_t::operator=(const py_opaque_t &) = default;
 py_opaque_t::py_opaque_t(shared_ptr<py_opaque_t::impl_t> &&impl)
     : _impl(move(impl))
 {
-    if (!_impl) {
+    if (!_impl)
+    {
         throw std::logic_error("cannot construct py_opaque_t from "
             "NULL unique_ptr. (the py_scoped_t should be null instead)");
     }
@@ -110,34 +113,25 @@ py_scoped_t call_callable(py_scoped_t &function, args_t argpair)
 
 // Overload for convenience when there are both kw and args.
 // (having only one would be ambiguous)
-py_scoped_t call_callable(py_scoped_t &function, py_scoped_t &args,
-    py_scoped_t &kw)
+py_scoped_t call_callable(py_scoped_t &function, const py_scoped_t &args,
+    const py_scoped_t &kw)
 {
     auto argpair = args_and_kw(args.dup(), kw.dup());
     return call_callable(function, move(argpair));
 }
 
-
-// Call a named function in a named module with *args and **kw.
-// The module will be automatically imported if it isn't already loaded;
-//   in particular, calling this multiple times will not result in repeated
-//   calls to the module's __init__.
-//
-// Equivalent to:
-//
-//     import mod_name
-//     return mod_name.func_name(*args, **kw)
-//
-py_scoped_t call_module_function(const char *mod_name, const char *func_name,
-    args_t args)
+py_scoped_t call_callable_nullable(py_scoped_t &function,
+    const py_scoped_t &args,
+    const py_scoped_t &kw)
 {
-    auto func = lookup_required(mod_name, func_name).inner().move();
-
-    if (!(PyCallable_Check(func.raw())))
-        throw runtime_error(string() + mod_name + "."
-                            + func_name + " is not callable");
-
-    return call_callable(func, move(args));
+    auto true_args = args;
+    auto true_kw = kw;
+    if (!true_args)
+        true_args = scope(Py_BuildValue("()"));
+    if (!true_kw)
+        true_kw = scope(Py_BuildValue("{}"));
+    auto argpair = args_and_kw(true_args, true_kw);
+    return call_callable(function, move(argpair));
 }
 
 void extend_sys_path_single(const char *dir)
@@ -194,6 +188,27 @@ py_scoped_t import_named_module(const char *mod_name) {
 /* --------------------------------------------------------------------- */
 // Public API
 
+py_opaque_t import(const char *mod_name)
+{ return opaque(import_named_module(mod_name)); }
+
+py_opaque_t import(const std::string &mod_name)
+{ return import(mod_name.c_str()); }
+
+bool py_opaque_t::hasattr(const char *attr) const
+{ return sp2::python::hasattr(inner(), attr); }
+
+py_opaque_t py_opaque_t::getattr(const char *attr) const
+{ return opaque(sp2::python::getattr(inner(), attr)); }
+
+py_opaque_t py_opaque_t::getattr(const char *attr, const py_opaque_t &def) const
+{ return opaque(sp2::python::getattr(inner(), attr, def.inner())); }
+
+void py_opaque_t::setattr(const char *attr, const py_opaque_t &value)
+{ return sp2::python::setattr(inner(), attr, value.inner()); }
+
+py_opaque_t py_opaque_t::call(const py_opaque_t &args, const py_opaque_t &kw)
+{ return opaque(call_callable_nullable(inner(), args.inner(), kw.inner())); }
+
 void environment::ensure_run_once()
 {
     static bool has_run = false;
@@ -205,7 +220,6 @@ void environment::ensure_run_once()
 environment::environment(const char *prog)
 {
     ensure_run_once();
-
 
     if (prog)
     {
@@ -243,37 +257,34 @@ int environment::finalize()
 
 environment::~environment()
 {
-    try {
-        if (finalize()) {
+    try
+    {
+        if (finalize())
+        {
             std::cerr << "WARNING: Unknown errors occurred in Python while"
                       << " cleaning up the python interpreter." << std::endl;
         }
-    } catch (std::exception e) {
+    }
+    catch (const std::exception &e)
+    {
         // don't throw from destructor
         std::cerr << "WARNING: An uncaught exception was thrown while cleaning"
                   << " up the python interpreter: " << e.what() << std::endl;
     }
+    catch (...)
+    {
+        // I said, /don't throw from destructor/!!!
+        std::cerr << "WARNING: Something ugly and unrecognizable was thrown"
+                  << " our way while cleaning up the python interpreter"
+                  << std::endl;
+    }
 }
-
-
 
 void extend_sys_path(vector<string> dirs)
 {
     // reverse order so that the prepended results appear in the requested order
     for (auto it = dirs.rbegin(); it != dirs.rend(); it++)
         extend_sys_path_single(it->c_str());
-}
-
-py_opaque_t lookup_required(const char *mod_name, const char *attr)
-{
-    auto module = import_named_module(mod_name);
-    return opaque(getattr(module, attr));
-}
-
-py_opaque_t lookup_optional(const char *mod_name, const char *attr)
-{
-    auto module = import_named_module(mod_name);
-    return opaque(getattr(module, attr, {}));
 }
 
 py_opaque_t structural_metropolis::make_param_pack(vector<double> carts,
@@ -355,9 +366,8 @@ py_opaque_t merge_dictionaries(const py_opaque_t &a,
     case merge_strategy::ERROR:
         auto c = merge_dictionaries(a, b, merge_strategy::USE_FIRST);
 
-        if (size(c) != size(a) + size(b)) {
+        if (size(c) != size(a) + size(b))
             throw std::runtime_error("Conflicting key in dict merge!");
-        }
 
         return c;
     }
@@ -388,10 +398,13 @@ sp2::structural_mutation_t structural_metropolis::call_apply(
     auto kw = param_pack.inner().dup();
 
     py_scoped_t py_cxx_mutation;
-    if (callable) {
+    if (callable)
+    {
         auto args = scope(Py_BuildValue("(O)", py_mutation.raw()));
         py_cxx_mutation = call_callable(callable, args, kw);
-    } else {
+    }
+    else
+    {
         // default definition: return mutation
         py_cxx_mutation = py_mutation.dup();
     }
@@ -400,9 +413,10 @@ sp2::structural_mutation_t structural_metropolis::call_apply(
         "error converting python return value");
 }
 
-void structural_metropolis::call_accept(
+void structural_metropolis::call_applied(
     const py_opaque_t &function,
     const py_opaque_t &mutation,
+    double was, double now,
     const py_opaque_t &param_pack)
 {
     auto callable = function.inner().dup();
@@ -411,7 +425,23 @@ void structural_metropolis::call_accept(
     if (!callable)
         return; // default definition
 
-    auto args = scope(Py_BuildValue("(O)", py_mutation.raw()));
+    auto py_values = scope(Py_BuildValue("(dd)", was, now));
+    auto args = scope(Py_BuildValue("(OO)", py_mutation.raw(), py_values.raw()));
+    call_callable(callable, args, kw);
+}
+
+void structural_metropolis::call_visit(
+    const py_opaque_t &function,
+    double value, bool better,
+    const py_opaque_t &param_pack)
+{
+    auto callable = function.inner().dup();
+    auto py_better = to_python_strict(better);
+    auto kw = param_pack.inner().dup();
+    if (!callable)
+        return; // default definition
+
+    auto args = scope(Py_BuildValue("(dO)", value, py_better.raw()));
     call_callable(callable, args, kw);
 }
 

@@ -13,11 +13,9 @@ namespace sp2 {
 namespace minimize {
 namespace metropolis {
 
-/// Computes energy at a position.
 template<typename P>
 using objective_fn_t = std::function<double(const P &)>;
 
-/// Applies a single mutation to a position.
 template<typename P>
 using mutate_fn_t = std::function<P(const P&)>;
 
@@ -28,7 +26,10 @@ template<typename P, typename D>
 using apply_fn_t = std::function<P(const P&, const D&)>;
 
 template<typename P, typename D>
-using accept_fn_t = std::function<void(const P&, const D&, bool)>;
+using applied_fn_t = std::function<void(const P&, const D&, double, double)>;
+
+template<typename P, typename D>
+using visit_fn_t = std::function<void(const P&, double, bool)>;
 
 template<typename P, typename D>
 using scale_fn_t = std::function<D(const P&, const D&, double)>;
@@ -44,8 +45,11 @@ struct callbacks_t
     generate_fn_t<P, D> generate;
     /// Applies an abstract mutation to the position vector.
     apply_fn_t<P, D> apply;
-    /// Called when a mutation is accepted as lower energy.
-    accept_fn_t<P, D> accept;
+    /// Called on each mutation (with the old structure)
+    ///  after computing the objective.
+    applied_fn_t<P, D> applied;
+    /// Called on each structure after computing the objective.
+    visit_fn_t<P, D> visit;
 };
 
 template<typename P, typename D>
@@ -67,6 +71,8 @@ P advanced(
     P position_best = initial_position;
     double value_best = objective_fn(position_best);
 
+    callbacks.visit(position_best, value_best, true);
+
     if (settings.output_level > 1) {
         cout << " Initial Value: " << value_best << endl;
     }
@@ -77,11 +83,11 @@ P advanced(
         auto position_new = callbacks.apply(position_best, mutation);
         mutations += 1;
         mutations_since += 1;
-
         double value_new = objective_fn(position_new);
         bool successful = value_new < value_best;
 
-        callbacks.accept(position_best, mutation, successful);
+        callbacks.visit(position_best, value_best, true);
+        callbacks.applied(position_best, mutation, value_best, value_new);
         if (successful) {
             if (settings.output_level > 1) {
                 cout << "Improved Value: " << setprecision(13) << value_new
@@ -135,8 +141,10 @@ P basic(
         [&](const auto &pos) { return mutation_fn(pos); },
         // apply
         [&](const auto &pos, const auto &diff) { return diff; },
-        // accept
-        [&](const auto &pos, const auto &diff, bool success) { return; }
+        // applied
+        [&](const auto &pos, const auto &diff, double was, double now) { return; },
+        // visit
+        [&](const auto &pos, double value, bool better) { return; }
     };
 
     return advanced<P,P>(objective_fn,
@@ -256,19 +264,20 @@ struct scaling_control_t
             },
 
             // apply
-            [&](const auto &pos, const auto &mut) {
-                return cbs.apply(pos, mut);
-            },
+            cbs.apply,
 
-            // accept
-            [&](const auto &pos, const auto &mut, bool success) {
-                cbs.accept(pos, mut, success);
+            // applied
+            [&](const auto &pos, const auto &mut, double was, double now) {
+                cbs.applied(pos, mut, was, now);
                 prev = std::make_unique<D>(mut);
-                if (success && is_repeatable(pos, mut))
+                if (now < was && is_repeatable(pos, mut))
                     scaling_state = scaling_state.succeed();
                 else
                     scaling_state = scaling_state.fail();
-            }
+            },
+
+            // visit
+            cbs.visit,
         };
     }
 };
@@ -296,76 +305,21 @@ structure_t _structural_metropolis(
     using namespace sp2::python;
     using namespace sp2::python::structural_metropolis;
 
-    extend_sys_path(met_set.python_sys_path);
-
-    struct py_mutation_functions_t
-    {
-        bool advanced = false;
-        py_opaque_t mutate;
-        py_opaque_t generate;
-        py_opaque_t apply;
-        py_opaque_t accept;
-        py_opaque_t is_repeatable;
-        py_opaque_t scale;
-
-        py_mutation_functions_t(structural_metropolis_settings_t &met_set)
-        {
-            const char *mod = met_set.python_module.c_str();
-            auto &func_set = met_set.python_functions;
-            advanced = func_set.advanced;
-            if (advanced) {
-
-                generate = lookup_required(mod, func_set.generate.c_str());
-
-                // The logic for resolving these next two pieces of
-                // configuration is spread all over the place.
-                //
-                // All except 'generate' follow the following rules:
-                // - If specified in config, the function must exist.
-                // - If not specified, a default name is assumed.
-                // - If not specified and no function is present with this
-                //    default name, a default implementation is used.
-                //
-                // Logic for the default implementation is currently provided
-                // by the python::structural_metropolis::call_XXX family of
-                // functions, and is triggered by the function being NULL.
-                //
-                // lookup_optional is what produces the NULL.
-                auto lookup = [&](auto &member, const auto &fs_member, const char* default_name) {
-                    if (fs_member.empty())
-                        member = lookup_optional(mod, default_name);
-                    else
-                        member = lookup_required(mod, fs_member.c_str());
-                };
-
-                lookup(apply, func_set.apply, "apply");
-                lookup(accept, func_set.accept, "accept");
-                lookup(is_repeatable, func_set.is_repeatable, "is_repeatable");
-                lookup(scale, func_set.scale, "scale");
-            }
-            else
-            {
-                // basic interface
-                mutate = lookup_required(mod, func_set.mutate.c_str());
-            }
-        }
-    } py_mutation_functions(met_set);
-
     initial_pos.reduce_positions();
 
     size_t natom = sys.get_structure().positions.size(); // FIXME
 
-    auto diff_fn = [&](const auto &pos) -> std::pair<double, std::vector<double>> {
+    auto diff_fn = [&](const auto &pos) {
         sys.set_structure(pos);
         sys.update();
         return std::make_pair(sys.get_value(), sys.get_gradient());
     };
 
-    auto value_fn = [&](const auto &pos) {
+    auto value_fn = [&diff_fn, &met_set](const auto &pos) {
         return compute_objective(met_set.objective, diff_fn(pos));
     };
 
-    auto get_param_pack = [&](const auto &pos) {
+    auto get_param_pack = [&diff_fn, &extra_kw](const auto &pos) {
         auto carts = v3tod(pos.positions);
         auto force = diff_fn(pos).second;
         for (auto & x : force)
@@ -374,6 +328,81 @@ structure_t _structural_metropolis(
         auto pp = make_param_pack(carts, pos.lattice, force);
         return merge_dictionaries(pp, extra_kw, merge_strategy::ERROR);
     };
+
+    // Fair warning: This struct is immediately constructed.
+    struct py_mutation_functions_t
+    {
+        bool advanced = false;
+        // class_ isn't here; it's only used to resolve the others.
+        py_opaque_t mutate;
+        py_opaque_t generate;
+        py_opaque_t apply;
+        py_opaque_t applied;
+        py_opaque_t visit;
+        py_opaque_t is_repeatable;
+        py_opaque_t scale;
+
+        // This constructor is where we do all of our interpretation of the
+        // provided script and config, so that all of the above objects should
+        // be resolved by the end.
+        py_mutation_functions_t(
+            structural_metropolis_settings_t &met_set,
+            const py_opaque_t &initial_pp)
+        {
+            extend_sys_path(met_set.python_sys_path);
+
+            auto module = import(met_set.python_module);
+            auto &func_set = met_set.python_functions;
+
+            py_opaque_t instance = [&] {
+                if (func_set.class_.empty())
+                    return module;
+                else
+                {
+                    // return an instance of the class instead
+                    return module.getattr(func_set.class_)
+                                 .call({}, initial_pp);
+                }
+            }();
+
+            // The logic for resolving many of these pieces of
+            // configuration is spread all over the place.
+            //
+            // All except 'generate' and 'mutate' follow the following rules:
+            // - If specified in config, the function must exist.
+            // - If not specified, a default name is assumed.
+            // - If not specified and no function is present with this
+            //    default name, a default implementation is used.
+            //
+            // Logic for the default implementation is currently provided
+            // by the python::structural_metropolis::call_XXX family of
+            // functions, and is triggered by the function being NULL.
+            //
+            // This null comes from the default supplied to getattr().
+            auto lookup = [&](auto &member, const auto &fs_member, const char* default_name) {
+                if (fs_member.empty())
+                    member = instance.getattr(default_name, {});
+                else
+                    member = instance.getattr(fs_member);
+            };
+
+            if (func_set.advanced) {
+
+                generate = instance.getattr(func_set.generate);
+
+                lookup(apply, func_set.apply, "apply");
+                lookup(applied, func_set.applied, "applied");
+                lookup(visit, func_set.visit, "visit");
+                lookup(is_repeatable, func_set.is_repeatable, "is_repeatable");
+                lookup(scale, func_set.scale, "scale");
+            }
+            else
+            {
+                // basic interface
+                mutate = instance.getattr(func_set.mutate);
+            }
+        }
+    } py_mutation_functions(met_set, get_param_pack(initial_pos));
 
     // mutations are provided by a user python script
     auto basic_generate_fn = [&](const auto &in_pos) {
@@ -441,15 +470,18 @@ structure_t _structural_metropolis(
         return basic_apply_fn(in_pos, cxx_mutation);
     };
 
-    auto advanced_accept_fn = [&](const auto &in_pos, const auto &mutation, bool success) {
-        if (success) {
-            auto pp = get_param_pack(in_pos);
-            call_accept(py_mutation_functions.accept, mutation, pp);
-        }
+    auto advanced_applied_fn = [&](const auto &pos, const auto &mutation, double was, double now) {
+        auto pp = get_param_pack(pos);
+        return call_applied(py_mutation_functions.applied, mutation, was, now, pp);
     };
 
-    auto advanced_is_repeatable_fn = [&](const auto &in_pos, const auto &mutation) {
-        auto pp = get_param_pack(in_pos);
+    auto advanced_visit_fn = [&](const auto &pos, double value, bool better) {
+        auto pp = get_param_pack(pos);
+        return call_visit(py_mutation_functions.visit, value, better, pp);
+    };
+
+    auto advanced_is_repeatable_fn = [&](const auto &pos, const auto &mutation) {
+        auto pp = get_param_pack(pos);
         return call_is_repeatable(py_mutation_functions.is_repeatable, mutation, pp);
     };
 
@@ -465,7 +497,8 @@ structure_t _structural_metropolis(
         minimize::metropolis::callbacks_t<pos_t, diff_t> raw_callbacks{
             advanced_generate_fn,
             advanced_apply_fn,
-            advanced_accept_fn,
+            advanced_applied_fn,
+            advanced_visit_fn,
         };
 
         auto scaling_control =

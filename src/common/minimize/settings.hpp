@@ -189,6 +189,20 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     /// When true, "advanced callbacks" are used.
     bool advanced = false;
 
+    /// If specified, methods will be called on an instance of the specified
+    /// class in the module rather than on the module itself.
+    /// This facilitates the saving and sharing of state in the callbacks.
+    ///
+    /// The __init__ function is called with keyword arguments describing
+    ///  the initial structure.
+    ///
+    /// Strictly speaking, this doesn't have to name a class; any callable
+    /// will do.  One could perhaps argue that this has a default definition:
+    ///
+    /// def Class(**kw):
+    ///     return sys.modules[__name__]
+    std::string class_;
+
     /// Basic callback for an all-in-one mutation function.
     ///
     /// All arguments supplied to this are keyword arguments.
@@ -217,29 +231,43 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///  (2) the standard kw arguments provided to 'mutate'
     /// It should produce a value parsable as 'structural_mutation_t'.
     ///
-    /// If omitted, will search for a function named 'apply',
-    /// and then if that is not found, the following definition is assumed:
-    ///
+    /// # default definition
     /// def apply(mutation, **kw):
     ///     return mutation  # assume mutation is 'structural_mutation_t'
     std::string apply;
 
-    /// Advanced callback for signaling successful mutations. (lower energy)
+    /// Advanced callback for following up on the result of 'apply'
+    ///  once the objective has been recomputed.
     ///
     /// If defined, then it should accept:
-    ///  (1) a mutation,
-    ///  (2) the standard kw arguments provided to 'mutate'
-    /// It should produce 'None'.
+    ///  (1) a mutation
+    ///  (2) a tuple of objective values (old: float, new: float)
+    ///  (3) kw args describing the structure BEFORE mutation
+    /// It should produce 'None'
     ///
-    /// This function will be called when a mutation is accepted by the
-    /// metropolis algorithm.
-    ///
-    /// If omitted, will search for a function named 'accept',
-    /// and then if that is not found, the following definition is assumed:
-    ///
-    /// def accept(mutation, **kw):
+    /// # default definition
+    /// def applied(mutation, values, **kw):
     ///     pass
-    std::string accept;
+    std::string applied;
+
+    /// Advanced callback on called on each structure whose objective is
+    /// computed.
+    ///
+    /// The difference between 'visit' and 'applied' is nuanced; this function
+    /// focuses on the structures, while 'applied' focuses on the mutations.
+    /// For instance, 'visit' gets called once on the initial structure, prior
+    /// to the first call to 'generate'.
+    ///
+    /// If defined, then it should accept:
+    ///  (1) the objective value
+    ///  (2) a boolean; true if the structure is a new optimum.
+    ///  (3) kw args describing the structure
+    /// It should produce 'None'
+    ///
+    /// # default definition
+    /// def visit(value, better, **kw):
+    ///     pass
+    std::string visit;
 
     /// Advanced callback for determining if mutations are worth repeating.
     /// (i.e., if the mutation decreases total energy, might we expect that
@@ -250,9 +278,7 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///  (2) the standard kw arguments provided to 'mutate'
     /// It should produce a 'bool'
     ///
-    /// If omitted, will search for a function named 'is_repeatable',
-    /// and then if that is not found, the following definition is assumed:
-    ///
+    /// # default definition
     /// def is_repeatable(mutation, **kw):
     ///     return false  # never repeat anything.
     std::string is_repeatable;
@@ -265,9 +291,7 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///  (3) the standard kw arguments provided to 'mutate'
     /// It should produce a mutation.
     ///
-    /// If omitted, will search for a function named 'scale',
-    /// and then if that is not found, the following definition is assumed:
-    ///
+    /// # default definition
     /// def scale(mutation, factor, **kw):
     ///     return mutation
     std::string scale;
