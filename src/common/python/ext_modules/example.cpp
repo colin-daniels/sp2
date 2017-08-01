@@ -19,6 +19,7 @@ using namespace std;
 
 PyObject* py_add(PyObject *self, PyObject *args, PyObject *kw)
 {
+    // NOTE: code before wrap_cxx_logic must not throw. Stick to barebones C.
     long first;
     long second;
     const char* kw_arg_names[] = {"first", "second", nullptr};
@@ -27,51 +28,12 @@ PyObject* py_add(PyObject *self, PyObject *args, PyObject *kw)
         &first, &second));
 
     if (!parse_ok)
-        return NULL; // PyErr is already set; let it propagate back up
+        return nullptr; // PyErr is already set; let it propagate back up
 
-    // wrap everything in a catchall to avoid unwinding through Python
-    // where it would bypass cleanup code.  This is especially important
-    // given how we are embedding the interpreter, as otherwise, such exceptions
-    // could end up getting caught.
-    try
-    {
+    return wrap_cxx_logic([&] {
         long sum = first + second;
-        py_scoped_t py_sum = to_python_strict(sum);
-
-        return py_sum.steal(); // returned references must be leaked
-    }
-    catch (std::string e)
-    {
-        // This is to let you throw custom error messages directed at the python
-        //  user, directly from the try block.
-        PyErr_SetString(PyExc_RuntimeError, e.c_str());
-        return NULL;
-    }
-    catch (const exception &e)
-    {
-        // if all else fails, convert C++ exceptions to python exceptions
-        PyErr_SetString(PyExc_RuntimeError,
-            ("An unhandled exception occurred in extension module code: "s
-            + e.what()).c_str()
-           );
-        return NULL;
-    }
-    catch (...)
-    {
-        // Getting a bit creative with 'throw', huh?
-        //
-        // But seriously: We need to catch EVERYTHING, no exceptions. (uh,
-        // no pun intended).  Otherwise, since we are embedding the interpreter,
-        // we run the risk of control flow resuming somewhere outside the Python
-        // API call, thereby leaving the interpreter in an inconsistent state.
-        //
-        // ...I think.
-        PyErr_SetString(PyExc_RuntimeError,
-            ("Something unusual was thrown in extension module code."
-                " That's all we know.")
-        );
-        return NULL;
-    }
+        return to_python_strict(sum);
+    });
 }
 
 PyMethodDef py_method_defs[] = {

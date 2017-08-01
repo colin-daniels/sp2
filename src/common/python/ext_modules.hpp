@@ -6,6 +6,9 @@
 // NOTE: This file contains lists of all extension modules which must be
 //       manually maintained.  Scroll down to the bottom to see it.
 
+#include "common/python/util.hpp"
+
+#include <functional>
 #include <vector>
 #include <tuple>
 
@@ -47,8 +50,8 @@ void post_py_initialize();
 /*----------------------------------------------------------------------------*/
 // internal utils, defined here for convenience
 
-namespace method_def {
 namespace {
+namespace method_def {
 
 /// Helper method to make a PyMethodDef for a function that takes keyword args.
 constexpr PyMethodDef
@@ -71,8 +74,76 @@ constexpr PyMethodDef args(const char *name, PyCFunction func, const char *doc)
 /// The sentinel entry that must appear at the end of a PyMethodDef list.
 constexpr PyMethodDef END = {nullptr, nullptr, 0, nullptr};
 
+} // namespace method_def
+
+/// Wraps the bulk of C++ logic in module functions exposed to python.
+/// See the 'example' ext_module for intended usage.
+///
+/// The wrapped function should:
+///  - Return a non-null py_scoped_t. (this is checked)
+///  - Throw a std::string or const char* literal on failure.
+///    This will create a Python exception.
+///  - Be aware that anything else which is thrown and uncaught will also
+///    converted to Python errors (though perhaps with less nice messages)
+///
+/// and the output of this function should be returned immediately and
+///  unconditionally from the callback (since PyErr may have been set).
+PyObject* wrap_cxx_logic(std::function<py_scoped_t()> func)
+{
+    try
+    {
+        py_scoped_t out = func();
+        if (!out)
+        {
+            PyErr_SetString(PyExc_AssertionError, "wrap_cxx_logic: nullptr");
+            return nullptr;
+        }
+
+        // give away ownership of the reference to the interpreter
+        return out.steal();
+    }
+    catch (const char *e)
+    {
+        // This is to let you throw custom error messages directed at the python
+        //  user, directly from the try block.
+        PyErr_SetString(PyExc_RuntimeError, e);
+        return nullptr;
+    }
+    catch (const std::string &e)
+    {
+        // This is to let you throw custom error messages directed at the python
+        //  user, directly from the try block.
+        PyErr_SetString(PyExc_RuntimeError, e.c_str());
+        return nullptr;
+    }
+    catch (const std::exception &e)
+    {
+        std::string s =
+            "An unhandled exception occurred in extension module code: ";
+        s += e.what();
+        PyErr_SetString(PyExc_RuntimeError, s.c_str());
+        return nullptr;
+    }
+    catch (...)
+    {
+        // Getting a bit creative with 'throw', huh?
+        //
+        // But seriously: We need to catch EVERYTHING, no exceptions. (uh,
+        // no pun intended).  Otherwise, since we are embedding the interpreter,
+        // we run the risk of control flow resuming somewhere outside the Python
+        // API call, thereby leaving the interpreter in an inconsistent state.
+        //
+        // ...I think.
+        PyErr_SetString(PyExc_RuntimeError,
+            ("Something unusual was thrown in extension module code."
+                " That's all we know.")
+        );
+        return nullptr;
+    }
+}
+
 } // anonymous namespace
-} // namespace py_method_def
+
 /*----------------------------------------------------------------------------*/
 // module list
 //
