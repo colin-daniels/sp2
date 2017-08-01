@@ -25,9 +25,6 @@ class py_opaque_t
 {
 public:
     /// pImpl target type.
-    ///
-    /// Code where 'sp2::python::py_scoped_t' is visible is allowed to
-    /// assume that this type is a typedef for py_scoped_t.
     typedef py_scoped_t impl_t;
 
 private:

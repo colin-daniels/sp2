@@ -60,19 +60,6 @@ py_opaque_t::py_opaque_t(shared_ptr<py_opaque_t::impl_t> &&impl)
 // anonymous namespace for private things
 namespace {
 
-// less typing to construct 'py_opaque_t's
-
-py_opaque_t opaque(py_scoped_t &&scoped) {
-    typedef py_opaque_t::impl_t impl_t;
-    return py_opaque_t{make_shared<impl_t>(move(scoped))};
-}
-
-py_opaque_t opaque(py_scoped_t &scoped) {
-    return opaque(scoped.dup());
-}
-
-
-
 /* --------------------------------------------------------------------- */
 // helper type for python function arguments
 

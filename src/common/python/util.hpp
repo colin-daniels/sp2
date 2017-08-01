@@ -1,5 +1,5 @@
-#ifndef SP2_UTIL_HPP
-#define SP2_UTIL_HPP
+#ifndef SP2_PYTHON_UTIL_HPP
+#define SP2_PYTHON_UTIL_HPP
 
 #ifndef Py_PYTHON_H
 #error This module is designed for internal use by source files in common/python, \
@@ -10,6 +10,8 @@ library headers.
 #include <string>
 #include <utility>
 #include <stdexcept>
+
+#include "common/python/bindings.hpp" // for py_opaque_t
 
 namespace sp2 {
 namespace python {
@@ -102,6 +104,13 @@ py_scoped_t scope(PyObject *o);
 py_scoped_t scope_dup(PyObject *o);
 
 // --------------------------------
+// less typing to construct 'py_opaque_t's
+
+py_opaque_t opaque(py_scoped_t &&scoped);
+
+py_opaque_t opaque(py_scoped_t &scoped);
+
+// --------------------------------
 
 // Checks for python exceptions via the PyErr API and turns them into C++ exceptions.
 void throw_on_py_err(const char *msg);
@@ -116,30 +125,34 @@ bool print_on_py_err();
 // --------------------------------
 
 /// get an object's repr() in utf8, mostly for debug purposes.
-std::string repr(py_scoped_t &o);
+std::string repr(const py_scoped_t &o);
 
 /// get an object's str() in utf8, mostly for debug purposes.
-std::string str(py_scoped_t &o);
+std::string str(const py_scoped_t &o);
 
 // --------------------------------
+
+/// Test if a python object has an attribute.
+///
+/// Equivalent to 'hasattr(obj, name)'.  Never fails.
+bool hasattr(const py_scoped_t &o, const char *attr);
 
 /// Access an attribute of a python object.
 ///
 /// Equivalent to 'getattr(obj, name)'.
 /// Throws an exception if the attribute does not exist.
-py_scoped_t getattr(py_scoped_t &o, const char *attr);
+py_scoped_t getattr(const py_scoped_t &o, const char *attr);
 
 /// Access an attribute of a python object, or a default value.
 ///
 /// Equivalent to 'getattr(obj, name, def)'.
 /// Throws an exception if the attribute does not exist.
-py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &def);
-py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &&def);
+py_scoped_t getattr(const py_scoped_t &o, const char *attr, const py_scoped_t &def);
 
-
-
+/// Set an attribute of a python object.
+void setattr(py_scoped_t &o, const char *attr, const py_scoped_t &def);
 
 } // namespace python
 } // namespace sp2
 
-#endif //SP2_UTIL_HPP
+#endif // SP2_PYTHON_UTIL_HPP

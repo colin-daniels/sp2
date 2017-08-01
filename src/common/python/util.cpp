@@ -125,7 +125,7 @@ bool print_on_py_err()
 // Implementation of repr() and str().
 // F is a function(PyObject *) -> PyObject * returning a new reference to a unicode 'str' object
 template<typename F>
-std::string str_impl(py_scoped_t &o, F stringify)
+std::string str_impl(const py_scoped_t &o, F stringify)
 {
 
     auto py_str = scope(stringify(o.raw()));
@@ -139,36 +139,52 @@ std::string str_impl(py_scoped_t &o, F stringify)
     return string(str);
 }
 
-string str(py_scoped_t &o)
+string str(const py_scoped_t &o)
 {
     return str_impl(o, [](auto x) { return PyObject_Str(x); });
 }
 
-string repr(py_scoped_t &o)
+string repr(const py_scoped_t &o)
 {
     return str_impl(o, [](auto x) { return PyObject_Repr(x); });
 }
 
-py_scoped_t getattr(py_scoped_t &o, const char *attr)
+py_scoped_t getattr(const py_scoped_t &o, const char *attr)
 {
     auto tmp = scope(PyObject_GetAttrString(o.raw(), attr));
     throw_on_py_err();
     return move(tmp);
 }
 
-py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &def)
+py_scoped_t getattr(const py_scoped_t &o, const char *attr, const py_scoped_t &def)
 {
-    return getattr(o, attr, def.dup());
+    if (hasattr(o, attr))
+        return getattr(o, attr);
+    else
+        return move(def);
 }
 
-py_scoped_t getattr(py_scoped_t &o, const char *attr, py_scoped_t &&def)
+bool hasattr(const py_scoped_t &o, const char *attr)
 {
-    // According to HasAttrString docs, "this function always succeeds."
-    if (PyObject_HasAttrString(o.raw(), attr)) {
-        return scope(PyObject_GetAttrString(o.raw(), attr));
-    } else {
-        return move(def);
-    }
+    // From the python docs, "this always succeeds"
+    return bool(PyObject_HasAttrString(o.raw(), attr));
+}
+
+void setattr(py_scoped_t &o, const char *attr, const py_scoped_t &value)
+{
+    PyObject_SetAttrString(o.raw(), attr, value.raw());
+    throw_on_py_err(("error setting attribute '"s + attr + "'").c_str());
+}
+
+py_opaque_t opaque(py_scoped_t &&scoped)
+{
+    typedef py_opaque_t::impl_t impl_t;
+    return py_opaque_t{std::make_shared<impl_t>(std::move(scoped))};
+}
+
+py_opaque_t opaque(py_scoped_t &scoped)
+{
+    return opaque(scoped.dup());
 }
 
 } // namespace python
