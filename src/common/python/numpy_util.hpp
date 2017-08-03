@@ -2,6 +2,7 @@
 #define SP2_NUMPY_UTIL_HPP
 
 #include <vector>
+#include <stdexcept>
 
 /// Represents a numpy ndarray.
 ///

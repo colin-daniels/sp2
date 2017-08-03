@@ -1,10 +1,8 @@
-#include "Python.h" // Must be first include
+#include <Python.h> // Must be first include
 
-#include <common/python/util.hpp>
-
-#include <common/util/templates.hpp>
-
-#include <stdexcept>
+#include "py_scoped_t.hpp"
+#include "py_opaque_t.hpp"
+#include "error.hpp"
 
 using namespace std;
 
@@ -92,32 +90,6 @@ py_scoped_t scope_dup(PyObject *o)
 {
     Py_XINCREF(o);
     return py_scoped_t(o);
-}
-
-// --------------------------------
-
-void throw_on_py_err(const char *msg)
-{
-    if (PyErr_Occurred())
-    {
-        PyErr_Print();
-        throw runtime_error(msg);
-    }
-}
-
-void throw_on_py_err()
-{
-    throw_on_py_err("An exception was thrown in Python.");
-}
-
-bool print_on_py_err()
-{
-    if (PyErr_Occurred())
-    {
-        PyErr_Print(); // Note: clears the error.
-        return true;
-    }
-    return false;
 }
 
 // --------------------------------

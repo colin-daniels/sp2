@@ -1,8 +1,12 @@
 #ifndef SP2_METROPOLIS_HPP
 #define SP2_METROPOLIS_HPP
 
-#include <common/structure_t.hpp>
-#include <common/python/bindings.hpp>
+#include "settings.hpp"
+#include "metropolis_enums.hpp"
+#include "common/structure_t.hpp"
+#include "common/python/bindings.hpp"
+#include "common/python/environment.hpp"
+#include "common/python/utility.hpp"
 
 #include <vector>
 #include <iostream>
@@ -303,7 +307,6 @@ structure_t _structural_metropolis(
     structural_metropolis_settings_t met_set)
 {
     using namespace sp2::python;
-    using namespace sp2::python::structural_metropolis;
 
     initial_pos.reduce_positions();
 
@@ -325,7 +328,8 @@ structure_t _structural_metropolis(
         for (auto & x : force)
             x *= -1.0;
 
-        auto pp = make_param_pack(carts, pos.lattice, force);
+#warning FIXME move that out of there
+        auto pp = sp2::python::structural_metropolis::make_param_pack(carts, pos.lattice, force);
         return merge_dictionaries(pp, extra_kw, merge_strategy::ERROR);
     };
 
@@ -346,7 +350,7 @@ structure_t _structural_metropolis(
         // provided script and config, so that all of the above objects should
         // be resolved by the end.
         py_mutation_functions_t(
-            structural_metropolis_settings_t &met_set,
+            const structural_metropolis_settings_t &met_set,
             const py_opaque_t &initial_pp)
         {
             extend_sys_path(met_set.python_sys_path);
@@ -402,15 +406,83 @@ structure_t _structural_metropolis(
                 mutate = instance.getattr(func_set.mutate);
             }
         }
-    } py_mutation_functions(met_set, get_param_pack(initial_pos));
+    } functions(met_set, get_param_pack(initial_pos));
 
-    // mutations are provided by a user python script
-    auto basic_generate_fn = [&](const auto &in_pos) {
-        auto pp = get_param_pack(in_pos);
-        return call_mutate(py_mutation_functions.mutate, pp);
+    //----------------------------------------------------------
+
+    // These wrap the python methods, containing all the conversion code
+    //  and providing the default definitions for missing callbacks.
+
+    auto call_mutate = [&](auto &pos) {
+        auto kw = get_param_pack(pos);
+        return functions.mutate
+                        .call({}, kw)
+                        .template parse_as<structural_mutation_t>();
     };
 
-    auto basic_apply_fn = [&](const auto &in_pos, const auto &mutation) {
+    auto call_apply = [&](auto &pos, auto &mutation) {
+        if (!functions.apply)
+            return mutation.template parse_as<structural_mutation_t>();
+
+        auto args = py_opaque_t::tuple(mutation);
+        auto kw = get_param_pack(pos);
+        return functions.apply
+                        .call(args, kw)
+                        .template parse_as<structural_mutation_t>();
+    };
+
+    auto call_applied = [&](auto &pos, auto &mutation, double was, double now) {
+        if (!functions.applied)
+            return;
+
+        auto values = py_opaque_t::tuple(was, now);
+        auto args = py_opaque_t::tuple(mutation, values);
+        auto kw = get_param_pack(pos);
+        functions.applied.call(args, kw);
+    };
+
+    auto call_visit = [&](auto &pos, double value, bool better) {
+        if (!functions.visit)
+            return;
+
+        auto args = py_opaque_t::tuple(value, better);
+        auto kw = get_param_pack(pos);
+        functions.visit.call(args, kw);
+    };
+
+    auto call_generate = [&](auto &pos) {
+        auto kw = get_param_pack(pos);
+        return functions.generate.call({}, kw);
+    };
+
+    auto call_is_repeatable = [&](auto &pos, auto &mutation) {
+        if (!functions.is_repeatable)
+            return false;
+
+        auto args = py_opaque_t::tuple(mutation);
+        auto kw = get_param_pack(pos);
+        return functions.is_repeatable
+                        .call(args, kw)
+                        .template parse_as<bool>();
+    };
+
+    auto call_scale = [&](auto &pos, auto &mutation, double factor) {
+        if (!functions.scale)
+            return mutation;
+
+        auto args = py_opaque_t::tuple(mutation, factor);
+        auto kw = get_param_pack(pos);
+        return functions.scale.call(args, kw);
+    };
+
+    //----------------------------------------------------------
+
+    // These are the callbacks for metropolis.
+    // - 'basic_xyz_fn' is callback 'xyz' when "advanced = false"
+    // - 'advanced_xyz_fn' is callback 'xyz' when "advanced = true"
+
+    auto basic_generate_fn = call_mutate;
+    auto basic_apply_fn = [&](auto &in_pos, auto &mutation) {
         auto pos = in_pos;
 
         switch (mutation.type)
@@ -453,42 +525,20 @@ structure_t _structural_metropolis(
 
         return pos;
     };
+    auto basic_applied_fn = [&](...) {};
+    auto basic_visit_fn = [&](...) {};
 
-    auto advanced_generate_fn = [&](const auto &in_pos) -> py_opaque_t
-    {
-        auto pp = get_param_pack(in_pos);
-        return call_generate(py_mutation_functions.generate, pp);
-    };
-
-    auto advanced_apply_fn = [&](
-        const auto &in_pos,
-        const auto &mutation)
-    {
-        auto pp = get_param_pack(in_pos);
-        auto cxx_mutation =
-            call_apply(py_mutation_functions.apply, mutation, pp);
+    auto advanced_generate_fn = call_generate;
+    auto advanced_apply_fn = [&](auto &in_pos, auto &mutation) {
+        // convert the script's own mutation type to structural_mutation_t...
+        auto cxx_mutation = call_apply(in_pos, mutation);
+        // ...and delegate to the
         return basic_apply_fn(in_pos, cxx_mutation);
     };
-
-    auto advanced_applied_fn = [&](const auto &pos, const auto &mutation, double was, double now) {
-        auto pp = get_param_pack(pos);
-        return call_applied(py_mutation_functions.applied, mutation, was, now, pp);
-    };
-
-    auto advanced_visit_fn = [&](const auto &pos, double value, bool better) {
-        auto pp = get_param_pack(pos);
-        return call_visit(py_mutation_functions.visit, value, better, pp);
-    };
-
-    auto advanced_is_repeatable_fn = [&](const auto &pos, const auto &mutation) {
-        auto pp = get_param_pack(pos);
-        return call_is_repeatable(py_mutation_functions.is_repeatable, mutation, pp);
-    };
-
-    auto advanced_scale_fn = [&](const auto &in_pos, const auto &mutation, double factor) {
-        auto pp = get_param_pack(in_pos);
-        return call_scale(py_mutation_functions.scale, mutation, factor, pp);
-    };
+    auto advanced_applied_fn = call_applied;
+    auto advanced_visit_fn = call_visit;
+    auto advanced_is_repeatable_fn = call_is_repeatable;
+    auto advanced_scale_fn = call_scale;
 
     if (met_set.python_functions.advanced)
     {

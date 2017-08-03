@@ -1,6 +1,11 @@
-#include "Python.h" // must be first include
+#include <Python.h> // must be first include
 
-#include "common/python/fake_modules.hpp"
+#include "fake_modules.hpp"
+
+#include "error.hpp"
+#include "py_scoped_t.hpp"
+
+#include <string>
 
 using std::string;
 

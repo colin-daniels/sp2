@@ -2,7 +2,7 @@
 
 #include "common/python/ext_modules.hpp"
 
-#include "common/python/util.hpp"
+#include "common/python/py_scoped_t.spp"
 #include "common/python/numpy_util.hpp"
 #include "common/python/conversion.hpp"
 
@@ -32,7 +32,7 @@ PyObject* py_add(PyObject *self, PyObject *args, PyObject *kw)
 
     return wrap_cxx_logic([&] {
         long sum = first + second;
-        return to_python_strict(sum);
+        return py_opaque_t::from(sum).inner().dup();
     });
 }
 

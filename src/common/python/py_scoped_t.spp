@@ -1,0 +1,87 @@
+#ifndef SP2_PY_SCOPED_T_SPP
+#define SP2_PY_SCOPED_T_SPP
+
+#include <object.h>
+#include "py_scoped_t.tpp"
+
+#include "expect-python-headers.hpp"
+
+namespace sp2 {
+namespace python {
+
+class py_scoped_t
+{
+    mutable PyObject *obj = nullptr;
+
+public:
+
+    /// null constructor
+    py_scoped_t() {};
+
+    /// PyObject constructor
+    ///
+    /// WARNING: The current implementation assumes it is being given ownership
+    ///           of the pointer, because this is the least expensive default
+    ///           and nobody is expected to be using this.
+    ///          Unfortunately this is hostile to modern C++ convention.
+    ///
+    /// FIXME: Actually, I can't even recall why this is public.
+    ///        I know there was a reason, but IIRC it was just an
+    ///         implementation detail, so it should be documented...
+    explicit py_scoped_t(PyObject *o);
+
+    explicit operator bool() const;
+
+    py_scoped_t &operator=(const py_scoped_t &other);
+    py_scoped_t(const py_scoped_t &other);
+
+    /// move constructor
+    py_scoped_t(py_scoped_t &&other);
+
+    /// move assignment operator
+    py_scoped_t& operator=(py_scoped_t &&other);
+
+    ~py_scoped_t();
+
+    /// Increment the refcount and return a new scoped reference.
+    /// FIXME this is pointless now that there's a copy constructor
+    py_scoped_t dup() const;
+
+    /// Borrow the reference without touching the refcount.
+    ///
+    /// This is the appropriate method for interfacing with most Python APIs.
+    ///
+    /// For reasons discussed earlier, the returned pointer is mutable.
+    /// Just... be reasonable, okay?
+    PyObject *raw() const;
+
+    /// Leak the reference, preventing the DECREF that would otherwise occur
+    /// at scope exit. The scoped reference will become NULL.
+    ///
+    /// Necessary for working with Python API functions that steal references,
+    /// such as PyTuple_SetItem.
+    PyObject *steal();
+
+    /// Postfix move() for convenience, and for easier interchange with dup().
+    ///
+    /// Note a small semantic difference in that, due to the by-value return
+    /// type, this is guaranteed to clear the receiver.
+    py_scoped_t move();
+
+    /// Explicit destructor.
+    ///
+    /// Destroy the reference early, decrementing the refcount and nulling out
+    /// the pointer so that nothing happens at scope exit.
+    ///
+    /// This can be used to explicitly control the destruction order in
+    /// places where the natural order of destruction would not be safe.
+    void destroy();
+};
+
+} // namespace python
+} // namespace sp2
+#endif // SP2_PY_SCOPED_T_SPP
+
+namespace boo {
+
+} // namespace boo
