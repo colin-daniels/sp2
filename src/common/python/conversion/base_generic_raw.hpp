@@ -1,7 +1,7 @@
 #ifndef SP2_PYTHON_CONVERSION_GENERIC_RAW_HPP
 #define SP2_PYTHON_CONVERSION_GENERIC_RAW_HPP
 
-#include "base_generic_raw.tpp"
+#include "base_generic_raw_fwd.hpp"
 
 // base_generic_raw.hpp:
 //
@@ -22,10 +22,10 @@
 //        !!  CAUTION  !!
 //      !!!!!!!!!!!!!!!!!!!
 
-#include "common/python/expect-python-headers.hpp"
+#include "diagnostic/expect_python_headers"
 
 #include "common/python/error.hpp"
-#include "common/python/py_scoped_t.hpp"
+#include "common/python/types/py_scoped_t.hpp"
 #include "base_monomorphic.hpp"
 
 namespace sp2 {

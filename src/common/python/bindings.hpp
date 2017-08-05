@@ -1,7 +1,7 @@
 #ifndef SP2_PYTHON_BINDINGS_HPP
 #define SP2_PYTHON_BINDINGS_HPP
 
-#include "py_opaque_t.hpp"
+#include "common/python/types/py_opaque_t.hpp"
 #include "environment.hpp"
 #include "conversion.hpp"
 

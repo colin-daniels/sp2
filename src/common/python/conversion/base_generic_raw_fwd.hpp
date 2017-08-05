@@ -1,13 +1,13 @@
 /* ========================================================================== */
-#ifndef SP2_PYTHON_CONVERSION_GENERIC_RAW_TPP
-#define SP2_PYTHON_CONVERSION_GENERIC_RAW_TPP
+#ifndef SP2_PYTHON_CONVERSION_GENERIC_RAW_FWD
+#define SP2_PYTHON_CONVERSION_GENERIC_RAW_FWD
 
-#include "common/python/py_scoped_t.tpp"
+#include "common/python/types/py_scoped_t_body_fwd.hpp"
 
-#undef SP2_PYTHON_CONVERSION_GENERIC_RAW_TPP
+#undef SP2_PYTHON_CONVERSION_GENERIC_RAW_FWD
 #else
 #include "diagnostic/forward_dependency_cycle"
-#endif // SP2_PYTHON_CONVERSION_GENERIC_RAW_TPP
+#endif
 /* ========================================================================== */
 
 #include <vector>

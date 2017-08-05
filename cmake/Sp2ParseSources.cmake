@@ -7,7 +7,9 @@
 
 function(parse_sources output)
     foreach(arg ${ARGN})
-        if("${arg}" MATCHES "^IF_([^ \t]+)_ENABLED$")
+        if ("${arg}" MATCHES "^_+$")
+            # spacer, do nothing
+        elseif("${arg}" MATCHES "^IF_([^ \t]+)_ENABLED$")
             if(DEFINED SP2_ENABLE_${CMAKE_MATCH_1})
                 # if the argument matches an option for SP2, enable or disable
                 # the next argument accordingly

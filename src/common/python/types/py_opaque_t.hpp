@@ -1,8 +1,8 @@
 #ifndef SP2_PY_OPAQUE_T_HPP
 #define SP2_PY_OPAQUE_T_HPP
 
-#include "py_opaque_t.spp"
-#include "conversion.hpp"
+#include "py_opaque_t_body.hpp"
+#include "common/python/conversion.hpp"
 
 #include <string>
 
@@ -32,4 +32,4 @@ T py_opaque_t::parse_as(const char *msg) const
 
 } // namespace python
 } // namespace sp2
-#endif // SP2_PY_OPAQUE_T_HPP
+#endif // header guard

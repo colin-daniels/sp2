@@ -1,8 +1,8 @@
 #include "Python.h" // must be first include
 
 #include "common/python/conversion/concrete.hpp"
-#include "common/python/py_scoped_t.hpp"
-#include "common/python/py_opaque_t.hpp"
+#include "common/python/types/py_scoped_t.hpp"
+#include "common/python/types/py_opaque_t.hpp"
 #include "common/python/error.hpp"
 
 using namespace std;

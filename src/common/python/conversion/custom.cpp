@@ -1,7 +1,7 @@
 #include "Python.h" // must be first include
 
 #include "base_generic_raw.hpp"
-#include "common/python/py_scoped_t.spp"
+#include "common/python/types/py_scoped_t_body.hpp"
 #include "common/python/bindings.hpp" // make_param_pack
 
 using namespace std;

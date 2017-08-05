@@ -1,7 +1,7 @@
 #ifndef SP2_PYTHON_UTILITY_HPP
 #define SP2_PYTHON_UTILITY_HPP
 
-#include "py_opaque_t.tpp"
+#include "common/python/types/py_opaque_t_body_fwd.hpp"
 
 namespace sp2 {
 namespace python {

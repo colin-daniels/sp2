@@ -1,7 +1,7 @@
 #include "Python.h"
 
-#include "common/python/ext_modules.hpp"
-#include "common/python/py_scoped_t.hpp"
+#include "ext_modules.hpp"
+#include "common/python/types/py_scoped_t.hpp"
 #include "common/python/error.hpp"
 
 namespace sp2 {

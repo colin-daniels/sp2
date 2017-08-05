@@ -1,8 +1,8 @@
 #ifndef SP2_PYTHON_CONVERSION_CONCRETE_HPP
 #define SP2_PYTHON_CONVERSION_CONCRETE_HPP
 
-#include "common/python/py_scoped_t.tpp"
-#include "common/python/py_opaque_t.tpp"
+#include "common/python/types/py_scoped_t_body_fwd.hpp"
+#include "common/python/types/py_opaque_t_body_fwd.hpp"
 #include "common/minimize/metropolis_enums.hpp"
 
 #include <string>

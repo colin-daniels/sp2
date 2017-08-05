@@ -1,11 +1,11 @@
 #ifndef SP2_PY_SCOPED_T_HPP
 #define SP2_PY_SCOPED_T_HPP
 
-#include "py_scoped_t.spp"
+#include "py_scoped_t_body.hpp"
 
-#include "py_opaque_t.tpp"
+#include "py_opaque_t_body_fwd.hpp"
 
-#include "expect-python-headers.hpp"
+#include "diagnostic/expect_python_headers"
 
 #include <string>
 #include <utility>
@@ -60,4 +60,4 @@ void setattr(py_scoped_t &o, const char *attr, const py_scoped_t &def);
 } // namespace python
 } // namespace sp2
 
-#endif // SP2_PY_SCOPED_T_HPP
+#endif // header guard

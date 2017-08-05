@@ -1,10 +1,10 @@
 /* ========================================================================== */
-#ifndef SP2_PYTHON_PY_OPAQUE_T_TPP
-#define SP2_PYTHON_PY_OPAQUE_T_TPP
+#ifndef SP2_PY_OPAQUE_T_BODY_FWD
+#define SP2_PY_OPAQUE_T_BODY_FWD
 
 // no forward dependencies
 
-#undef SP2_PYTHON_PY_OPAQUE_T_TPP
+#undef SP2_PY_OPAQUE_T_BODY_FWD
 #else
 #include "diagnostic/forward_dependency_cycle"
 #endif

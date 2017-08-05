@@ -2,8 +2,8 @@
 
 #include "utility.hpp"
 #include "error.hpp"
-#include "py_scoped_t.hpp"
-#include "py_opaque_t.hpp"
+#include "common/python/types/py_scoped_t.hpp"
+#include "common/python/types/py_opaque_t.hpp"
 
 namespace sp2 {
 namespace python {

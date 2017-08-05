@@ -2,8 +2,8 @@
 
 #include "bindings.hpp"
 
-#include "fake_modules.hpp"
-#include "ext_modules.hpp"
+#include "common/python/modules/fake_modules.hpp"
+#include "common/python/modules/ext_modules.hpp"
 
 //-----------------------------
 

@@ -98,46 +98,53 @@ set(SOURCE_FILES
         src/common/minimize/metropolis_enums.hpp
         src/common/minimize/fire.cpp
 ################################################################################
+        src/diagnostic/expect_python_headers
+        src/diagnostic/forward_dependency_cycle
+################################################################################
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/bindings.cpp
-        IF_PYTHON_ENABLED                     src/common/python/bindings.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/bindings.hpp
 
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/py_scoped_t.cpp
-        IF_PYTHON_ENABLED                     src/common/python/py_scoped_t.hpp
-        IF_PYTHON_ENABLED                     src/common/python/py_scoped_t.spp
-        IF_PYTHON_ENABLED                     src/common/python/py_scoped_t.tpp
-
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/py_opaque_t.cpp
-        IF_PYTHON_ENABLED                     src/common/python/py_opaque_t.hpp
-        IF_PYTHON_ENABLED                     src/common/python/py_opaque_t.spp
-        IF_PYTHON_ENABLED                     src/common/python/py_opaque_t.tpp
-
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/environment.cpp
-        IF_PYTHON_ENABLED                     src/common/python/environment.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/include_numpy.cpp
-        IF_PYTHON_ENABLED                     src/common/python/include_numpy.hpp
-
-        IF_PYTHON_ENABLED                     src/common/python/numpy_util.hpp
-
-        IF_PYTHON_ENABLED                     src/common/python/conversion.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion.hpp
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/conversion/custom.cpp
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/conversion/numpy.cpp
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/conversion/primitive.cpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/base_monomorphic.hpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/base_generic.hpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/base_generic.tpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/base_generic_raw.hpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/base_generic_raw.tpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/concrete.hpp
-        IF_PYTHON_ENABLED                     src/common/python/conversion/numpy.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/base_monomorphic.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/base_monomorphic_fwd.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/base_generic.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/base_generic_fwd.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/base_generic_raw.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/base_generic_raw_fwd.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/concrete.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/conversion/numpy.hpp
 
-        IF_PYTHON_ENABLED                     src/common/python/ext_modules.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/ext_modules.cpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/ext_modules/example.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/environment.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/environment.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/error.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/error.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/include_numpy.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/include_numpy.hpp
 
-        IF_PYTHON_ENABLED                     src/common/python/fake_modules.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/fake_modules.cpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/fake_modules/example.cpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/fake_modules/mutation_helper.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/modules/ext_modules.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/ext_modules.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/ext_modules/example.cpp
+
+        IF_PYTHON_ENABLED ___________________ src/common/python/modules/fake_modules.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/fake_modules.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/fake_modules/example.cpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/fake_modules/mutation_helper.cpp
+
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/as_ndarray.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/types/py_scoped_t.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_scoped_t.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_scoped_t_body.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_scoped_t_body_fwd.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/types/py_opaque_t.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_opaque_t.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_opaque_t_body.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_opaque_t_body_fwd.hpp
+
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/utility.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/utility.hpp
 ################################################################################
         IF_MPI_ENABLED src/common/util/mpi.hpp
         # PSO requires MPI
@@ -214,7 +221,7 @@ set(SOURCE_FILES
         # src/run/run_atac.cpp
         src/relaxation/relaxation_settings.cpp
         src/relaxation/relaxation_settings.hpp
-        src/include/sp2/sp2.h src/common/python/expect-python-headers.hpp src/common/python/error.cpp src/common/python/error.hpp src/common/python/utility.cpp src/common/python/utility.hpp)
+        src/include/sp2/sp2.h)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)

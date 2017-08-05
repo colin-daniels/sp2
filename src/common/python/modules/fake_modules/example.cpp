@@ -1,6 +1,6 @@
 #include "Python.h" // must be first import.
 
-#include "common/python/fake_modules.hpp"
+#include "common/python/modules/fake_modules.hpp"
 
 namespace sp2 {
 namespace python {

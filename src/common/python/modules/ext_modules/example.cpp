@@ -1,9 +1,9 @@
 #include "Python.h"
 
-#include "common/python/ext_modules.hpp"
+#include "common/python/modules/ext_modules.hpp"
 
-#include "common/python/py_scoped_t.spp"
-#include "common/python/numpy_util.hpp"
+#include "common/python/types/py_scoped_t_body.hpp"
+#include "common/python/types/as_ndarray.hpp"
 #include "common/python/conversion.hpp"
 
 namespace sp2 {

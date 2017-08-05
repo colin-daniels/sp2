@@ -1,7 +1,23 @@
-#ifndef SP2_PY_OPAQUE_T_SPP
-#define SP2_PY_OPAQUE_T_SPP
+#ifndef SP2_PY_OPAQUE_T_BODY_HPP
+#define SP2_PY_OPAQUE_T_BODY_HPP
 
-#include "py_scoped_t.tpp"
+#include "py_opaque_t_body_fwd.hpp"
+
+// NOTE: This is a TYPE-BODY-ONLY header file.
+//
+// It only defines the following:
+//  * The type.
+//  * Member functions which can be defined entirely in terms of other
+//    member functions. (plus light dependencies that have no risk of cycles)
+//
+// Consumers within the library may prefer to include this if they require a
+// complete type but do not need to use template member functions or any of the
+// free functions provided in the HPP file. This reduces the #include footprint,
+// which can help eliminate some dependency cycles.
+
+// If an incomplete type will suffice, consider including the FWD instead.
+
+#include "py_scoped_t_body_fwd.hpp"
 
 #include <vector>
 #include <string>
@@ -129,4 +145,4 @@ private:
 } // namespace python
 } // namespace sp2
 
-#endif // SP2_PY_OPAQUE_T_SPP
+#endif // header guard

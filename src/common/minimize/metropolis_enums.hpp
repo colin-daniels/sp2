@@ -7,7 +7,7 @@
 
 #include "common/enums.hpp"
 #include "common/math/vec3_util.hpp"
-#include "common/python/numpy_util.hpp"
+#include "common/python/types/as_ndarray.hpp"
 
 namespace sp2 {
 

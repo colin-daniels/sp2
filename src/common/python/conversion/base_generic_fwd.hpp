@@ -1,13 +1,13 @@
 /* ========================================================================== */
-#ifndef SP2_PYTHON_CONVERSION_BASE_GENERIC_TPP
-#define SP2_PYTHON_CONVERSION_BASE_GENERIC_TPP
+#ifndef SP2_PYTHON_CONVERSION_BASE_GENERIC_FWD
+#define SP2_PYTHON_CONVERSION_BASE_GENERIC_FWD
 
-#include "common/python/py_opaque_t.tpp"
+#include "common/python/types/py_opaque_t_body_fwd.hpp"
 
-#undef SP2_PYTHON_CONVERSION_BASE_GENERIC_TPP
+#undef SP2_PYTHON_CONVERSION_BASE_GENERIC_FWD
 #else
 #include "diagnostic/forward_dependency_cycle"
-#endif // SP2_PYTHON_CONVERSION_BASE_GENERIC_TPP
+#endif
 /* ========================================================================== */
 
 #include <vector>

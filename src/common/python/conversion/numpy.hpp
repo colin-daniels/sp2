@@ -2,7 +2,7 @@
 #define SP2_PYTHON_CONVERSION_NUMPY_HPP
 
 #include "common/python/bindings.hpp"
-#include "common/python/numpy_util.hpp"
+#include "common/python/types/as_ndarray.hpp"
 
 #include <cstdint>
 #include <vector>

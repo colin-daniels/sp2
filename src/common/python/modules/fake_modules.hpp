@@ -19,7 +19,7 @@
 //
 // Nonetheless, it seems workable for now.
 
-#include "py_scoped_t.spp"
+#include "common/python/types/py_scoped_t_body.hpp"
 
 #include <vector>
 

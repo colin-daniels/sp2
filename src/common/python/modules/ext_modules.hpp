@@ -6,7 +6,7 @@
 // NOTE: This file contains lists of all extension modules which must be
 //       manually maintained.  Scroll down to the bottom to see it.
 
-#include "common/python/py_scoped_t.spp"
+#include "common/python/types/py_scoped_t_body.hpp"
 
 #include <functional>
 #include <vector>

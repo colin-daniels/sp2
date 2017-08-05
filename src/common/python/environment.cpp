@@ -1,11 +1,11 @@
 #include <Python.h>
 
 #include "environment.hpp"
-#include "fake_modules.hpp"
+#include "common/python/modules/fake_modules.hpp"
 #include "include_numpy.hpp"
-#include "ext_modules.hpp"
+#include "common/python/modules/ext_modules.hpp"
 #include "error.hpp"
-#include "py_scoped_t.hpp"
+#include "common/python/types/py_scoped_t.hpp"
 
 #include <iostream>
 

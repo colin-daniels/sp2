@@ -1,14 +1,14 @@
 /* ========================================================================== */
-#ifndef SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_TPP
-#define SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_TPP
+#ifndef SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_FWD
+#define SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_FWD
 
-#include "common/python/py_scoped_t.tpp"
-#include "common/python/py_opaque_t.tpp"
+#include "common/python/types/py_scoped_t_body_fwd.hpp"
+#include "common/python/types/py_opaque_t_body_fwd.hpp"
 
-#undef SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_TPP
+#undef SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_FWD
 #else
 #include "diagnostic/forward_dependency_cycle"
-#endif // SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_TPP
+#endif
 /* ========================================================================== */
 
 #include "concrete.hpp"

@@ -1,0 +1,34 @@
+#error Cycle detected in forward dependencies!
+
+// This diagnostic is used in FWD files, which have a "_fwd.hpp" suffix and
+// are for declarations ONLY. These files have a special header guard that will
+// produce the above error when the FWD file inadvertently includes itself.
+//
+// The idea here is that, once they arise, dependency cycles between
+// declarations can be difficult to eliminate. But this diagnostic should be
+// able to help by giving you an error message with the chain of #includes
+// that form the cycle.
+
+// The rest of this file shows the typical layout of a FWD file.
+
+/* ========================================================================== */
+#ifndef EXAMPLE_FWD
+#define EXAMPLE_FWD
+
+// Includes for other FWD files ONLY
+#include "my-dependency_fwd.hpp"
+#include "another-dependency_fwd.hpp"
+
+#undef EXAMPLE_FWD
+#else
+#include "diagnostic/forward_dependency_cycle"
+#endif
+/* ========================================================================== */
+// Notice that the rest of the FWD file is entirely unguarded.
+// But this should be no problem so long as there are no definitions!
+
+// standard library includes ONLY
+#include <vector>
+
+// followed by declarations
+void example(std::vector<int>);

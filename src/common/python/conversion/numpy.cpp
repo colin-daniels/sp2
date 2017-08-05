@@ -4,7 +4,7 @@
 #include "common/python/conversion/numpy.hpp"
 
 #include "common/python/include_numpy.hpp"
-#include "common/python/py_scoped_t.spp"
+#include "common/python/types/py_scoped_t_body.hpp"
 
 namespace sp2 {
 namespace python {

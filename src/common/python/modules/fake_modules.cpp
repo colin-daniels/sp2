@@ -2,8 +2,8 @@
 
 #include "fake_modules.hpp"
 
-#include "error.hpp"
-#include "py_scoped_t.hpp"
+#include "common/python/error.hpp"
+#include "common/python/types/py_scoped_t.hpp"
 
 #include <string>
 

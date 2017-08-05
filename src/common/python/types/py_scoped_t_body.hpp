@@ -1,11 +1,47 @@
-#ifndef SP2_PY_SCOPED_T_SPP
-#define SP2_PY_SCOPED_T_SPP
+#ifndef SP2_PY_SCOPED_T_BODY_HPP
+#define SP2_PY_SCOPED_T_BODY_HPP
 
-#include <object.h>
-#include "py_scoped_t.tpp"
+#include "py_scoped_t_body_fwd.hpp"
 
-#include "expect-python-headers.hpp"
+// NOTE: This is a TYPE-BODY-ONLY header file.
+//
+// It only defines the following:
+//  * The type.
+//  * Member functions which can be defined entirely in terms of other
+//    member functions. (plus light dependencies that have no risk of cycles)
+//
+// Consumers within the library may prefer to include this if they require a
+// complete type but do not need to use template member functions or any of the
+// free functions provided in the HPP file. This reduces the #include footprint,
+// which can help eliminate some dependency cycles.
 
+// If an incomplete type will suffice, consider including the FWD instead;
+// it has the advantage of not requiring Python headers.
+
+#include "diagnostic/expect_python_headers"
+
+/// The designated owner of a Python object reference.
+///
+/// This scoped reference to a python object that uses RAII to handle Py_DECREF.
+/// This makes it somewhat easier to reason about exception safety, though it is
+/// not a panacea.
+///
+/// One should still be careful to consider destruction order (since a decref
+/// can potentially invoke arbitrary python code), and read the Python API docs
+/// carefully to understand when references are duplicated, borrowed, and
+/// stolen.
+///
+/// The default PyObject * constructor does NOT perform an incref, since the
+/// majority of Python API functions return a freshly-incremented reference.
+/// For those rare functions that return borrowed references, you should
+/// use the explicit 'scope_dup' constructor instead.
+///
+/// 'const' guarantees for this type are particularly weak. In general, a
+/// 'const py_scoped_t' won't allow you to modify its pointer to point
+/// somewhere else, but you are free to modify its referent in any other way.
+/// This admission is made because a 'const PyObject*' is nearly useless.
+///
+/// The contained object may be NULL.
 namespace sp2 {
 namespace python {
 
@@ -80,8 +116,4 @@ public:
 
 } // namespace python
 } // namespace sp2
-#endif // SP2_PY_SCOPED_T_SPP
-
-namespace boo {
-
-} // namespace boo
+#endif // header guard

@@ -2,7 +2,7 @@
 
 #include "py_scoped_t.hpp"
 #include "py_opaque_t.hpp"
-#include "error.hpp"
+#include "common/python/error.hpp"
 
 using namespace std;
 

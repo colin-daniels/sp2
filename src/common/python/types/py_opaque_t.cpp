@@ -2,9 +2,9 @@
 
 #include "py_opaque_t.hpp"
 #include "py_scoped_t.hpp"
-#include "error.hpp"
+#include "common/python/error.hpp"
 
-#include "fake_modules.hpp"
+#include "common/python/modules/fake_modules.hpp"
 
 using namespace sp2;
 using sp2::python::py_opaque_t;
