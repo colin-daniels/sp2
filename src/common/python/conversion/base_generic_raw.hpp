@@ -5,7 +5,7 @@
 
 // base_generic_raw.hpp:
 //
-//  Provides '{to,from}_python' on generic types for 'py_scoped_t'.
+//  Provides '{to,from}_python' on generic types for 'py_ref_t'.
 //  These implementations are able to directly use CPython API functions on the
 //   corresponding containers in python.
 
@@ -25,7 +25,7 @@
 #include "diagnostic/expect_python_headers"
 
 #include "common/python/error.hpp"
-#include "common/python/types/py_scoped_t.hpp"
+#include "common/python/types/py_ref_t.hpp"
 #include "base_monomorphic.hpp"
 
 namespace sp2 {
@@ -38,14 +38,14 @@ namespace python {
 //  - std::vector <--- sequence or iterable
 
 template<typename T>
-bool to_python(const std::vector<T> &vec, py_scoped_t &list);
+bool to_python(const std::vector<T> &vec, py_ref_t &list);
 
 template<typename T>
-bool to_python(const std::vector<T> &vec, py_scoped_t &list)
+bool to_python(const std::vector<T> &vec, py_ref_t &list)
 {
     if (list)
         throw std::logic_error(
-            "attempted to serialize into occupied py_scoped_t");
+            "attempted to serialize into occupied py_ref_t");
 
     // of course, pre-allocating a list of the right size would be faster,
     // but 'new' and 'append' keeps the object in a consistent state
@@ -54,7 +54,7 @@ bool to_python(const std::vector<T> &vec, py_scoped_t &list)
 
     for (auto &x : vec)
     {
-        py_scoped_t px;
+        py_ref_t px;
         if (!to_python(x, px))
         {
             // ...and here's why it's nice to keep 'list' in a consistent state
@@ -75,7 +75,7 @@ bool to_python(const std::vector<T> &vec, py_scoped_t &list)
 }
 
 template<typename T>
-bool from_python(const py_scoped_t &o, std::vector<T> &vec)
+bool from_python(const py_ref_t &o, std::vector<T> &vec)
 {
     vec.clear();
 
@@ -98,7 +98,7 @@ bool from_python(const py_scoped_t &o, std::vector<T> &vec)
 
     // With that out of the way, any errors from PySequence_Fast are
     // legitimate concerns.
-    py_scoped_t seq = scope(PySequence_Fast(o.raw(), "expected a sequence!"));
+    py_ref_t seq = scope(PySequence_Fast(o.raw(), "expected a sequence!"));
     throw_on_py_err();
 
     Py_ssize_t size = PySequence_Fast_GET_SIZE(seq.raw());
@@ -131,16 +131,16 @@ constexpr bool _from_python_rec_raw(Ts &&...)
 
 template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
-bool _from_python_rec_raw(const std::vector<py_scoped_t> &pys, std::tuple<Ts...> &cs)
+bool _from_python_rec_raw(const std::vector<py_ref_t> &pys, std::tuple<Ts...> &cs)
 {
     return from_python(pys[Idx], std::get<Idx>(cs)) &&
            _from_python_rec_raw<Idx + 1>(pys, cs);
 }
 
 template<typename... Ts>
-bool from_python(const py_scoped_t &py, std::tuple<Ts...> &cs)
+bool from_python(const py_ref_t &py, std::tuple<Ts...> &cs)
 {
-    std::vector<py_scoped_t> pys;
+    std::vector<py_ref_t> pys;
     if (!from_python(py, pys))
         return false;
 
@@ -162,16 +162,16 @@ constexpr bool _to_python_rec_raw(...)
 
 template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
-bool _to_python_rec_raw(const std::tuple<Ts...> &cs, std::vector<py_scoped_t> &pys)
+bool _to_python_rec_raw(const std::tuple<Ts...> &cs, std::vector<py_ref_t> &pys)
 {
     return to_python(std::get<Idx>(cs), pys[Idx]) &&
            _to_python_rec_raw<Idx + 1>(cs, pys);
 }
 
 template<typename... Ts>
-bool to_python(const std::tuple<Ts...> &cs, py_scoped_t &py)
+bool to_python(const std::tuple<Ts...> &cs, py_ref_t &py)
 {
-    std::vector<py_scoped_t> pys(sizeof...(Ts));
+    std::vector<py_ref_t> pys(sizeof...(Ts));
 
     if (!_to_python_rec_raw(cs, pys))
     {

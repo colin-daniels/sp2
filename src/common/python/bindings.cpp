@@ -2,8 +2,9 @@
 
 #include "bindings.hpp"
 
-#include "common/python/modules/fake_modules.hpp"
-#include "common/python/modules/ext_modules.hpp"
+#include "modules/fake_modules.hpp"
+#include "modules/ext_modules.hpp"
+#include "common/python/types/py_object_t.hpp"
 
 //-----------------------------
 
@@ -12,7 +13,7 @@ using namespace sp2::python;
 namespace sp2 {
 namespace python {
 
-py_opaque_t structural_metropolis::make_param_pack(vector<double> carts,
+py_object_t structural_metropolis::make_param_pack(vector<double> carts,
     const double lattice[3][3], vector<double> force)
 {
     // interpret as 3N cartesian coords
@@ -22,14 +23,14 @@ py_opaque_t structural_metropolis::make_param_pack(vector<double> carts,
 
     size_t height = carts.size() / width;
 
-    auto py_carts = py_opaque_t::from(as_ndarray(carts, {height, width}));
+    auto py_carts = py_from(as_ndarray(carts, {height, width}));
 
     auto c_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
-    auto py_lattice = py_opaque_t::from(as_ndarray(c_lattice, {3, 3}));
+    auto py_lattice = py_from(as_ndarray(c_lattice, {3, 3}));
 
-    auto py_force = py_opaque_t::from(as_ndarray(force, {height, width}));
+    auto py_force = py_from(as_ndarray(force, {height, width}));
 
-    py_scoped_t kw = [&] {
+    py_ref_t kw = [&] {
         auto kw = scope(Py_BuildValue("{sOsOsO}",
             "carts", py_carts.inner().raw(),
             "lattice", py_lattice.inner().raw(),
@@ -42,11 +43,11 @@ py_opaque_t structural_metropolis::make_param_pack(vector<double> carts,
     return opaque(kw);
 }
 
-py_opaque_t sp2::python::run_phonopy::make_extra_kw(
+py_object_t sp2::python::run_phonopy::make_extra_kw(
     std::vector<size_t> sc_to_prim)
 {
-    py_scoped_t py_sc_map = [&] {
-        auto list = py_opaque_t::from(sc_to_prim);
+    py_ref_t py_sc_map = [&] {
+        auto list = py_from(sc_to_prim);
         auto &module = fake_modules::mutation_helper::fake_module.module;
         auto klass = getattr(module, "supercell_index_mapper");
 
@@ -54,8 +55,8 @@ py_opaque_t sp2::python::run_phonopy::make_extra_kw(
         throw_on_py_err("Exception constructing python args tuple.");
 
 
-        auto po = py_opaque_t(
-            std::shared_ptr<py_scoped_t>(&klass, [](auto) {})
+        auto po = py_object_t(
+            std::shared_ptr<py_ref_t>(&klass, [](auto) {})
         );
 
 #warning FIXME
@@ -64,7 +65,7 @@ py_opaque_t sp2::python::run_phonopy::make_extra_kw(
 #warning FIXME
     }();
 
-    py_scoped_t kw = [&] {
+    py_ref_t kw = [&] {
         auto kw = scope(Py_BuildValue("{sO}",
             "supercell", py_sc_map.raw()
         ));

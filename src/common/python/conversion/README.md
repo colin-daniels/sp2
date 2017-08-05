@@ -13,7 +13,7 @@
 // Approximate signature:
 
 template<typename C> bool to_python(const py_scoped_t& py, C &c);
-template<typename C> bool to_python(const py_opaque_t& py, C &c);
+template<typename C> bool to_python(const py_object_t& py, C &c);
 ```
 
 `to_python` generally tries to produce types which approximate or represents
@@ -32,7 +32,7 @@ argument NULL and return `false`.
 // Approximate signature:
 
 template<typename C> bool from_python(const C& c, py_scoped_t &py);
-template<typename C> bool from_python(const C& c, py_opaque_t &py);
+template<typename C> bool from_python(const C& c, py_object_t &py);
 ```
 
 When both are implemented, `from_python` must be able to recover an object
@@ -56,13 +56,13 @@ unsuitable for use cases such as "attempt to deserialize as type A, then
 attempt to deserialize as type B if that fails". This may be addressed in
 the future.
 
-`py_scoped_t` versus `py_opaque_t`
+`py_scoped_t` versus `py_object_t`
 ----------------------------------
 
-All conversions are implemented for both `py_scoped_t` and `py_opaque_t`.
+All conversions are implemented for both `py_scoped_t` and `py_object_t`.
 Use whatever type is available to the code you are writing.
 
-`py_opaque_t` has convenience functions built into it that don't take output
+`py_object_t` has convenience functions built into it that don't take output
 arguments, and instead throw exceptions. (Er, that's, uh... in addition to
 unconditionally printing to stderr. Sorry!)
 

@@ -1,10 +1,10 @@
 /* ========================================================================== */
-#ifndef SP2_PY_OPAQUE_T_BODY_FWD
-#define SP2_PY_OPAQUE_T_BODY_FWD
+#ifndef SP2_PY_OBJECT_T_FWD
+#define SP2_PY_OBJECT_T_FWD
 
 // no forward dependencies
 
-#undef SP2_PY_OPAQUE_T_BODY_FWD
+#undef SP2_PY_OBJECT_T_FWD
 #else
 #include "diagnostic/forward_dependency_cycle"
 #endif
@@ -16,22 +16,26 @@
 namespace sp2 {
 namespace python {
 
-/// An opaque, pImpl-style wrapper around a python pointer
-/// for safe encapsulation even in code that does not import
-/// the cPython headers.
-class py_opaque_t;
+class py_object_t;
 
 /// Import a module as a python object.
 ///
-/// This is one of the fundamental methods of obtaining a 'py_opaque_t'.
-/// (the other being to convert values from C++ type).
+/// This is one of the fundamental methods of obtaining a 'py_object'.
+/// (the other being to convert data from C++ via 'py_from' or 'py_tuple').
 ///
 /// This imports a module by its (package-qualified) name through the standard
 /// python module-loading machinery, which caches imports. In other words,
 /// this MAY invoke module.__init__() (and therefore one should be prepared for
 /// arbitrary python errors), but it will only do so once.
-py_opaque_t import(const char *mod_name);
-py_opaque_t import(const std::string &mod_name);
+py_object_t py_import(const char *mod_name);
+py_object_t py_import(const std::string &mod_name);
 
+namespace detail {
+
+// a monomorphic variant of py_tuple that is guaranteed not to perform
+// conversions between py_object_t and arbitrary types;
+py_object_t py_tuple_noconv(const std::vector<py_object_t> &ts);
+
+} // namespace detail
 } // namespace python
 } // namespace sp2

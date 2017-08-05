@@ -1,7 +1,7 @@
 #ifndef SP2_PYTHON_UTILITY_HPP
 #define SP2_PYTHON_UTILITY_HPP
 
-#include "common/python/types/py_opaque_t_body_fwd.hpp"
+#include "common/python/types/py_object_t_fwd.hpp"
 
 namespace sp2 {
 namespace python {
@@ -19,8 +19,8 @@ enum class merge_strategy : int
 
 /// Perform a union-like operation on two python dictionaries that produces a
 /// dict with all of their (key, value) pairs.
-py_opaque_t merge_dictionaries(
-    const py_opaque_t &a, const py_opaque_t &b,
+py_object_t merge_dictionaries(
+    const py_object_t &a, const py_object_t &b,
     merge_strategy strategy = merge_strategy::USE_SECOND);
 
 

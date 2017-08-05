@@ -1,10 +1,11 @@
-#include "Python.h" // must be first include
+#include <Python.h> // must be first include
 
 #define SP2_NDARRAY_INSTANTIATIONS_VISIBLE
-#include "common/python/conversion/numpy.hpp"
+#include "numpy.hpp"
 
+#include "common/python/error.hpp"
 #include "common/python/include_numpy.hpp"
-#include "common/python/types/py_scoped_t_body.hpp"
+#include "common/python/types/py_ref_t.hpp"
 
 namespace sp2 {
 namespace python {
@@ -31,7 +32,7 @@ SP2_SPECIALIZE_NUMPY_DTYPE(float, NPY_FLOAT);
 SP2_SPECIALIZE_NUMPY_DTYPE(double, NPY_DOUBLE);
 
 template<typename T>
-bool to_python_by_ndarray(const as_ndarray_t<T> &c, py_scoped_t &py)
+bool to_python_by_ndarray(const as_ndarray_t<T> &c, py_ref_t &py)
 {
     int dtype = numpy_dtype<T>::value;
     // copy data into a brand new array object.
@@ -49,7 +50,7 @@ bool to_python_by_ndarray(const as_ndarray_t<T> &c, py_scoped_t &py)
 }
 
 template<typename T>
-bool from_python_by_ndarray(const py_scoped_t &py, as_ndarray_t<T> &c)
+bool from_python_by_ndarray(const py_ref_t &py, as_ndarray_t<T> &c)
 {
     int dtype = numpy_dtype<T>::value;
     // Force the array into a contiguous layout if it isn't.
@@ -74,8 +75,8 @@ bool from_python_by_ndarray(const py_scoped_t &py, as_ndarray_t<T> &c)
 // Generate explicit instantiations of the template.
 
 #define MAC(T) \
-template bool to_python_by_ndarray<T>(const as_ndarray_t<T> &c, py_scoped_t &py); \
-template bool from_python_by_ndarray<T>(const py_scoped_t &py, as_ndarray_t<T> &c)
+template bool to_python_by_ndarray<T>(const as_ndarray_t<T> &c, py_ref_t &py); \
+template bool from_python_by_ndarray<T>(const py_ref_t &py, as_ndarray_t<T> &c)
 
 SP2_FOR_EACH_NUMPY_DTYPE(MAC);
 #undef MAC

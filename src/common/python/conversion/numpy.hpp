@@ -3,6 +3,7 @@
 
 #include "common/python/bindings.hpp"
 #include "common/python/types/as_ndarray.hpp"
+#include "common/python/types/py_ref_t_fwd.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -35,19 +36,19 @@ mac(double)
 // Forward declare the generic functions used for implementation.
 /// Implementation detail.  Use `to_python` instead.
 template<typename T>
-bool to_python_by_ndarray(const as_ndarray_t<T> &c, py_scoped_t &py);
+bool to_python_by_ndarray(const as_ndarray_t<T> &c, py_ref_t &py);
 
 /// Implementation detail.  Use `from_python` instead.
 template<typename T>
-bool from_python_by_ndarray(const py_scoped_t &py, as_ndarray_t<T> &c);
+bool from_python_by_ndarray(const py_ref_t &py, as_ndarray_t<T> &c);
 
 //--------
 // Declare all instantiations, EXCEPT where they are actually defined.
 #ifndef SP2_NDARRAY_INSTANTIATIONS_VISIBLE
 
 #define MAC(T) \
-extern template bool to_python_by_ndarray<T>(const as_ndarray_t<T> &c, py_scoped_t &py); \
-extern template bool from_python_by_ndarray<T>(const py_scoped_t &py, as_ndarray_t<T> &c)
+extern template bool to_python_by_ndarray<T>(const as_ndarray_t<T> &c, py_ref_t &py); \
+extern template bool from_python_by_ndarray<T>(const py_ref_t &py, as_ndarray_t<T> &c)
 
 SP2_FOR_EACH_NUMPY_DTYPE(MAC);
 #undef MAC

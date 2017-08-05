@@ -19,7 +19,7 @@
 //
 // Nonetheless, it seems workable for now.
 
-#include "common/python/types/py_scoped_t_body.hpp"
+#include "common/python/types/py_ref_t_body.hpp"
 
 #include <vector>
 
@@ -54,7 +54,7 @@ struct fake_module_t
     ///
     /// This is NULL until initialize_fake_modules(),
     /// and after finalize_fake_modules().
-    py_scoped_t module;
+    py_ref_t module;
 
     fake_module_t(fake_module_template_t meta)
             : meta(meta)

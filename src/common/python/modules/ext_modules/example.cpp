@@ -2,7 +2,8 @@
 
 #include "common/python/modules/ext_modules.hpp"
 
-#include "common/python/types/py_scoped_t_body.hpp"
+#include "common/python/types/py_ref_t.hpp"
+#include "common/python/types/py_object_t.hpp"
 #include "common/python/types/as_ndarray.hpp"
 #include "common/python/conversion.hpp"
 
@@ -32,7 +33,7 @@ PyObject* py_add(PyObject *self, PyObject *args, PyObject *kw)
 
     return wrap_cxx_logic([&] {
         long sum = first + second;
-        return py_opaque_t::from(sum).inner().dup();
+        return py_from(sum).inner().dup();
     });
 }
 

@@ -2,14 +2,14 @@
 
 #include "utility.hpp"
 #include "error.hpp"
-#include "common/python/types/py_scoped_t.hpp"
-#include "common/python/types/py_opaque_t.hpp"
+#include "common/python/types/py_ref_t.hpp"
+#include "common/python/types/py_object_t.hpp"
 
 namespace sp2 {
 namespace python {
 
-py_opaque_t merge_dictionaries(const py_opaque_t &a,
-    const py_opaque_t &b, merge_strategy strategy)
+py_object_t merge_dictionaries(const py_object_t &a,
+    const py_object_t &b, merge_strategy strategy)
 {
     auto size = [](auto &dict) {
         Py_ssize_t s = PyDict_Size(dict.inner().raw());

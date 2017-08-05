@@ -23,7 +23,7 @@ template<
     typename T,
     typename = std::enable_if_t<has_concrete_to_python<T>::value>
 >
-bool to_python(const T &c, py_scoped_t &py)
+bool to_python(const T &c, py_ref_t &py)
 { return to_python_concrete(c, py); }
 #endif // Py_PYTHON_H
 
@@ -31,7 +31,7 @@ template<
     typename T,
     typename = std::enable_if_t<has_concrete_to_python<T>::value>
 >
-bool to_python(const T &c, py_opaque_t &py)
+bool to_python(const T &c, py_object_t &py)
 { return to_python_concrete(c, py.inner()); }
 
 #ifdef Py_PYTHON_H
@@ -39,7 +39,7 @@ template<
     typename T,
     typename = std::enable_if_t<has_concrete_from_python<T>::value>
 >
-bool from_python(const py_scoped_t &py, T &c)
+bool from_python(const py_ref_t &py, T &c)
 { return from_python_concrete(py, c); }
 #endif // Py_PYTHON_H
 
@@ -47,7 +47,7 @@ template<
     typename T,
     typename = std::enable_if_t<has_concrete_from_python<T>::value>
 >
-bool from_python(const py_opaque_t &py, T &c)
+bool from_python(const py_object_t &py, T &c)
 { return from_python_concrete(py.inner(), c); }
 
 /* -------------------------------------------------------------------------- */
@@ -56,22 +56,22 @@ bool from_python(const py_opaque_t &py, T &c)
 
 #ifdef Py_PYTHON_H
 template<typename T>
-bool to_python(const as_ndarray_t<T> &c, py_scoped_t &py)
+bool to_python(const as_ndarray_t<T> &c, py_ref_t &py)
 { return to_python_by_ndarray(c, py); }
 #endif // Py_PYTHON_H
 
 template<typename T>
-bool to_python(const as_ndarray_t<T> &c, py_opaque_t &py)
+bool to_python(const as_ndarray_t<T> &c, py_object_t &py)
 { return to_python_by_ndarray(c, py.inner()); }
 
 #ifdef Py_PYTHON_H
 template<typename T>
-bool from_python(const py_scoped_t &py, as_ndarray_t<T> &c)
+bool from_python(const py_ref_t &py, as_ndarray_t<T> &c)
 { return from_python_by_ndarray(py, c); }
 #endif // Py_PYTHON_H
 
 template<typename T>
-bool from_python(const py_opaque_t &py, as_ndarray_t<T> &c)
+bool from_python(const py_object_t &py, as_ndarray_t<T> &c)
 { return from_python_by_ndarray(py.inner(), c); }
 
 } // namespace python

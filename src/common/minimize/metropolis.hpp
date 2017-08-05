@@ -7,6 +7,8 @@
 #include "common/python/bindings.hpp"
 #include "common/python/environment.hpp"
 #include "common/python/utility.hpp"
+#include "common/python/error.hpp"
+#include "common/python/types/py_object_t.hpp"
 
 #include <vector>
 #include <iostream>
@@ -303,7 +305,7 @@ template<typename S>
 structure_t _structural_metropolis(
     S &sys,
     structure_t initial_pos,
-    python::py_opaque_t extra_kw,
+    python::py_object_t extra_kw,
     structural_metropolis_settings_t met_set)
 {
     using namespace sp2::python;
@@ -338,27 +340,27 @@ structure_t _structural_metropolis(
     {
         bool advanced = false;
         // class_ isn't here; it's only used to resolve the others.
-        py_opaque_t mutate;
-        py_opaque_t generate;
-        py_opaque_t apply;
-        py_opaque_t applied;
-        py_opaque_t visit;
-        py_opaque_t is_repeatable;
-        py_opaque_t scale;
+        py_object_t mutate;
+        py_object_t generate;
+        py_object_t apply;
+        py_object_t applied;
+        py_object_t visit;
+        py_object_t is_repeatable;
+        py_object_t scale;
 
         // This constructor is where we do all of our interpretation of the
         // provided script and config, so that all of the above objects should
         // be resolved by the end.
         py_mutation_functions_t(
             const structural_metropolis_settings_t &met_set,
-            const py_opaque_t &initial_pp)
+            const py_object_t &initial_pp)
         {
             extend_sys_path(met_set.python_sys_path);
 
-            auto module = import(met_set.python_module);
+            auto module = py_import(met_set.python_module);
             auto &func_set = met_set.python_functions;
 
-            py_opaque_t instance = [&] {
+            py_object_t instance = [&] {
                 if (func_set.class_.empty())
                     return module;
                 else
@@ -424,7 +426,7 @@ structure_t _structural_metropolis(
         if (!functions.apply)
             return mutation.template parse_as<structural_mutation_t>();
 
-        auto args = py_opaque_t::tuple(mutation);
+        auto args = py_tuple(mutation);
         auto kw = get_param_pack(pos);
         return functions.apply
                         .call(args, kw)
@@ -435,8 +437,7 @@ structure_t _structural_metropolis(
         if (!functions.applied)
             return;
 
-        auto values = py_opaque_t::tuple(was, now);
-        auto args = py_opaque_t::tuple(mutation, values);
+        auto args = py_tuple(mutation, py_tuple(was, now));
         auto kw = get_param_pack(pos);
         functions.applied.call(args, kw);
     };
@@ -445,7 +446,7 @@ structure_t _structural_metropolis(
         if (!functions.visit)
             return;
 
-        auto args = py_opaque_t::tuple(value, better);
+        auto args = py_tuple(value, better);
         auto kw = get_param_pack(pos);
         functions.visit.call(args, kw);
     };
@@ -459,7 +460,7 @@ structure_t _structural_metropolis(
         if (!functions.is_repeatable)
             return false;
 
-        auto args = py_opaque_t::tuple(mutation);
+        auto args = py_tuple(mutation);
         auto kw = get_param_pack(pos);
         return functions.is_repeatable
                         .call(args, kw)
@@ -470,7 +471,7 @@ structure_t _structural_metropolis(
         if (!functions.scale)
             return mutation;
 
-        auto args = py_opaque_t::tuple(mutation, factor);
+        auto args = py_tuple(mutation, factor);
         auto kw = get_param_pack(pos);
         return functions.scale.call(args, kw);
     };
@@ -543,7 +544,7 @@ structure_t _structural_metropolis(
     if (met_set.python_functions.advanced)
     {
         using pos_t = structure_t;
-        using diff_t = py_opaque_t;
+        using diff_t = py_object_t;
         minimize::metropolis::callbacks_t<pos_t, diff_t> raw_callbacks{
             advanced_generate_fn,
             advanced_apply_fn,
@@ -580,15 +581,28 @@ structure_t _structural_metropolis(
     }
 };
 
+
+
 /// Perform structure-aware metropolis minimization, leaving the optimal
 /// structure in 'sys' on exit.
 template<typename S>
 void structural(S &sys,
-    python::py_opaque_t extra_kw,
+    python::py_object_t extra_kw,
     structural_metropolis_settings_t met_set)
 {
-    auto initial = sys.get_structure();
-    auto final = _structural_metropolis(sys, initial, extra_kw, met_set);
+    structure_t initial = sys.get_structure();
+
+    structure_t final;
+    try
+    {
+        final = _structural_metropolis(sys, initial, extra_kw, met_set);
+    }
+    catch(const sp2::python::py_error &e)
+    {
+        // better diagnostics
+        e.print_to_stderr().rethrow();
+    }
+
     sys.set_structure(final);
     sys.update();
 }

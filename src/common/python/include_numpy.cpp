@@ -1,7 +1,3 @@
-//
-// Created by lampam on 7/15/17.
-//
-
 // This is designated as the unique compilation unit which will define the
 // global object for the numpy array API.
 

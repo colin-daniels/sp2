@@ -6,7 +6,7 @@
 // NOTE: This file contains lists of all extension modules which must be
 //       manually maintained.  Scroll down to the bottom to see it.
 
-#include "common/python/types/py_scoped_t_body.hpp"
+#include "common/python/types/py_ref_t_body.hpp"
 
 #include <functional>
 #include <vector>
@@ -80,7 +80,7 @@ constexpr PyMethodDef END = {nullptr, nullptr, 0, nullptr};
 /// See the 'example' ext_module for intended usage.
 ///
 /// The wrapped function should:
-///  - Return a non-null py_scoped_t. (this is checked)
+///  - Return a non-null py_ref. (this is checked)
 ///  - Throw a std::string or const char* literal on failure.
 ///    This will create a Python exception.
 ///  - Be aware that anything else which is thrown and uncaught will also
@@ -88,11 +88,11 @@ constexpr PyMethodDef END = {nullptr, nullptr, 0, nullptr};
 ///
 /// and the output of this function should be returned immediately and
 ///  unconditionally from the callback (since PyErr may have been set).
-PyObject* wrap_cxx_logic(std::function<py_scoped_t()> func)
+PyObject* wrap_cxx_logic(std::function<py_ref_t()> func)
 {
     try
     {
-        py_scoped_t out = func();
+        py_ref_t out = func();
         if (!out)
         {
             PyErr_SetString(PyExc_AssertionError, "wrap_cxx_logic: nullptr");

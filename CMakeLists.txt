@@ -134,14 +134,14 @@ set(SOURCE_FILES
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/modules/fake_modules/mutation_helper.cpp
 
         IF_PYTHON_ENABLED ___________________ src/common/python/types/as_ndarray.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/types/py_scoped_t.cpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_scoped_t.hpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_scoped_t_body.hpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_scoped_t_body_fwd.hpp
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/types/py_opaque_t.cpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_opaque_t.hpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_opaque_t_body.hpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_opaque_t_body_fwd.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/types/py_ref_t.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_ref_t.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_ref_t_body.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_ref_t_fwd.hpp
+        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/types/py_object_t.cpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_object_t.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_object_t_body.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/types/py_object_t_fwd.hpp
 
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/utility.cpp
         IF_PYTHON_ENABLED ___________________ src/common/python/utility.hpp

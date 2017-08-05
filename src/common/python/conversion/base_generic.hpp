@@ -6,10 +6,10 @@
 
 // base_generic.hpp:
 //
-//  Provides '{to,from}_python' on generic types for 'py_opaque_t'.
+//  Provides '{to,from}_python' on generic types for 'py_object_t'.
 //  These implementations are forced to rely on the small interface provided
-//  by 'py_opaque_t', and are probably laughably inefficient compared to
-//  the same operations on 'py_scoped_t'.
+//  by 'py_object_t', and are probably laughably inefficient compared to
+//  the same operations on 'py_ref_t'.
 
 //      !!!!!!!!!!!!!!!!!!!
 //        !!  CAUTION  !!
@@ -39,18 +39,18 @@ namespace python {
 //  - std::vector <--- sequence or iterable
 
 template<typename T>
-bool to_python(const std::vector<T> &vec, py_opaque_t &py_list)
+bool to_python(const std::vector<T> &vec, py_object_t &py_list)
 {
     if (py_list)
         throw std::logic_error(
-            "attempted to serialize into occupied py_opaque_t");
+            "attempted to serialize into occupied py_object_t");
 
-    py_list = import("builtins").getattr("list").call();
+    py_list = py_import("builtins").getattr("list").call();
     auto append = py_list.getattr("append");
 
     for (const auto &x : vec)
     {
-        py_opaque_t py_item;
+        py_object_t py_item;
         if (!to_python(x, py_item))
         {
             py_list.destroy();
@@ -64,7 +64,7 @@ bool to_python(const std::vector<T> &vec, py_opaque_t &py_list)
 }
 
 template<typename T>
-bool from_python(const py_opaque_t &o, std::vector<T> &vec)
+bool from_python(const py_object_t &o, std::vector<T> &vec)
 {
     vec.clear();
 
@@ -79,7 +79,7 @@ bool from_python(const py_opaque_t &o, std::vector<T> &vec)
     }
 
     // iterable into sequence
-    auto py_sequence = import("builtins").getattr("list").call({o});
+    auto py_sequence = py_import("builtins").getattr("list").call({o});
 
     // use sequence protocol
     std::size_t size;
@@ -90,7 +90,7 @@ bool from_python(const py_opaque_t &o, std::vector<T> &vec)
     auto getitem = py_sequence.getattr("__getitem__");
     for (std::size_t i = 0; i < size; i++)
     {
-        py_opaque_t py_i;
+        py_object_t py_i;
         if (!to_python(i, py_i))
         {
             vec.clear();
@@ -123,16 +123,16 @@ constexpr bool _from_python_rec(Ts &&...)
 
 template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
-bool _from_python_rec(std::vector<py_opaque_t> &pys, std::tuple<Ts...> &cs)
+bool _from_python_rec(std::vector<py_object_t> &pys, std::tuple<Ts...> &cs)
 {
     return from_python(pys[Idx], std::get<Idx>(cs)) &&
            _from_python_rec<Idx + 1>(pys, cs);
 }
 
 template<typename... Ts>
-bool from_python(const py_opaque_t &py, std::tuple<Ts...> &cs)
+bool from_python(const py_object_t &py, std::tuple<Ts...> &cs)
 {
-    std::vector<py_opaque_t> pys;
+    std::vector<py_object_t> pys;
     if (!from_python(py, pys))
         return false;
 
@@ -154,16 +154,16 @@ constexpr bool _to_python_rec(...)
 
 template<std::size_t Idx = 0, class ...Ts,
     class = std::enable_if_t<(Idx < sizeof...(Ts))>>
-bool _to_python_rec(const std::tuple<Ts...> &cs, std::vector<py_opaque_t> &pys)
+bool _to_python_rec(const std::tuple<Ts...> &cs, std::vector<py_object_t> &pys)
 {
     return to_python(std::get<Idx>(cs), pys[Idx]) &&
            _to_python_rec<Idx + 1>(cs, pys);
 }
 
 template<typename... Ts>
-bool to_python(const std::tuple<Ts...> &cs, py_opaque_t &py)
+bool to_python(const std::tuple<Ts...> &cs, py_object_t &py)
 {
-    std::vector<py_opaque_t> pys(sizeof...(Ts));
+    std::vector<py_object_t> pys(sizeof...(Ts));
 
     if (!_to_python_rec(cs, pys))
     {

@@ -1,8 +1,6 @@
-#include "Python.h" // must be first include
+#include <Python.h> // must be first include
 
 #include "base_generic_raw.hpp"
-#include "common/python/types/py_scoped_t_body.hpp"
-#include "common/python/bindings.hpp" // make_param_pack
 
 using namespace std;
 
@@ -13,7 +11,7 @@ namespace python {
 // Helper implementation.
 // Serializes to/from string.
 template<typename E>
-bool from_python_by_enum_map(const py_scoped_t &py, E &out, E null_value,
+bool from_python_by_enum_map(const py_ref_t &py, E &out, E null_value,
     const char *message)
 {
     std::string s;
@@ -31,7 +29,7 @@ bool from_python_by_enum_map(const py_scoped_t &py, E &out, E null_value,
 
 /* -------------------------------------------------------------------------- */
 
-bool from_python_concrete(const py_scoped_t &py, structural_mutation_type &c)
+bool from_python_concrete(const py_ref_t &py, structural_mutation_type &c)
 {
     return from_python_by_enum_map(py, c,
         structural_mutation_type::INVALID,
@@ -41,7 +39,7 @@ bool from_python_concrete(const py_scoped_t &py, structural_mutation_type &c)
         ).c_str());
 }
 
-bool from_python_concrete(const py_scoped_t &py, structural_mutation_t &c)
+bool from_python_concrete(const py_ref_t &py, structural_mutation_t &c)
 {
     tuple<structural_mutation_type, as_ndarray_t<double>> tup;
     if (!from_python(py, tup))

@@ -1,7 +1,7 @@
-#include "Python.h"
+#include <Python.h>
 
 #include "ext_modules.hpp"
-#include "common/python/types/py_scoped_t.hpp"
+#include "common/python/types/py_ref_t.hpp"
 #include "common/python/error.hpp"
 
 namespace sp2 {
@@ -86,7 +86,7 @@ void pre_py_initialize()
 
 /// Try to import a module through the typical machinery, or implicitly create
 ///  an empty one.
-py_scoped_t import_or_create(const char* qual_name)
+py_ref_t import_or_create(const char* qual_name)
 {
     auto module = scope(PyImport_ImportModule(qual_name));
     if (module)

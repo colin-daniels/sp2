@@ -1,7 +1,7 @@
-#ifndef SP2_PY_SCOPED_T_BODY_HPP
-#define SP2_PY_SCOPED_T_BODY_HPP
+#ifndef SP2_PY_REF_T_BODY_HPP
+#define SP2_PY_REF_T_BODY_HPP
 
-#include "py_scoped_t_body_fwd.hpp"
+#include "py_ref_t_fwd.hpp"
 
 // NOTE: This is a TYPE-BODY-ONLY header file.
 //
@@ -20,11 +20,17 @@
 
 #include "diagnostic/expect_python_headers"
 
+namespace sp2 {
+namespace python {
+
 /// The designated owner of a Python object reference.
 ///
-/// This scoped reference to a python object that uses RAII to handle Py_DECREF.
-/// This makes it somewhat easier to reason about exception safety, though it is
-/// not a panacea.
+/// This type is for internal use in parts of the codebase that interact
+/// directly with the CPython API.  It is a scoped reference to a python object
+/// that uses RAII to handle Py_DECREF.
+///
+/// This makes it somewhat easier to reason about exception safety,
+/// though it is not a panacea.
 ///
 /// One should still be careful to consider destruction order (since a decref
 /// can potentially invoke arbitrary python code), and read the Python API docs
@@ -37,22 +43,19 @@
 /// use the explicit 'scope_dup' constructor instead.
 ///
 /// 'const' guarantees for this type are particularly weak. In general, a
-/// 'const py_scoped_t' won't allow you to modify its pointer to point
+/// 'const py_ref' won't allow you to modify its pointer to point
 /// somewhere else, but you are free to modify its referent in any other way.
 /// This admission is made because a 'const PyObject*' is nearly useless.
 ///
 /// The contained object may be NULL.
-namespace sp2 {
-namespace python {
-
-class py_scoped_t
+class py_ref_t
 {
     mutable PyObject *obj = nullptr;
 
 public:
 
     /// null constructor
-    py_scoped_t() {};
+    py_ref_t() {};
 
     /// PyObject constructor
     ///
@@ -64,24 +67,24 @@ public:
     /// FIXME: Actually, I can't even recall why this is public.
     ///        I know there was a reason, but IIRC it was just an
     ///         implementation detail, so it should be documented...
-    explicit py_scoped_t(PyObject *o);
+    explicit py_ref_t(PyObject *o);
 
     explicit operator bool() const;
 
-    py_scoped_t &operator=(const py_scoped_t &other);
-    py_scoped_t(const py_scoped_t &other);
+    py_ref_t &operator=(const py_ref_t &other);
+    py_ref_t(const py_ref_t &other);
 
     /// move constructor
-    py_scoped_t(py_scoped_t &&other);
+    py_ref_t(py_ref_t &&other);
 
     /// move assignment operator
-    py_scoped_t& operator=(py_scoped_t &&other);
+    py_ref_t& operator=(py_ref_t &&other);
 
-    ~py_scoped_t();
+    ~py_ref_t();
 
     /// Increment the refcount and return a new scoped reference.
     /// FIXME this is pointless now that there's a copy constructor
-    py_scoped_t dup() const;
+    py_ref_t dup() const;
 
     /// Borrow the reference without touching the refcount.
     ///
@@ -102,7 +105,7 @@ public:
     ///
     /// Note a small semantic difference in that, due to the by-value return
     /// type, this is guaranteed to clear the receiver.
-    py_scoped_t move();
+    py_ref_t move();
 
     /// Explicit destructor.
     ///

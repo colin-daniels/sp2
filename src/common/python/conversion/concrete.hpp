@@ -1,8 +1,8 @@
 #ifndef SP2_PYTHON_CONVERSION_CONCRETE_HPP
 #define SP2_PYTHON_CONVERSION_CONCRETE_HPP
 
-#include "common/python/types/py_scoped_t_body_fwd.hpp"
-#include "common/python/types/py_opaque_t_body_fwd.hpp"
+#include "common/python/types/py_ref_t_fwd.hpp"
+#include "common/python/types/py_object_t_fwd.hpp"
 #include "common/minimize/metropolis_enums.hpp"
 
 #include <string>
@@ -25,8 +25,8 @@ mac(double); \
 mac(bool); \
 mac(std::string); \
 mac(std::nullptr_t); \
-mac(sp2::python::py_scoped_t); \
-mac(sp2::python::py_opaque_t)
+mac(sp2::python::py_ref_t); \
+mac(sp2::python::py_object_t)
 
 // Lists of types implemented elsewhere; possibly only in one direction.
 #define SP2_FOR_EACH_CONCRETE_CUSTOM_FROM(mac) \
@@ -48,12 +48,12 @@ SP2_FOR_EACH_CONCRETE_CUSTOM_TO(mac)
 // actually generate the declarations
 
 #define MAC(T) \
-    bool to_python_concrete(const T &c, py_scoped_t &py)
+    bool to_python_concrete(const T &c, py_ref_t &py)
 SP2_FOR_EACH_CONCRETE_TO( MAC );
 #undef MAC
 
 #define MAC(T) \
-    bool from_python_concrete(const py_scoped_t &py, T &c)
+    bool from_python_concrete(const py_ref_t &py, T &c)
 SP2_FOR_EACH_CONCRETE_FROM( MAC );
 #undef MAC
 

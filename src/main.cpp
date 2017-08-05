@@ -9,7 +9,7 @@
 #include <common/util/templates.hpp>
 
 #ifdef SP2_ENABLE_PYTHON
-#include "common/python/bindings.hpp"
+#include "common/python/environment.hpp"
 #endif // SP2_ENABLE_PYTHON
 
 #ifdef SP2_ENABLE_TESTS
