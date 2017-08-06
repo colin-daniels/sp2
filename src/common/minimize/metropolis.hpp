@@ -296,6 +296,36 @@ struct scaling_control_t
 
 #ifdef SP2_ENABLE_PYTHON
 
+#warning should not be static
+static sp2::python::py_object_t make_param_pack(std::vector<double> carts,
+    const double lattice[3][3], std::vector<double> force)
+{
+    using namespace std;
+    using namespace sp2::python;
+
+    // interpret as 3N cartesian coords
+    size_t width = 3;
+    if (carts.size() % width != 0)
+        throw logic_error("vector not divisible by width");
+
+    size_t height = carts.size() / width;
+
+    auto py_carts = py_from(as_ndarray(carts, {height, width}));
+
+    auto c_lattice = vector<double>(&lattice[0][0], &lattice[0][0] + 9);
+    auto py_lattice = py_from(as_ndarray(c_lattice, {3, 3}));
+
+    auto py_force = py_from(as_ndarray(force, {height, width}));
+
+    auto kw = py_import("builtins").getattr("dict").call();
+    auto setter = kw.getattr("__setitem__");
+    setter.call(py_tuple(py_from("carts"s), py_carts), {});
+    setter.call(py_tuple(py_from("lattice"s), py_lattice), {});
+    setter.call(py_tuple(py_from("force"s), py_force), {});
+
+    return kw;
+}
+
 // NOTE: This is the core logic of 'structural_metropolis', which
 // has been pulled out into a value-returning function to preempt any future
 // bugs related to early returns and/or accidental modification of sys.
@@ -330,8 +360,7 @@ structure_t _structural_metropolis(
         for (auto & x : force)
             x *= -1.0;
 
-#warning FIXME move that out of there
-        auto pp = sp2::python::structural_metropolis::make_param_pack(carts, pos.lattice, force);
+        auto pp = make_param_pack(carts, pos.lattice, force);
         return merge_dictionaries(pp, extra_kw, merge_strategy::ERROR);
     };
 

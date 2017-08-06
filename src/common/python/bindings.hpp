@@ -9,14 +9,6 @@
 namespace sp2 {
 namespace python {
 
-// temp
-namespace structural_metropolis {
-
-py_object_t make_param_pack(std::vector<double> carts,
-    const double lattice[3][3], std::vector<double> force);
-
-}
-
 namespace run_phonopy {
 
 #warning misplaced
