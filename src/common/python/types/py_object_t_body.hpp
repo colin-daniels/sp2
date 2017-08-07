@@ -115,14 +115,14 @@ public:
         typename T,
         typename = std::enable_if_t<std::is_default_constructible<T>::value>
     >
-    T parse_as(const char *msg) const;
+    T parse(const char *msg) const;
 
     template<
         typename T,
         typename = std::enable_if_t<std::is_default_constructible<T>::value>
     >
-    T parse_as() const
-    { return parse_as<T>("an error occurred converting data from python"); }
+    T parse() const
+    { return parse<T>("an error occurred converting data from python"); }
 
 private:
     void debug_null() const;

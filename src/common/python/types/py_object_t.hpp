@@ -36,7 +36,7 @@ template<
     typename T,
     typename = std::enable_if_t<std::is_default_constructible<T>::value>
 >
-T py_object_t::parse_as(const char *msg) const
+T py_object_t::parse(const char *msg) const
 {
     auto c = T();
     if (!from_python(*this, c))

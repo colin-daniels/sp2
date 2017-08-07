@@ -418,18 +418,18 @@ structure_t _structural_metropolis(
         auto kw = get_param_pack(pos);
         return functions.mutate
                         .call({}, kw)
-                        .template parse_as<structural_mutation_t>();
+                        .template parse<structural_mutation_t>();
     };
 
     auto call_apply = [&](auto &pos, auto &mutation) {
         if (!functions.apply)
-            return mutation.template parse_as<structural_mutation_t>();
+            return mutation.template parse<structural_mutation_t>();
 
         auto args = py_tuple(mutation);
         auto kw = get_param_pack(pos);
         return functions.apply
                         .call(args, kw)
-                        .template parse_as<structural_mutation_t>();
+                        .template parse<structural_mutation_t>();
     };
 
     auto call_applied = [&](auto &pos, auto &mutation, double was, double now) {
@@ -463,7 +463,7 @@ structure_t _structural_metropolis(
         auto kw = get_param_pack(pos);
         return functions.is_repeatable
                         .call(args, kw)
-                        .template parse_as<bool>();
+                        .template parse<bool>();
     };
 
     auto call_scale = [&](auto &pos, auto &mutation, double factor) {
