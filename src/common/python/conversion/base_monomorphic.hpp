@@ -3,6 +3,7 @@
 
 #include "concrete.hpp"
 #include "numpy.hpp"
+#include "common/python/types/py_object_t_body.hpp"
 
 #include <type_traits>
 

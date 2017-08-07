@@ -2,9 +2,7 @@
 
 #include "concrete.hpp"
 
-#include "common/python/types/py_ref_t.hpp"
-#include "common/python/types/py_object_t.hpp"
-#include "common/python/error.hpp"
+#include "common/python/internals.hpp"
 
 using namespace std;
 

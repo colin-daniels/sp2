@@ -3,9 +3,8 @@
 #define SP2_NDARRAY_INSTANTIATIONS_VISIBLE
 #include "numpy.hpp"
 
-#include "common/python/error.hpp"
+#include "common/python/internals.hpp"
 #include "common/python/include_numpy.hpp"
-#include "common/python/types/py_ref_t.hpp"
 
 namespace sp2 {
 namespace python {

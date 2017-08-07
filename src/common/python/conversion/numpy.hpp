@@ -1,7 +1,6 @@
 #ifndef SP2_PYTHON_CONVERSION_NUMPY_HPP
 #define SP2_PYTHON_CONVERSION_NUMPY_HPP
 
-#include "common/python/bindings.hpp"
 #include "common/python/types/as_ndarray.hpp"
 #include "common/python/types/py_ref_t_fwd.hpp"
 

@@ -94,6 +94,7 @@ set(SOURCE_FILES
         src/common/minimize/linesearch.cpp
         src/common/minimize/linear_cg.cpp
         src/common/minimize/acgsd.cpp
+        src/common/minimize/metropolis.cpp
         src/common/minimize/metropolis.hpp
         src/common/minimize/metropolis_enums.hpp
         src/common/minimize/fire.cpp
@@ -101,8 +102,8 @@ set(SOURCE_FILES
         src/diagnostic/expect_python_headers
         src/diagnostic/forward_dependency_cycle
 ################################################################################
-        IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/bindings.cpp
-        IF_PYTHON_ENABLED ___________________ src/common/python/bindings.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python.hpp
+        IF_PYTHON_ENABLED ___________________ src/common/python/internals.hpp
 
         IF_PYTHON_ENABLED ___________________ src/common/python/conversion.hpp
         IF_PYTHON_ENABLED WITH_PYTHON_O_FLAGS src/common/python/conversion/custom.cpp

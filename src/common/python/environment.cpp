@@ -1,11 +1,10 @@
 #include <Python.h>
 
+#include "internals.hpp"
 #include "environment.hpp"
 #include "include_numpy.hpp"
-#include "error.hpp"
 #include "modules/fake_modules.hpp"
 #include "modules/ext_modules.hpp"
-#include "common/python/types/py_ref_t.hpp"
 
 #include <iostream>
 

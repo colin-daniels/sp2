@@ -24,7 +24,7 @@ void sp2::python::fake_modules::initialize()
         py_ref_t module = scope(PyImport_ExecCodeModule(fake_qualified_name.c_str(), code.raw()));
         throw_on_py_err();
 
-        p->module = std::move(module);
+        p->module = std::move(opaque(module));
     }
 }
 

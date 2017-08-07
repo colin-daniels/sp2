@@ -18,10 +18,10 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <phonopy/phonopy_io.hpp>
-#include <common/math/rotations.hpp>
-#include <common/util/random.hpp>
-#include <common/python/bindings.hpp>
+#include "phonopy/phonopy_io.hpp"
+#include "common/math/rotations.hpp"
+#include "common/util/random.hpp"
+#include "common/python.hpp"
 
 using namespace std;
 using namespace sp2;
@@ -281,6 +281,25 @@ void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
 
 //--------------------
 
+#ifdef SP2_ENABLE_PHONOPY
+sp2::python::py_object_t make_extra_kw(
+    std::vector<size_t> sc_to_prim)
+{
+    using namespace sp2::python;
+
+    auto list = py_from(sc_to_prim);
+    auto &module = fake_modules::mutation_helper::fake_module.module;
+    auto klass = module.getattr("supercell_index_mapper");
+
+    auto py_sc_map = klass.call(py_tuple(list), {});
+
+    auto kw = py_import("builtins").getattr("dict").call();
+    kw.getattr("__setitem__").call({py_from("supercell"s), py_sc_map});
+
+    return kw;
+}
+#endif // SP2_ENABLE_PHONOPY
+
 // Perform structure-aware metropolis minimization, with extra data
 //  specific to run_phonopy.
 template<typename S>
@@ -304,7 +323,7 @@ void perform_structural_metropolis(S &sys,
     if (indices.size() != supercell_size)
     { throw logic_error("_/o\\_"); }
 
-    auto extra_kw = python::run_phonopy::make_extra_kw(indices);
+    auto extra_kw = make_extra_kw(indices);
     minimize::metropolis::structural(sys, extra_kw, met_set);
 #endif // SP2_ENABLE_PYTHON
 }
