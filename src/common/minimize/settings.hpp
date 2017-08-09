@@ -212,6 +212,8 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///
     /// This should return a value which can be recognized
     ///  as a 'structural_mutation_t'.
+    ///
+    /// When transforming positions, DO NOT wrap them into the PBC box.
     std::string mutate = "mutate";
 
     /// Advanced callback for generating mutations.
@@ -230,6 +232,8 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///  (1) a mutation,
     ///  (2) the standard kw arguments provided to 'mutate'
     /// It should produce a value parsable as 'structural_mutation_t'.
+    ///
+    /// When transforming positions, DO NOT wrap them into the PBC box.
     ///
     /// # default definition
     /// def apply(mutation, **kw):

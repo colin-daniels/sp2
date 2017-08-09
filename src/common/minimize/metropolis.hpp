@@ -296,6 +296,10 @@ struct scaling_control_t
 sp2::python::py_object_t make_param_pack(std::vector<double> carts,
     const double lattice[3][3], std::vector<double> force);
 
+static structure_t apply_structural_mutation(
+    const structure_t &in_pos, const structural_mutation_t &mutation);
+
+
 // NOTE: This is the core logic of 'structural_metropolis', which
 // has been pulled out into a value-returning function to preempt any future
 // bugs related to early returns and/or accidental modification of sys.
@@ -309,8 +313,6 @@ structure_t _structural_metropolis(
     structural_metropolis_settings_t met_set)
 {
     using namespace sp2::python;
-
-    initial_pos.reduce_positions();
 
     size_t natom = sys.get_structure().positions.size(); // FIXME
 
@@ -482,49 +484,7 @@ structure_t _structural_metropolis(
     // - 'advanced_xyz_fn' is callback 'xyz' when "advanced = true"
 
     auto basic_generate_fn = call_mutate;
-    auto basic_apply_fn = [&](auto &in_pos, auto &mutation) {
-        auto pos = in_pos;
-
-        switch (mutation.type)
-        {
-        case structural_mutation_type::LATTICE:
-        {
-            const as_ndarray_t<double> &arr = mutation.data;
-            const std::vector<double> &d = arr.data();
-            if (arr.shape() != std::vector<size_t>{3, 3})
-                throw std::runtime_error("script produced wrong shape lattice");
-
-            auto new_lattice = mat3x3_t{{d[0], d[1], d[2]},
-                                        {d[3], d[4], d[5]},
-                                        {d[6], d[7], d[8]}};
-            pos.rescale(new_lattice);
-
-            break;
-        }
-
-        case structural_mutation_type::CART_COORDS:
-        {
-            const as_ndarray_t<double> &arr = mutation.data;
-            if (arr.shape() != std::vector<size_t>{natom, 3})
-                throw std::runtime_error("script produced wrong shape carts");
-
-            pos.positions = dtov3(arr.data());
-            pos.reduce_positions();
-
-            break;
-        }
-
-        case structural_mutation_type::FRAC_COORDS:
-            // TODO maybe
-            throw std::runtime_error(
-                "mutation of frac coords not yet implemented");
-
-        default:
-            throw std::runtime_error("unreachable");
-        }
-
-        return pos;
-    };
+    auto basic_apply_fn = apply_structural_mutation;
     auto basic_applied_fn = [&](...) {};
     auto basic_visit_fn = [&](...) {};
 
@@ -532,8 +492,8 @@ structure_t _structural_metropolis(
     auto advanced_apply_fn = [&](auto &in_pos, auto &mutation) {
         // convert the script's own mutation type to structural_mutation_t...
         auto cxx_mutation = call_apply(in_pos, mutation);
-        // ...and delegate to the
-        return basic_apply_fn(in_pos, cxx_mutation);
+        // ...and carry on.
+        return apply_structural_mutation(in_pos, cxx_mutation);
     };
     auto advanced_applied_fn = call_applied;
     auto advanced_visit_fn = call_visit;
@@ -580,10 +540,61 @@ structure_t _structural_metropolis(
     }
 };
 
+static structure_t apply_structural_mutation(
+    const structure_t &in_pos,
+    const structural_mutation_t &mutation)
+{
+    auto pos = in_pos;
+    std::size_t natom = pos.positions.size();
 
+    switch (mutation.type)
+    {
+    case structural_mutation_type::LATTICE:
+    {
+        const as_ndarray_t<double> &arr = mutation.data;
+        const std::vector<double> &d = arr.data();
+        if (arr.shape() != std::vector<size_t>{3, 3})
+            throw std::runtime_error("script produced wrong shape lattice");
+
+        auto new_lattice = mat3x3_t{{d[0], d[1], d[2]},
+                                    {d[3], d[4], d[5]},
+                                    {d[6], d[7], d[8]}};
+        pos.rescale(new_lattice);
+
+        break;
+    }
+
+    case structural_mutation_type::CART_COORDS:
+    {
+        const as_ndarray_t<double> &arr = mutation.data;
+        if (arr.shape() != std::vector<size_t>{natom, 3})
+            throw std::runtime_error("script produced wrong shape carts");
+
+        // DO NOT WRAP.  Doing so will cause edge effects,
+        //  I imagine due to however Lammps handles neighbor pairs.
+        pos.positions = dtov3(arr.data());
+
+        break;
+    }
+
+    case structural_mutation_type::FRAC_COORDS:
+        // TODO maybe
+        throw std::runtime_error(
+            "mutation of frac coords not yet implemented");
+
+    default:
+        throw std::runtime_error("unreachable");
+    }
+
+    return pos;
+};
 
 /// Perform structure-aware metropolis minimization, leaving the optimal
 /// structure in 'sys' on exit.
+///
+/// Positions are NOT reduced at any point, so that image offsets in a supercell
+/// are preserved.
+// (...also, reducing them confuses lammps)
 template<typename S>
 void structural(S &sys,
     python::py_object_t extra_kw,
