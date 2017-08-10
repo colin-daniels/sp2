@@ -45,6 +45,7 @@ inline int run_phonopy_with_args(const phonopy::phonopy_settings_t pset,
     return system(command.c_str());
 }
 
+void add_hydrogen(structure_t &structure);
 void relax_structure(structure_t &structure, run_settings_t rset);
 int get_symmetric_cell(sp2::structure_t &structure, sp2::run_settings_t &rset);
 
@@ -137,7 +138,12 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
 
     // relax
     write_log(settings.log_filename, "Relaxing Structure");
-    relax_structure(structure, settings);
+
+    // construct system + minimize with default parameters
+    if (settings.add_hydrogen)
+        add_hydrogen(structure);
+    if (settings.phonopy_settings.do_minimization)
+        relax_structure(structure, settings);
 
     sort_structure_types(structure);
     io::write_structure("POSCAR", structure, false, file_type::POSCAR);
@@ -225,6 +231,14 @@ sp2::structure_t shake_structure(sp2::structure_t structure, double mag = 0.05)
         v += sp2::random_vec3(rng.get_gen()) * mag;
 
     return structure;
+}
+
+void add_hydrogen(structure_t &structure)
+{
+    airebo::system_control_t sys;
+    sys.init(structure);
+    sys.add_hydrogen();
+    structure = sys.get_structure();
 }
 
 // extremely simple orthogonal lattice relaxation
@@ -332,15 +346,6 @@ void perform_structural_metropolis(S &sys,
 
 void relax_structure(structure_t &structure, run_settings_t rset)
 {
-    // construct system + minimize with default parameters
-    if (rset.add_hydrogen)
-    {
-        airebo::system_control_t sys;
-        sys.init(structure);
-        sys.add_hydrogen();
-        structure = sys.get_structure();
-    }
-
     auto supercell = util::construct_supercell(structure,
         rset.phonopy_settings.supercell_dim[0],
         rset.phonopy_settings.supercell_dim[1],

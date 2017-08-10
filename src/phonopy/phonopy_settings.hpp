@@ -43,6 +43,7 @@ struct phonopy_settings_t : public io::json_serializable_t
     double raman_active_cutoff = 1e-3;
     int polarization_axes[2] = {0, 0};
 
+    bool do_minimization = true;
     bool calc_displacements = true;
     bool calc_force_sets = true;
     bool calc_bands = true;
