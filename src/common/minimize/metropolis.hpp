@@ -89,7 +89,7 @@ P advanced(
         double value_new = objective_fn(position_new);
         bool successful = value_new < value_best;
 
-        callbacks.visit(position_best, value_best, true);
+        callbacks.visit(position_new, value_new, successful);
         callbacks.applied(position_best, mutation, value_best, value_new);
         if (successful) {
             if (settings.output_level > 1) {
