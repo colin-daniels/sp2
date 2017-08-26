@@ -9,6 +9,27 @@
 namespace sp2 {
 namespace phonopy {
 
+enum class fc_compute_type : int
+{
+    NONE = 0,
+    /// Write force_constants.hdf5 only if it does not exist.
+    AUTO = 1,
+    /// Always write force_constants.hdf5, even if it exists.
+    ALWAYS = 2
+};
+
+} // namespace phonopy
+
+template<>
+constexpr enum_map_t<phonopy::fc_compute_type>
+    enum_map<phonopy::fc_compute_type> =
+    {
+        {phonopy::fc_compute_type::AUTO,   "auto"},
+        {phonopy::fc_compute_type::ALWAYS, "always"}
+    };
+
+namespace phonopy {
+
 struct qpoint_t : public io::json_serializable_t
 {
     std::string label = "G";
@@ -47,6 +68,8 @@ struct phonopy_settings_t : public io::json_serializable_t
     bool calc_displacements = true;
     bool calc_force_sets = true;
     bool calc_bands = true;
+
+    fc_compute_type compute_force_constants = fc_compute_type::AUTO;
 
     std::vector<qpoint_t> qpoints = {
         qpoint_t("\u0393", 0, 0, 0),

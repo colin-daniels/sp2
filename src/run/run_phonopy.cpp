@@ -176,6 +176,17 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
         generate_force_sets(settings);
     }
 
+    if (settings.phonopy_settings.compute_force_constants ==
+        phonopy::fc_compute_type::ALWAYS &&
+        io::file_exists("force_constants.hdf5"))
+    {
+        if (!io::remove_file("force_constants.hdf5"))
+        {
+            std::cerr << "Failed to remove force_constants.hdf5.\n";
+            return EXIT_FAILURE;
+        }
+    }
+
     write_log(settings.log_filename, "Computing Force Constants");
     if (settings.phonopy_settings.calc_raman)
     {
