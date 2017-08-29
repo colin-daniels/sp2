@@ -48,7 +48,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
     if (settings.value_tolerance    <= 0 &&
         settings.grad_max_tolerance <= 0 &&
         settings.gradient_tolerance <= 0 &&
-        settings.iteration_limit    <= 0)
+        !settings.iteration_limit)
         throw invalid_argument("all exit conditions disabled or set to 0.");
 
     // storage variables:
@@ -280,7 +280,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
                                 grad_mag < settings.gradient_tolerance ||
                       max_norm(gradient) < settings.grad_max_tolerance ||
                            n_target_fail > settings.target_exit_min    ||
-            (settings.iteration_limit > 0 && iter >= settings.iteration_limit);
+            (settings.iteration_limit && iter >= *settings.iteration_limit);
 
         if (acgsd_exit)
         {

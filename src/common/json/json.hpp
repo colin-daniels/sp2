@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <json/json.h>
+#include <optional.hpp>
 
 namespace sp2 {
 namespace io {
@@ -136,6 +137,21 @@ bool get_json_as_type(const Json::Value &obj, std::vector<T> &vec)
 }
 
 
+template<typename T>
+bool get_json_as_type(const Json::Value &obj,
+    std::experimental::optional<T> &option)
+{
+    if (obj.isNull())
+    {
+        option = {};
+        return true;
+    }
+
+    option = T();
+    return get_json_as_type(obj, *option);
+}
+
+
 template<
     typename T,
     typename = std::enable_if_t<
@@ -204,6 +220,16 @@ void get_type_as_json(const T (&arr)[N][M], Json::Value &obj)
         get_type_as_json(arr[i], temp);
         obj.append(temp);
     }
+}
+
+template<typename T>
+void get_type_as_json(const std::experimental::optional<T> &option,
+    Json::Value &obj)
+{
+    if (option)
+        get_type_as_json(*option, obj);
+    else
+        obj = Json::nullValue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
