@@ -299,6 +299,7 @@ target_link_libraries(sp2 PRIVATE
         jsoncpp_lib_static
         yaml-cpp
         templ
+        optional
         randutils)
 
 # internal code generation target

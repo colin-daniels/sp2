@@ -63,8 +63,7 @@ P advanced(
     const metropolis_settings_t &settings)
 {
     using namespace std;
-    if (settings.iteration_limit <= 0 &&
-        settings.improve_iteration_limit <= 0)
+    if (!settings.iteration_limit && !settings.improve_iteration_limit)
         throw invalid_argument("all exit conditions disabled or set to 0.");
 
     int mutations = 0,        // total number of mutations tested
@@ -109,11 +108,11 @@ P advanced(
 
         // exit conditions
         bool done = false;
-        done = done || settings.improve_iteration_limit > 0 &&
-                       mutations_since >= settings.improve_iteration_limit;
+        done = done || settings.improve_iteration_limit &&
+                       mutations_since >= *settings.improve_iteration_limit;
 
-        done = done || settings.iteration_limit > 0 &&
-                       mutations >= settings.iteration_limit;
+        done = done || settings.iteration_limit &&
+                       mutations >= *settings.iteration_limit;
 
         if (done)
         {
