@@ -95,8 +95,8 @@ double cubic_min(ls_bound_t low, ls_bound_t high)
                   / (delta_a * delta_a),
         coeff_c = low.s;
 
-    // use the + root for the minimum position
-    // (due to the positive second derivative)
+    // f'(x) has two roots.
+    // For real a, b, c, the + root always corresponds to the minimum.
     return low.a + (static_cast<double>(
                         sqrt(coeff_b * coeff_b - 3 * coeff_a * coeff_c))
                     - coeff_b) / (3 * coeff_a);
