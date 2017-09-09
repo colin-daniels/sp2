@@ -280,26 +280,24 @@ include(Sp2CompileChecks)
 ## Dependencies/external code                                                 ##
 ################################################################################
 
+# interface target populated in the libs/ subdir in order to pass along new
+# dependencies to the main target
+add_library(project-deps INTERFACE)
 # add subdirectories for external libraries/code
-add_subdirectory(external)
+add_subdirectory(deps)
+
+target_link_libraries(sp2 PRIVATE
+        project-deps)
 
 if(SP2_ENABLE_TESTS)
     add_test(all sp2 --test)
-    target_link_libraries(sp2 PRIVATE gtest)
+    target_compile_definitions(sp2 PRIVATE
+            SP2_ENABLE_TESTS)
+
     # note: should work for gcc, clang
-    target_compile_options(sp2 PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(sp2 PRIVATE
+            -Wall -Wextra -pedantic)
 endif()
-
-if(SP2_ENABLE_LAMMPS)
-    target_link_libraries(sp2 PRIVATE lammps)
-endif()
-
-target_link_libraries(sp2 PRIVATE
-        cxxopts
-        jsoncpp_lib_static
-        yaml-cpp
-        templ
-        randutils)
 
 # internal code generation target
 add_subdirectory(src/common/codegen)
@@ -312,81 +310,20 @@ add_dependencies(sp2 code_generation)
 if(SP2_ENABLE_MPI)
     target_compile_definitions(sp2 PRIVATE
             SP2_ENABLE_MPI)
-
-    # System MPI
-    find_package(MPI REQUIRED)
-    list(APPEND CMAKE_CXX_COMPILE_FLAGS
-            ${MPI_CXX_COMPILE_FLAGS})
-
-    set(CMAKE_CXX_LINK_FLAGS
-            ${CMAKE_CXX_LINK_FLAGS}
-            ${MPI_CXX_LINK_FLAGS})
-
-    # Boost MPI (also requires Boost serialization)
-    if(NOT BUILD_SHARED_LIBS)
-        set(Boost_USE_STATIC_LIBS ON)
-    endif()
-
-    set(Boost_USE_MULTITHREADED ON)
-    find_package(Boost REQUIRED COMPONENTS mpi serialization)
-
-    # update target
-    target_include_directories(sp2 PRIVATE
-            ${MPI_CXX_INCLUDE_PATH}
-            ${Boost_INCLUDE_DIRS})
-
-    target_link_libraries(sp2 PUBLIC
-            ${MPI_CXX_LIBRARIES}
-            ${Boost_LIBRARIES})
-else()
-    set(THREADS_PREFER_PTHREAD_FLAG ON)
-    find_package(Threads REQUIRED)
-
-    target_link_libraries(sp2
-            Threads::Threads)
 endif()
 
 ################################################################################
 ## Phonopy                                                                    ##
 ################################################################################
 
-function(find_phonopy version)
-    cmake_parse_arguments(FP_ARGS "REQUIRED" "" "" ${ARGN})
-
-    # force find_package() to look for python again
-    unset(PYTHON_EXECUTABLE CACHE)
-    unset(PYTHONINTERP_FOUND CACHE)
-
-    if(FP_ARGS_REQUIRED)
-        set(REQUIRED_STR "REQUIRED")
-    endif()
-
-    find_package(PythonInterp ${version} ${REQUIRED_STR})
-    if(PYTHONINTERP_FOUND)
-        find_python_module(phonopy ${REQUIRED_STR})
-    endif()
-endfunction(find_phonopy)
-
 if (SP2_ENABLE_PYTHON)
-    find_package(PythonLibs 3 REQUIRED)
-    find_package(NumPy REQUIRED)
-    target_link_libraries(sp2 PRIVATE ${PYTHON_LIBRARIES})
-    target_include_directories(sp2 PRIVATE ${PYTHON_INCLUDE_DIRS} ${PYTHON_NUMPY_INCLUDE_DIR})
-    target_compile_definitions(sp2 PRIVATE SP2_ENABLE_PYTHON)
+    target_compile_definitions(sp2 PRIVATE
+            SP2_ENABLE_PYTHON)
 endif()
 
 if(SP2_ENABLE_PHONOPY)
     target_compile_definitions(sp2 PRIVATE
             SP2_ENABLE_PHONOPY)
-
-    if(NOT PYMOD_PHONOPY_LOCATION)
-        # first we try to find the python 3+ version of phonopy
-        find_phonopy(3)
-        # then if that fails, fall back to 2.7
-        if(NOT PYMOD_PHONOPY_FOUND)
-            find_phonopy(2.7 REQUIRED)
-        endif()
-    endif()
 endif()
 
 

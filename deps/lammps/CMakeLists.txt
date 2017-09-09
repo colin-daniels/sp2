@@ -1,3 +1,7 @@
+if(NOT SP2_ENABLE_LAMMPS)
+    return()
+endif()
+
 set(LAMMPS_SOURCE_DIR ${CMAKE_BINARY_DIR}/lammps-build)
 set(LAMMPS_BUILD_DIR ${LAMMPS_SOURCE_DIR}/lammps)
 
@@ -55,3 +59,6 @@ set_target_properties(lammps PROPERTIES
         IMPORTED_LOCATION "${LAMMPS_BUILD_DIR}/${LAMMPS_LIB_NAME}"
         INTERFACE_INCLUDE_DIRECTORIES "${LAMMPS_SOURCE_DIR}"
         INTERFACE_COMPILE_DEFINITIONS SP2_ENABLE_LAMMPS)
+
+target_link_libraries(project-deps INTERFACE
+        lammps)
