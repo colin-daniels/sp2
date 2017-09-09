@@ -50,6 +50,9 @@ enable_testing()
 ## Sources                                                                    ##
 ################################################################################
 
+# documentation, target is 'docs'
+add_subdirectory(docs EXCLUDE_FROM_ALL)
+
 # interface target populated in the libs/ subdir in order to pass along new
 # dependencies to the main target
 add_library(project-deps INTERFACE)
