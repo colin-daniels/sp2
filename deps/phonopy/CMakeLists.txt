@@ -2,6 +2,8 @@ if(NOT SP2_ENABLE_PHONOPY OR PYMOD_PHONOPY_LOCATION)
     return()
 endif()
 
+include(FindPythonModule)
+
 # force find_package() to look for python even if it already found it
 unset(PYTHON_EXECUTABLE CACHE)
 unset(PYTHONINTERP_FOUND CACHE)
