@@ -10,3 +10,6 @@ add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR}
 
 target_include_directories(yaml-cpp INTERFACE
         "$<BUILD_INTERFACE:${yaml-cpp_SOURCE_DIR}/include>")
+
+target_link_libraries(project-deps INTERFACE
+        yaml-cpp)

@@ -7,3 +7,6 @@ download_project(PROJ cxxopts
 option(CXXOPTS_BUILD_EXAMPLES "" OFF)
 option(CXXOPTS_BUILD_TESTS "" OFF)
 add_subdirectory(${cxxopts_SOURCE_DIR} ${cxxopts_BINARY_DIR})
+
+target_link_libraries(project-deps INTERFACE
+        cxxopts)
