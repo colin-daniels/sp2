@@ -8,6 +8,8 @@
 #include "common/function_types.hpp"
 #include "common/minimize/metropolis_enums.hpp"
 
+#include <optional.hpp>
+
 namespace sp2 {
 namespace minimize {
 
@@ -29,8 +31,8 @@ struct acgsd_settings_t : public io::json_serializable_t
     /// exit condition: tol > |delta value|, 0 to disable
     double value_tolerance = 0;
 
-    /// exit condition: limit > iteration, 0 to disable
-    int iteration_limit = 1000;
+    /// exit condition: limit > iteration, null to disable
+    std::experimental::optional<int> iteration_limit = 1000;
 
     /// how much output should be sent to standard output (0-3):
     /// 0: None
@@ -165,10 +167,10 @@ struct fire_settings_t : public io::json_serializable_t
 /// input settings structure for metropolis minimization
 struct metropolis_settings_t : public io::json_serializable_t
 {
-    /// exit condition: total number of mutations tested, 0 to disable
-    int iteration_limit = 0;
-    /// exit condition: number of mutations tested since last improvement, 0 to disable
-    int improve_iteration_limit = 100;
+    /// exit condition: total number of mutations tested, null to disable
+    std::experimental::optional<int> iteration_limit;
+    /// exit condition: number of mutations tested since last improvement, null to disable
+    std::experimental::optional<int> improve_iteration_limit = 100;
 
     /// how much output should be sent to standard output (0-3):
     /// 0: None
