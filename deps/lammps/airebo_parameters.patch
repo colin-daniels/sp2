@@ -1,0 +1,566 @@
+--- pair_airebo.cpp	2017-08-17 17:51:34.000000000 -0400
++++ pair_airebo.cpp	2017-08-31 16:05:58.817739851 -0400
+@@ -3335,6 +3335,37 @@
+    read AIREBO potential file
+ ------------------------------------------------------------------------- */
+ 
++#include "CH.airebo.hpp"
++
++char* fake_gets(char* str, int count, const char* &stream)
++{
++// Expected behavior
++//
++// Reads at most count - 1 characters from the given file stream and stores 
++// them in the character array pointed to by str. Parsing stops if end-of-file 
++// occurs or a newline character is found, in which case str will contain that 
++// newline character. If no errors occur, writes a null character at the 
++// position immediately after the last character written to str.
++
++  char* current = str;
++
++  for (int i = 0; i + 1 < count; ++i)
++  {
++    if (*stream != '\n')
++    {
++      *current++ = *stream++;
++    }
++    else
++    {
++      *current++ = *stream++;
++      *current = '\0';
++      return str;
++    }
++  }
++
++  return NULL;
++}
++
+ void PairAIREBO::read_file(char *filename)
+ {
+   int i,j,k,l,limit;
+@@ -3368,7 +3399,7 @@
+   // read file on proc 0
+ 
+   if (me == 0) {
+-    FILE *fp = force->open_potential(filename);
++    const char* fp = airebo_coeff;
+     if (fp == NULL) {
+       char str[128];
+       if (morseflag)
+@@ -3381,243 +3412,243 @@
+     // skip initial comment lines
+ 
+     while (1) {
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       if (s[0] != '#') break;
+     }
+ 
+     // read parameters
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmin_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmin_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmin_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmax_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmax_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmax_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmaxp_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmaxp_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcmaxp_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&smin);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Nmin);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Nmax);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&NCmin);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&NCmax);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Q_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Q_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Q_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&alpha_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&alpha_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&alpha_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&A_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&A_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&A_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_CC1);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_CC2);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_CC3);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_CH1);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_CH2);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_CH3);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_HH1);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_HH2);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&BIJc_HH3);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_CC1);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_CC2);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_CC3);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_CH1);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_CH2);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_CH3);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_HH1);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_HH2);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&Beta_HH3);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rho_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rho_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rho_HH);
+ 
+     // LJ parameters
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcLJmin_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcLJmin_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcLJmin_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcLJmax_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcLJmax_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&rcLJmax_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&bLJmin_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&bLJmin_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&bLJmin_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&bLJmax_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&bLJmax_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&bLJmax_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&epsilon_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&epsilon_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&epsilon_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&sigma_CC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&sigma_CH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&sigma_HH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&epsilonT_CCCC);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&epsilonT_CCCH);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%lg",&epsilonT_HCCH);
+ 
+     if (morseflag) {
+       // lines for reading in MORSE parameters from CH.airebo_m file
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&epsilonM_CC);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&epsilonM_CH);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&epsilonM_HH);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&alphaM_CC);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&alphaM_CH);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&alphaM_HH);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&reqM_CC);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&reqM_CH);
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&reqM_HH);
+     }
+ 
+ 
+     // gC spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     // number-1 = # of domains for the spline
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit; i++) {
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&gCdom[i]);
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     for (i = 0; i < limit-1; i++) {
+       for (j = 0; j < 6; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&gC1[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     for (i = 0; i < limit-1; i++) {
+       for (j = 0; j < 6; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&gC2[i][j]);
+       }
+     }
+ 
+     // gH spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit; i++) {
+-      fgets(s,MAXLINE,fp);
++      fake_gets(s,MAXLINE,fp);
+       sscanf(s,"%lg",&gHdom[i]);
+     }
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < limit-1; i++) {
+       for (j = 0; j < 6; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&gH[i][j]);
+       }
+     }
+ 
+     // pCC spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit/2; i++) {
+       for (j = 0; j < limit/2; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&pCCdom[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < (int) pCCdom[0][1]; i++) {
+       for (j = 0; j < (int) pCCdom[1][1]; j++) {
+         for (k = 0; k < 16; k++) {
+-          fgets(s,MAXLINE,fp);
++          fake_gets(s,MAXLINE,fp);
+           sscanf(s,"%lg",&pCC[i][j][k]);
+         }
+       }
+@@ -3625,24 +3656,24 @@
+ 
+     // pCH spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit/2; i++) {
+       for (j = 0; j < limit/2; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&pCHdom[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < (int) pCHdom[0][1]; i++) {
+       for (j = 0; j < (int) pCHdom[1][1]; j++) {
+         for (k = 0; k < 16; k++) {
+-          fgets(s,MAXLINE,fp);
++          fake_gets(s,MAXLINE,fp);
+           sscanf(s,"%lg",&pCH[i][j][k]);
+         }
+       }
+@@ -3650,26 +3681,26 @@
+ 
+     // piCC cpline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit/2; i++) {
+       for (j = 0; j < limit/3; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&piCCdom[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < (int) piCCdom[0][1]; i++) {
+       for (j = 0; j < (int) piCCdom[1][1]; j++) {
+         for (k = 0; k < (int) piCCdom[2][1]; k++) {
+           for (l = 0; l < 64; l = l+1) {
+-            fgets(s,MAXLINE,fp);
++            fake_gets(s,MAXLINE,fp);
+             sscanf(s,"%lg",&piCC[i][j][k][l]);
+           }
+         }
+@@ -3678,26 +3709,26 @@
+ 
+     // piCH spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit/2; i++) {
+       for (j = 0; j < limit/3; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&piCHdom[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < (int) piCHdom[0][1]; i++) {
+       for (j = 0; j < (int) piCHdom[1][1]; j++) {
+         for (k = 0; k < (int) piCHdom[2][1]; k++) {
+           for (l = 0; l < 64; l = l+1) {
+-            fgets(s,MAXLINE,fp);
++            fake_gets(s,MAXLINE,fp);
+             sscanf(s,"%lg",&piCH[i][j][k][l]);
+           }
+         }
+@@ -3706,26 +3737,26 @@
+ 
+     // piHH spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit/2; i++) {
+       for (j = 0; j < limit/3; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&piHHdom[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < (int) piHHdom[0][1]; i++) {
+       for (j = 0; j < (int) piHHdom[1][1]; j++) {
+         for (k = 0; k < (int) piHHdom[2][1]; k++) {
+           for (l = 0; l < 64; l = l+1) {
+-            fgets(s,MAXLINE,fp);
++            fake_gets(s,MAXLINE,fp);
+             sscanf(s,"%lg",&piHH[i][j][k][l]);
+           }
+         }
+@@ -3734,33 +3765,31 @@
+ 
+     // Tij spline
+ 
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+     sscanf(s,"%d",&limit);
+ 
+     for (i = 0; i < limit/2; i++) {
+       for (j = 0; j < limit/3; j++) {
+-        fgets(s,MAXLINE,fp);
++        fake_gets(s,MAXLINE,fp);
+         sscanf(s,"%lg",&Tijdom[i][j]);
+       }
+     }
+-    fgets(s,MAXLINE,fp);
++    fake_gets(s,MAXLINE,fp);
+ 
+     for (i = 0; i < (int) Tijdom[0][1]; i++) {
+       for (j = 0; j < (int) Tijdom[1][1]; j++) {
+         for (k = 0; k < (int) Tijdom[2][1]; k++) {
+           for (l = 0; l < 64; l = l+1) {
+-            fgets(s,MAXLINE,fp);
++            fake_gets(s,MAXLINE,fp);
+             sscanf(s,"%lg",&Tijc[i][j][k][l]);
+           }
+         }
+       }
+     }
+-
+-    fclose(fp);
+   }
+ 
+   // store read-in values in arrays

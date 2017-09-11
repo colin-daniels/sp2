@@ -241,27 +241,10 @@ add_dependencies(sp2 code_generation)
 
 if(SP2_ENABLE_TESTS)
     add_test(all sp2 --test)
-    target_compile_definitions(sp2 PRIVATE
-            SP2_ENABLE_TESTS)
 
     # note: should work for gcc, clang
     target_compile_options(sp2 PRIVATE
             -Wall -Wextra -pedantic)
-endif()
-
-if(SP2_ENABLE_MPI)
-    target_compile_definitions(sp2 PRIVATE
-            SP2_ENABLE_MPI)
-endif()
-
-if (SP2_ENABLE_PYTHON)
-    target_compile_definitions(sp2 PRIVATE
-            SP2_ENABLE_PYTHON)
-endif()
-
-if(SP2_ENABLE_PHONOPY)
-    target_compile_definitions(sp2 PRIVATE
-            SP2_ENABLE_PHONOPY)
 endif()
 
 ################################################################################

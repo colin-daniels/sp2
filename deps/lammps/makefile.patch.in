@@ -1,0 +1,29 @@
+--- src/MAKE/OPTIONS/Makefile.omp	2017-09-11 09:49:31.043969065 -0400
++++ src/MAKE/OPTIONS/Makefile.omp	2017-09-11 10:18:39.243486092 -0400
+@@ -6,13 +6,13 @@
+ # compiler/linker settings
+ # specify flags and libraries needed for your compiler
+ 
+-CC =		mpicxx
+-CCFLAGS =	-g -O3 -restrict -fopenmp
++CC =		@CMAKE_CXX_COMPILER@
++CCFLAGS =	-g -O3 -fopenmp @MPI_CXX_COMPILE_FLAGS@ @MPI_CXX_INCLUDE_PATH_STR@
+ SHFLAGS =	-fPIC
+ DEPFLAGS =	-M
+ 
+-LINK =		mpicxx
+-LINKFLAGS =	-g -O -fopenmp
++LINK =		@CMAKE_CXX_COMPILER@
++LINKFLAGS =	-g -O -fopenmp @MPI_CXX_LINK_FLAGS@ 
+ LIB = 
+ SIZE =		size
+ 
+@@ -41,7 +41,7 @@
+ 
+ MPI_INC =       -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX=1
+ MPI_PATH = 
+-MPI_LIB =	
++MPI_LIB =	@MPI_CXX_LIBRARIES_STR@
+ 
+ # FFT library
+ # see discussion in Section 2.2 (step 6) of manual
