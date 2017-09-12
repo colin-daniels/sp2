@@ -185,10 +185,6 @@ struct metropolis_settings_t : public io::json_serializable_t
 
 struct structural_metropolis_funcs_t : public io::json_serializable_t
 {
-    /// When false, "basic callbacks" are used.
-    /// When true, "advanced callbacks" are used.
-    bool advanced = false;
-
     /// If specified, methods will be called on an instance of the specified
     /// class in the module rather than on the module itself.
     /// This facilitates the saving and sharing of state in the callbacks.
@@ -203,35 +199,30 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///     return sys.modules[__name__]
     std::string class_;
 
-    /// Basic callback for an all-in-one mutation function.
+    /// Callback for generating mutations.
     ///
     /// All arguments supplied to this are keyword arguments.
     /// They are not currently documented (sorry).
     /// For future compatibility, the callback should always take a **kw
     ///  argument to collect any remainder not explicitly of interest.
     ///
-    /// This should return a value which can be recognized
-    ///  as a 'structural_mutation_t'.
-    ///
+    /// For basic usage, this is the only callback you actually need to supply;
+    /// in this case, it must return a value which can be recognized as a
+    /// 'structural_mutation_t'.
     /// When transforming positions, DO NOT wrap them into the PBC box.
-    std::string mutate = "mutate";
-
-    /// Advanced callback for generating mutations.
     ///
-    /// If defined, then it should accept the same arguments
-    /// as 'mutate', but can return any arbitrary python object.
-    /// The other callbacks will decide how to interpret this object.
-    ///
-    /// Documentation for other advanced callbacks will use the term "mutation"
-    /// to indicate whatever form of data is returned by this function.
-    std::string generate = "generate";
+    /// In more advanced usage, this can return any arbitrary python object;
+    /// the other callbacks will decide how to interpret this object.
+    /// Documentation for other callbacks will use the term "mutation" to
+    /// indicate whatever form of object is returned by this function.
+    std::string generate;
 
-    /// Advanced callback for applying a mutation to a structure.
+    /// Callback for applying a mutation to a structure.
     ///
     /// If defined, then it should accept:
     ///  (1) a mutation,
-    ///  (2) the standard kw arguments provided to 'mutate'
-    /// It should produce a value parsable as 'structural_mutation_t'.
+    ///  (2) kw args describing the structure
+    /// It should produce a value recognizable as a 'structural_mutation_t'.
     ///
     /// When transforming positions, DO NOT wrap them into the PBC box.
     ///
@@ -240,7 +231,7 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///     return mutation  # assume mutation is 'structural_mutation_t'
     std::string apply;
 
-    /// Advanced callback for following up on the result of 'apply'
+    /// Callback for following up on the result of 'apply'
     ///  once the objective has been recomputed.
     ///
     /// If defined, then it should accept:
@@ -254,8 +245,7 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///     pass
     std::string applied;
 
-    /// Advanced callback on called on each structure whose objective is
-    /// computed.
+    /// Callback on called on each structure whose objective is computed.
     ///
     /// The difference between 'visit' and 'applied' is nuanced; this function
     /// focuses on the structures, while 'applied' focuses on the mutations.
@@ -273,13 +263,13 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///     pass
     std::string visit;
 
-    /// Advanced callback for determining if mutations are worth repeating.
+    /// Callback for determining if mutations are worth repeating.
     /// (i.e., if the mutation decreases total energy, might we expect that
     ///        repeating the mutation decreases energy again?)
     ///
     /// If defined, then it should accept:
     ///  (1) a mutation,
-    ///  (2) the standard kw arguments provided to 'mutate'
+    ///  (2) kw args describing the structure
     /// It should produce a 'bool'
     ///
     /// # default definition
@@ -287,12 +277,12 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///     return false  # never repeat anything.
     std::string is_repeatable;
 
-    /// Advanced callback for modifying a mutation's strength.
+    /// Callback for modifying a mutation's strength.
     ///
     /// If defined, then it should accept:
     ///  (1) a mutation,
     ///  (2) a float 'strength' factor (< 1 or > 1),
-    ///  (3) the standard kw arguments provided to 'mutate'
+    ///  (3) kw args describing the structure
     /// It should produce a mutation.
     ///
     /// # default definition

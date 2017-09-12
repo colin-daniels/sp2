@@ -209,10 +209,8 @@ bool minimize::structural_metropolis_funcs_t::serialize(Json::Value &output) con
 {
     io::serialize_basic(output,
         "class", class_,
-        "advanced", advanced,
         "generate", generate,
         "apply", apply,
-        "mutate", mutate,
         "applied", applied,
         "visit", visit,
         "is_repeatable", is_repeatable,
@@ -226,10 +224,8 @@ bool minimize::structural_metropolis_funcs_t::deserialize(const Json::Value &inp
 {
     io::deserialize_basic(input,
         "class", class_,
-        "advanced", advanced,
         "generate", generate,
         "apply", apply,
-        "mutate", mutate,
         "applied", applied,
         "visit", visit,
         "is_repeatable", is_repeatable,

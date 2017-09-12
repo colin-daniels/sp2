@@ -40,7 +40,7 @@ using scale_fn_t = std::function<D(const P&, const D&, double)>;
 template<typename P, typename D>
 using is_repeatable_fn_t = std::function<bool(const P&, const D&)>;
 
-/// Advanced callbacks for metropolis.
+/// Callbacks for metropolis.
 template<typename P, typename D>
 struct callbacks_t
 {
@@ -56,7 +56,7 @@ struct callbacks_t
 };
 
 template<typename P, typename D>
-P advanced(
+P metropolis(
     objective_fn_t<P> objective_fn,
     callbacks_t<P, D> callbacks,
     P initial_position,
@@ -129,29 +129,6 @@ P advanced(
     } while (true);
 
     return position_best;
-}
-
-// Simplified interface taking a single function that produces a new position.
-template <typename P>
-P basic(
-    objective_fn_t<P> objective_fn,
-    mutate_fn_t<P> mutation_fn,
-    P initial_position,
-    const metropolis_settings_t &settings)
-{
-    auto callbacks = callbacks_t<P, P> {
-        // generate
-        [&](const auto &pos) { return mutation_fn(pos); },
-        // apply
-        [&](const auto &pos, const auto &diff) { return diff; },
-        // applied
-        [&](const auto &pos, const auto &diff, double was, double now) { return; },
-        // visit
-        [&](const auto &pos, double value, bool better) { return; }
-    };
-
-    return advanced<P,P>(objective_fn,
-        callbacks, initial_position, settings);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -339,7 +316,6 @@ structure_t _structural_metropolis(
     // Fair warning: This struct is immediately constructed.
     struct py_mutation_functions_t
     {
-        bool advanced = false;
         // class_ isn't here; it's only used to resolve the others.
         py_object_t mutate;
         py_object_t generate;
@@ -372,69 +348,66 @@ structure_t _structural_metropolis(
                 }
             }();
 
-            // The logic for resolving many of these pieces of
-            // configuration is spread all over the place.
+            // Logic for callback configuration and resolution is a bit
+            // scattered (but better than it used to be).
             //
-            // All except 'generate' and 'mutate' follow the following rules:
+            // Most user callbacks follow the following rules:
             // - If specified in config, the function must exist.
             // - If not specified, a default name is assumed.
             // - If not specified and no function is present with this
-            //    default name, a default implementation is used.
+            //   default name, a default implementation may be used.
             //
             // Logic for the default implementation is currently provided
-            // by the python::structural_metropolis::call_XXX family of
-            // functions, and is triggered by the function being NULL.
+            // by the 'call_foo' functions defined below, and is triggered by
+            // the 'user_foo' object being NULL.
             //
             // This null comes from the default supplied to getattr().
-            auto lookup = [&](auto &member, const auto &fs_member, const char* default_name) {
+            auto lookup = [&](const auto &fs_member, const char* default_name) {
                 if (fs_member.empty())
-                    member = instance.getattr(default_name, {});
+                    return instance.getattr(default_name, {});
                 else
-                    member = instance.getattr(fs_member);
+                    return instance.getattr(fs_member);
             };
 
-            if (func_set.advanced) {
+            // This is for callbacks without a default definition.
+            // (whatever name it assumes, it must exist)
+            auto lookup_required = [&](const auto &fs_member, const char* default_name) {
+                std::string name = fs_member.empty() ? default_name : fs_member;
+                return instance.getattr(name);
+            };
 
-                generate = instance.getattr(func_set.generate);
-
-                lookup(apply, func_set.apply, "apply");
-                lookup(applied, func_set.applied, "applied");
-                lookup(visit, func_set.visit, "visit");
-                lookup(is_repeatable, func_set.is_repeatable, "is_repeatable");
-                lookup(scale, func_set.scale, "scale");
-            }
-            else
-            {
-                // basic interface
-                mutate = instance.getattr(func_set.mutate);
-            }
+            generate = lookup_required(func_set.generate, "generate");
+            apply         = lookup(func_set.apply, "apply");
+            applied       = lookup(func_set.applied, "applied");
+            visit         = lookup(func_set.visit, "visit");
+            is_repeatable = lookup(func_set.is_repeatable, "is_repeatable");
+            scale         = lookup(func_set.scale, "scale");
         }
     } functions(met_set, get_param_pack(initial_pos));
 
     //----------------------------------------------------------
 
-    // These wrap the python methods, containing all the conversion code
-    //  and providing the default definitions for missing callbacks.
-
-    auto call_mutate = [&](auto &pos) {
+    // These methods wrap the python methods, doing the following:
+    //  * Providing default implementations for null functions
+    //  * Constructing arguments
+    //  * Performing some conversions
+    auto call_generate = [&](auto &pos) {
         auto kw = get_param_pack(pos);
-        return functions.mutate
-                        .call({}, kw)
-                        .template parse<structural_mutation_t>();
+        return functions.generate.call({}, kw);
     };
 
     auto call_apply = [&](auto &pos, auto &mutation) {
+        // Default definition
         if (!functions.apply)
-            return mutation.template parse<structural_mutation_t>();
+            return mutation;
 
         auto args = py_tuple(mutation);
         auto kw = get_param_pack(pos);
-        return functions.apply
-                        .call(args, kw)
-                        .template parse<structural_mutation_t>();
+        return functions.apply.call(args, kw);
     };
 
     auto call_applied = [&](auto &pos, auto &mutation, double was, double now) {
+        // Default definition
         if (!functions.applied)
             return;
 
@@ -444,6 +417,7 @@ structure_t _structural_metropolis(
     };
 
     auto call_visit = [&](auto &pos, double value, bool better) {
+        // Default definition
         if (!functions.visit)
             return;
 
@@ -452,12 +426,8 @@ structure_t _structural_metropolis(
         functions.visit.call(args, kw);
     };
 
-    auto call_generate = [&](auto &pos) {
-        auto kw = get_param_pack(pos);
-        return functions.generate.call({}, kw);
-    };
-
     auto call_is_repeatable = [&](auto &pos, auto &mutation) {
+        // Default definition
         if (!functions.is_repeatable)
             return false;
 
@@ -469,6 +439,7 @@ structure_t _structural_metropolis(
     };
 
     auto call_scale = [&](auto &pos, auto &mutation, double factor) {
+        // Default definition
         if (!functions.scale)
             return mutation;
 
@@ -480,64 +451,42 @@ structure_t _structural_metropolis(
     //----------------------------------------------------------
 
     // These are the callbacks for metropolis.
-    // - 'basic_xyz_fn' is callback 'xyz' when "advanced = false"
-    // - 'advanced_xyz_fn' is callback 'xyz' when "advanced = true"
-
-    auto basic_generate_fn = call_mutate;
-    auto basic_apply_fn = apply_structural_mutation;
-    auto basic_applied_fn = [&](...) {};
-    auto basic_visit_fn = [&](...) {};
-
-    auto advanced_generate_fn = call_generate;
-    auto advanced_apply_fn = [&](auto &in_pos, auto &mutation) {
+    // This is where we implement any logic that needs to run on top
+    //  of the python callback. (of which there isn't much)
+    // - 'metro_xyz_fn' is callback 'xyz' for metropolis
+    auto metro_generate = call_generate;
+    auto metro_apply = [&](auto &in_pos, auto &mutation) {
+        auto py_mutation = call_apply(in_pos, mutation);
         // convert the script's own mutation type to structural_mutation_t...
-        auto cxx_mutation = call_apply(in_pos, mutation);
+        auto cxx_mutation = py_mutation.template parse<structural_mutation_t>();
         // ...and carry on.
         return apply_structural_mutation(in_pos, cxx_mutation);
     };
-    auto advanced_applied_fn = call_applied;
-    auto advanced_visit_fn = call_visit;
-    auto advanced_is_repeatable_fn = call_is_repeatable;
-    auto advanced_scale_fn = call_scale;
+    auto metro_applied = call_applied;
+    auto metro_visit = call_visit;
+    auto metro_is_repeatable = call_is_repeatable;
+    auto metro_scale = call_scale;
 
-    if (met_set.python_functions.advanced)
-    {
-        using pos_t = structure_t;
-        using diff_t = py_object_t;
-        minimize::metropolis::callbacks_t<pos_t, diff_t> raw_callbacks{
-            advanced_generate_fn,
-            advanced_apply_fn,
-            advanced_applied_fn,
-            advanced_visit_fn,
+    using pos_t = structure_t;
+    using diff_t = py_object_t;
+    minimize::metropolis::callbacks_t<pos_t, diff_t> raw_callbacks{
+        metro_generate,
+        metro_apply,
+        metro_applied,
+        metro_visit,
+    };
+
+    auto scaling_control =
+        minimize::metropolis::scaling_control_t<pos_t, diff_t>{
+            met_set.scaling_settings,
+            raw_callbacks,
+            metro_is_repeatable,
+            metro_scale,
         };
+    auto callbacks = scaling_control.get_callbacks();
 
-        auto scaling_control =
-            minimize::metropolis::scaling_control_t<pos_t, diff_t>{
-                met_set.scaling_settings,
-                raw_callbacks,
-                advanced_is_repeatable_fn,
-                advanced_scale_fn,
-            };
-        auto callbacks = scaling_control.get_callbacks();
-
-        return minimize::metropolis::advanced<pos_t, diff_t>
-            (value_fn, callbacks, initial_pos, met_set.settings);
-    }
-    else
-    {
-        // Simple script interface.
-        // Ironically, this still uses the advanced metropolis interface.
-        // (perhaps we don't need metropolis::basic?)
-        using pos_t = structure_t;
-        using diff_t = structural_mutation_t;
-        minimize::metropolis::callbacks_t<pos_t, diff_t> callbacks{
-            basic_generate_fn,
-            basic_apply_fn,
-            [&](...) { },
-        };
-        return minimize::metropolis::advanced<pos_t, diff_t>
-            (value_fn, callbacks, initial_pos, met_set.settings);
-    }
+    return minimize::metropolis::metropolis<pos_t, diff_t>
+        (value_fn, callbacks, initial_pos, met_set.settings);
 };
 
 static structure_t apply_structural_mutation(
