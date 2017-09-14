@@ -9,8 +9,7 @@ bool lammps::lammps_settings_t::serialize(Json::Value& output) const
         "compute_lj", compute_lj,
         "compute_torsion", compute_torsion,
         "log_output", log_output,
-        "sigma_scale", sigma_scale,
-        "lj_scale", lj_scale);
+        "sigma_scale", sigma_scale);
     return true;
 }
 
@@ -21,7 +20,6 @@ bool lammps::lammps_settings_t::deserialize(const Json::Value& input)
         "compute_lj", compute_lj,
         "compute_torsion", compute_torsion,
         "log_output", log_output,
-        "sigma_scale", sigma_scale,
-        "lj_scale", lj_scale);
+        "sigma_scale", sigma_scale);
     return true;
 }

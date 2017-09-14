@@ -13,7 +13,6 @@ struct lammps_settings_t : public io::json_serializable_t
         compute_torsion = false, ///< flag to compute torsion for C-C bonds
         log_output = false;      ///< whether lammps should write to stdout or not
     double sigma_scale = 3.0;    ///< range of lj forces is this times 3.4 angstroms
-    double lj_scale = 1.0;       ///< amount to scale the vdW forces
 
     bool serialize(Json::Value &output) const;
 
