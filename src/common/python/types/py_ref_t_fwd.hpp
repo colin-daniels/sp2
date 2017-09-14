@@ -1,10 +1,10 @@
 /* ========================================================================== */
-#ifndef SP2_PY_REF_T_BODY_FWD
-#define SP2_PY_REF_T_BODY_FWD
+#ifndef SP2_PY_REF_T_BODY_FWD_DAG
+#define SP2_PY_REF_T_BODY_FWD_DAG
 
 // no forward dependencies
 
-#undef SP2_PY_REF_T_BODY_FWD
+#undef SP2_PY_REF_T_BODY_FWD_DAG
 #else
 #include "diagnostic/forward_dependency_cycle"
 #endif

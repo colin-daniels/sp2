@@ -32,10 +32,7 @@ template<typename... Ts>
 py_object_t py_tuple(Ts... ts)
 { return detail::py_tuple_noconv({py_from(ts)...}); }
 
-template<
-    typename T,
-    typename = std::enable_if_t<std::is_default_constructible<T>::value>
->
+template<typename T, typename>
 T py_object_t::parse(const char *msg) const
 {
     auto c = T();

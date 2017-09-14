@@ -28,6 +28,7 @@
 #include "numpy.hpp"
 
 #include <type_traits>
+#include <iostream>
 
 namespace sp2 {
 namespace python {

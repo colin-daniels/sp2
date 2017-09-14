@@ -12,23 +12,30 @@
 // The rest of this file shows the typical layout of a FWD file.
 
 /* ========================================================================== */
-#ifndef EXAMPLE_FWD
-#define EXAMPLE_FWD
+#ifndef EXAMPLE_FWD_DAG
+#define EXAMPLE_FWD_DAG
 
 // Includes for other FWD files ONLY
 #include "my-dependency_fwd.hpp"
 #include "another-dependency_fwd.hpp"
 
-#undef EXAMPLE_FWD
+#undef EXAMPLE_FWD_DAG
 #else
 #include "diagnostic/forward_dependency_cycle"
 #endif
 /* ========================================================================== */
-// Notice that the rest of the FWD file is entirely unguarded.
-// But this should be no problem so long as there are no definitions!
+#ifndef EXAMPLE_FWD
+#define EXAMPLE_FWD
+// The rest of the FWD file has a standard header guard.
+// Ideally, this could be left out since most forward files should have no
+// definitions of any kind; but that's too hard to ensure in the general case.
+//
+// This header guard is ONLY to prevent double definitions, not to enable
+// circular dependencies.  The DAG check made sure of this.
 
 // standard library includes ONLY
 #include <vector>
 
 // followed by declarations
 void example(std::vector<int>);
+#endif

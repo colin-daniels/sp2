@@ -94,9 +94,9 @@ struct structure_t : public io::json_serializable_t
     ///
     /// Caveats:
     /// - Output is unspecified in the presence of non-periodic axes.
-    constexpr double get_volume() const
+    double get_volume() const
     {
-        return abs(mat3x3_t(lattice).determinant());
+        return std::abs(mat3x3_t(lattice).determinant());
     }
 
     /// Compute the length of each lattice vector.

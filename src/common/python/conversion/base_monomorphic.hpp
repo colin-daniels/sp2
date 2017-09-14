@@ -1,6 +1,8 @@
 #ifndef SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_HPP
 #define SP2_PYTHON_CONVERSION_BASE_MONOMORPHIC_HPP
 
+#include "base_monomorphic_fwd.hpp"
+
 #include "concrete.hpp"
 #include "numpy.hpp"
 #include "common/python/types/py_object_t_body.hpp"
@@ -20,34 +22,22 @@ namespace python {
 //  available to all consumers.
 
 #ifdef Py_PYTHON_H
-template<
-    typename T,
-    typename = std::enable_if_t<has_concrete_to_python<T>::value>
->
+template<typename T, typename>
 bool to_python(const T &c, py_ref_t &py)
 { return to_python_concrete(c, py); }
 #endif // Py_PYTHON_H
 
-template<
-    typename T,
-    typename = std::enable_if_t<has_concrete_to_python<T>::value>
->
+template<typename T, typename>
 bool to_python(const T &c, py_object_t &py)
 { return to_python_concrete(c, py.inner()); }
 
 #ifdef Py_PYTHON_H
-template<
-    typename T,
-    typename = std::enable_if_t<has_concrete_from_python<T>::value>
->
+template<typename T, typename>
 bool from_python(const py_ref_t &py, T &c)
 { return from_python_concrete(py, c); }
 #endif // Py_PYTHON_H
 
-template<
-    typename T,
-    typename = std::enable_if_t<has_concrete_from_python<T>::value>
->
+template<typename T, typename>
 bool from_python(const py_object_t &py, T &c)
 { return from_python_concrete(py.inner(), c); }
 

@@ -48,7 +48,7 @@ double penalty_func(const structure_t &structure)
                 n_bonds += (1.65 - bond_len) / 0.1;
         }
 
-        auto diff = abs(n_bonds - 3.0);
+        auto diff = std::abs(n_bonds - 3.0);
         penalty_potential += diff * multiplier;
     }
 
@@ -150,7 +150,7 @@ void process_files()
         double alpha = get_slope(0);
         cout << filename << " v: " << sys.get_value()
              << "\tuc: " << uc << "\ts: " << alpha << endl;
-        for (int i = 0; i < 5 && abs(alpha) > 1e-4; ++i)
+        for (int i = 0; i < 5 && std::abs(alpha) > 1e-4; ++i)
         {
             alpha = minimize::linesearch(get_value, get_slope,
                 max(min(alpha, 0.5), -0.5));

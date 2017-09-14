@@ -268,7 +268,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
             settings.target_exit_min > 0)
         {
             double delta_target = value - settings.target_value,
-                delta_ratio = abs(delta_val / delta_target);
+                delta_ratio = std::abs(delta_val / delta_target);
 
             n_target_fail += 1;
             if (delta_target < 0 || delta_ratio > settings.target_ratio_tol)
@@ -276,10 +276,10 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         }
 
         // exit conditions
-        bool acgsd_exit = abs(delta_val) < settings.value_tolerance    ||
-                                grad_mag < settings.gradient_tolerance ||
-                      max_norm(gradient) < settings.grad_max_tolerance ||
-                           n_target_fail > settings.target_exit_min    ||
+        bool acgsd_exit = std::abs(delta_val) < settings.value_tolerance    ||
+                                     grad_mag < settings.gradient_tolerance ||
+                           max_norm(gradient) < settings.grad_max_tolerance ||
+                                n_target_fail > settings.target_exit_min    ||
             (settings.iteration_limit > 0 && iter >= settings.iteration_limit);
 
         if (acgsd_exit)

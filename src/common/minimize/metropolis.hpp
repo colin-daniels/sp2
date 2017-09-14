@@ -109,11 +109,11 @@ P advanced(
 
         // exit conditions
         bool done = false;
-        done = done || settings.improve_iteration_limit > 0 &&
-                       mutations_since >= settings.improve_iteration_limit;
+        done |= settings.improve_iteration_limit > 0 &&
+                mutations_since >= settings.improve_iteration_limit;
 
-        done = done || settings.iteration_limit > 0 &&
-                       mutations >= settings.iteration_limit;
+        done |= settings.iteration_limit > 0 &&
+                mutations >= settings.iteration_limit;
 
         if (done)
         {

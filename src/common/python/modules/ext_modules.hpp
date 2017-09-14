@@ -54,7 +54,9 @@ namespace {
 namespace method_def {
 
 /// Helper method to make a PyMethodDef for a function that takes keyword args.
-constexpr PyMethodDef
+/// NOTE: this can't be constexpr thanks to some technical details of
+///        reinterpret_cast. (gcc lets this slip by, but not clang)
+PyMethodDef
 args_kw(const char *name, PyCFunctionWithKeywords func, const char *doc)
 {
     // NOTE: The reinterpret_cast is from a 3-ary function pointer to a 2-ary

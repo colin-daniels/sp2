@@ -75,6 +75,7 @@ void py_ref_t::destroy()
 py_ref_t &py_ref_t::operator=(const py_ref_t &other)
 {
     *this = other.dup();
+    return *this;
 }
 
 py_ref_t::py_ref_t(const py_ref_t &other)
@@ -133,7 +134,7 @@ py_ref_t getattr(const py_ref_t &o, const char *attr, const py_ref_t &def)
     if (hasattr(o, attr))
         return getattr(o, attr);
     else
-        return move(def);
+        return def;
 }
 
 bool hasattr(const py_ref_t &o, const char *attr)
