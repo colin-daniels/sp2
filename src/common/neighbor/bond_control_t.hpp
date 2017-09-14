@@ -60,6 +60,9 @@ public:
     bond_control_t() : na(0), nb(0),
         bond_lock(false), cell_min(0), cell_padding(0) {}
 
+    bond_control_t(const double input_lattice[3][3],
+        double bond_max, double recalc_threshold);
+
     /// \brief initialize the object
     /// \param input_lattice int[3][3] input lattice vectors (rows), leave 0 for non-periodic directions
     /// \param bond_max double bonds are guaranteed to exist if atoms are within this distance

@@ -67,8 +67,9 @@ bool run_settings_t::deserialize(const Json::Value &input)
     }, run_type::NONE, true);
 
     potential = io::deserialize_enum<potential_type>(input, "potential_type", {
-        {"rebo",   potential_type::REBO},  // acceptable inputs
-        {"lammps", potential_type::LAMMPS} //
+        {"rebo",   potential_type::REBO},   // acceptable inputs
+        {"lammps", potential_type::LAMMPS}, //
+        {"phosphorene", potential_type::PHOSPHORENE}
     }, potential_type::NONE, true);
 
     if (mode == run_type::NONE)

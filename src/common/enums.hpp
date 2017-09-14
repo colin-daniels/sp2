@@ -135,7 +135,8 @@ enum class potential_type : int
 {
     NONE   = 0,
     REBO   = 1,
-    LAMMPS = 2
+    LAMMPS = 2,
+    PHOSPHORENE = 3
 };
 
 template<>

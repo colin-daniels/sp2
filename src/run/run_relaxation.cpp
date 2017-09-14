@@ -1,8 +1,9 @@
-#include "run/run_types.hpp"
-#include "common/minimize/minimize.hpp"
+#include "src/run/run_types.hpp"
+#include "src/common/minimize/minimize.hpp"
 
-#include "lammps/lammps_interface.hpp"
-#include "airebo/system_control_t.hpp"
+#include "src/lammps/lammps_interface.hpp"
+#include "src/airebo/system_control_t.hpp"
+#include "src/phos/ephos.hpp"
 
 int sp2::run_relaxation(const run_settings_t &config, MPI_Comm)
 {
@@ -33,16 +34,13 @@ int sp2::run_relaxation(const run_settings_t &config, MPI_Comm)
 
     switch (config.potential)
     {
-    case potential_type::LAMMPS: {
-        lammps::system_control_t sys(config.structure, config.lammps_settings);
-
-        return run_relax(sys);
-    }
-    case potential_type::REBO: {
-        airebo::system_control_t sys(config.structure);
-
-        return run_relax(sys);
-    }
+    case potential_type::LAMMPS:
+        return run_relax(lammps::system_control_t(
+            config.structure, config.lammps_settings));
+    case potential_type::REBO:
+        return run_relax(airebo::system_control_t(config.structure));
+    case potential_type::PHOSPHORENE:
+        return run_relax(phos::phosphorene_sys_t(config.structure));
     default:
         return EXIT_FAILURE;
     }

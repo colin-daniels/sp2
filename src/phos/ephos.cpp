@@ -1,24 +1,70 @@
-#include <vector>
-#include "vec3_t.hpp"
-#include "ud_graph_t.hpp"
+#include "ephos.hpp"
+
+#include "src/common/math/vec3_t.hpp"
+#include "src/common/math/vec3_util.hpp"
 
 using namespace sp2;
 
-struct system_state
+namespace {
+
+inline std::array<vec3_t, 6> get_pristine_bond_array()
 {
-	std::vector<int> atom_types; // indexed by atom/vertex ids
+    constexpr double theta1 =  96.5 * (M_PI / 180), // same pucker horizontal
+                     theta2 = 101.9 * (M_PI / 180), // different pucker vertical
+         equilibrium_length =  2.22 * (M_PI / 180); // angstroms
 
-	sp2::graph::ud_graph_t graph;
-	std::vector<vec3_t> bond_deltas; // indexed by bond/edge ids
-	std::vector<vec3_t> pristine_deltas; // indexed by bond/edge ids
-};
+    static const std::array<vec3_t, 6> pristine_bonds = []{
+        vec3_t bonds[6] = {
+            vec3_t{-std::cos(theta1 / 2),  std::sin(theta1 / 2), 0},
+            vec3_t{-std::cos(theta1 / 2), -std::sin(theta1 / 2), 0},
+            vec3_t{ std::cos(theta2), 0, -std::sin(theta2)}
+        };
 
-//vector<vec3_t> deltas;
+        // reverse directions
+        for (int i = 3; i < 6; ++i)
+            bonds[i] = -bonds[i - 3];
 
-//deltas.push_back(vec3_t(x, y, z));
-//deltas.emplace_back(x, y, z);
+        // scale to correct length
+        for (auto &b : bonds)
+            b *= equilibrium_length;
 
-vec3_t sin_grad (vec3_t r1, vec3_t r2)
+        std::array<vec3_t, 6> temp;
+        for (int i = 0; i < 6; ++i)
+            temp[i] = bonds[i];
+
+        return temp;
+    }();
+
+    return pristine_bonds;
+}
+
+inline int get_pristine_type(vec3_t bond)
+{
+    static const auto pristine_bonds = get_pristine_bond_array();
+
+    int min_id = -1;
+    double min_diff = std::numeric_limits<double>::max();
+
+    for (int i = 0; i < pristine_bonds.size(); ++i)
+    {
+        double diff = (pristine_bonds[i] - bond).mag_sq();
+        if (diff < min_diff)
+        {
+            min_id = i;
+            min_diff = diff;
+        }
+    }
+
+    return min_id;
+}
+
+inline vec3_t get_pristine_bond(int bond_type)
+{
+    static const auto pristine_bonds = get_pristine_bond_array();
+    return pristine_bonds[bond_type];
+}
+
+vec3_t sin_grad(vec3_t r1, vec3_t r2)
 {
 	vec3_t grad;
 	vec3_t cp= cross(r1,r2);
@@ -36,9 +82,9 @@ vec3_t sin_grad (vec3_t r1, vec3_t r2)
 	grad=((num/mcp)*magr1*magr2-mcp*(r1*(magr2/magr1)+r2*(magr1/magr2)))/(msr1*msr2);
 
 	return grad;
-} 
+}
 
-vec3_t cos_grad (vec3_t r1, vec3_t r2)
+vec3_t cos_grad(vec3_t r1, vec3_t r2)
 {
 	vec3_t num1=(r1+r2)*r1.mag()*r2.mag();
 	vec3_t num2 =dot(r1,r2)*(r1*(r2.mag()/r1.mag())+r2*(r1.mag()/r2.mag()));
@@ -48,10 +94,79 @@ vec3_t cos_grad (vec3_t r1, vec3_t r2)
 	return grad;
 }
 
-double calculate(system_state &state, std::vector<vec3_t> &forces)
-{
+} // anonymous namespace
 
-	// Define the constant parameters used in the calculations
+phos::phosphorene_sys_t::phosphorene_sys_t(const sp2::structure_t &input) :
+    structure(input),
+    potential(0),
+    forces(structure.types.size(), {0, 0, 0}),
+    bond_control(structure.lattice, bond_cutoff, 0),
+    pristine_bond_types{}
+{
+    // do initial update to calculate bonds
+    bond_control.update(v3tod(structure.positions));
+    // and immediately lock them since this potential is not a dynamic one
+    bond_control.lock_bonds();
+
+    update_pristine_bond_types();
+}
+
+void phos::phosphorene_sys_t::update_pristine_bond_types()
+{
+    auto bond_deltas = dtov3(bond_control.get_bond_deltas());
+    // match bonds to their pristine types by checking distances
+    pristine_bond_types.clear();
+    for (auto delta : bond_deltas)
+    {
+        pristine_bond_types.push_back(
+            get_pristine_type(delta)
+        );
+    }
+}
+
+diff_fn_t phos::phosphorene_sys_t::get_diff_fn()
+{
+    return [this](const auto &pos) {
+        this->set_position(pos);
+        this->update();
+
+        return std::make_pair(this->get_value(), this->get_gradient());
+    };
+}
+
+void phos::phosphorene_sys_t::set_position(const std::vector<double> &input)
+{
+    structure.positions = dtov3(input);
+}
+
+std::vector<double> phos::phosphorene_sys_t::get_gradient() const
+{
+    return v3tod(forces);
+}
+
+std::vector<double> phos::phosphorene_sys_t::get_position() const
+{
+    return v3tod(structure.positions);
+}
+
+double phos::phosphorene_sys_t::get_value() const
+{
+    return potential;
+}
+
+
+void phos::phosphorene_sys_t::update()
+{
+    // reset state
+    potential = 0;
+    forces = std::vector<vec3_t>(structure.types.size(), {0, 0, 0});
+
+    // update bonds from positions
+    bond_control.update(v3tod(structure.positions));
+	auto graph = bond_control.get_graph();
+    auto bond_deltas = dtov3(bond_control.get_bond_deltas());
+
+    // Define the constant parameters used in the calculations
 	constexpr double Kr=11.17,
 		KrP=10.3064,  // P denotes a ' (prime) on the variable
 		Kt=1.18, // t is short for theta
@@ -67,9 +182,9 @@ double calculate(system_state &state, std::vector<vec3_t> &forces)
 	//std::vector<vec3_t> forces(atom_types.size(), vec3_t(0, 0, 0));
 
 	double sum=0.0;
-	for (int id_a : state.graph.vertices()) // atom ids
+	for (int id_a : graph.vertices()) // atom ids
 	{
-		int type_a = state.atom_types[id_a];
+		auto type_a = structure.types[id_a];
 
 		// // if possible
 		// for (ud_edge_t edge : graph.edges(atom_id))
@@ -89,9 +204,9 @@ double calculate(system_state &state, std::vector<vec3_t> &forces)
 			      edge2{-1, -1, -1},
 			      edge3{-1, -1, -1};
 
-		for (sp2::graph::ud_edge_t edge : state.graph.edges(id_a))
+		for (sp2::graph::ud_edge_t edge : graph.edges(id_a))
 		{
-			if (type_a == state.atom_types[edge.b])
+			if (type_a == structure.types[edge.b])
 			{
 				// same pucker
 				if (edge1.id == -1)
@@ -130,26 +245,26 @@ double calculate(system_state &state, std::vector<vec3_t> &forces)
 
 		if (edge1.id != -1)
 		{
-			r12 = state.pristine_deltas[edge1.id];
-			r12_def = state.bond_deltas[edge1.id];
-			// edge1.b 
+			r12 = get_pristine_bond(pristine_bond_types[edge1.id]);
+			r12_def = bond_deltas[edge1.id];
+			// edge1.b
 		}
 
 		if (edge2.id != -1)
 		{
-			r13 = state.pristine_deltas[edge2.id];
-			r13_def = state.bond_deltas[edge2.id];
+			r13 = get_pristine_bond(pristine_bond_types[edge2.id]);
+			r13_def = bond_deltas[edge2.id];
 		}
 
 		if (edge3.id != -1)
 		{
-			r14 = state.pristine_deltas[edge3.id];
-			r14_def = state.bond_deltas[edge3.id];
+			r14 = get_pristine_bond(pristine_bond_types[edge3.id]);
+			r14_def = bond_deltas[edge3.id];
 		}
 
 		double d12= r12.mag(),
 		       d12_def= r12_def.mag();
-		
+
 		double d13= r13.mag(),
 		       d13_def= r13_def.mag();
 
@@ -231,7 +346,7 @@ double calculate(system_state &state, std::vector<vec3_t> &forces)
 		vec3_t grad_cos213 = cos_grad(r12,r13);
 		vec3_t grad_sin213 = sin_grad(r12,r13);
 		vec3_t d_dtheta213 = (-1.0*(grad_cos213_def-grad_cos213)*sin_213-(cos_213_def-cos_213)*grad_sin213)/(sin_213*sin_213);
-		
+
 		vec3_t t3=-2.0*ds*Kt*d_theta213*d_dtheta213;
 
 		// Term 4 of the Sum
@@ -244,7 +359,7 @@ double calculate(system_state &state, std::vector<vec3_t> &forces)
 		vec3_t grad_cos314 = cos_grad(r13,r14);
 		vec3_t grad_sin314 = sin_grad(r13,r14);
 		vec3_t d_dtheta314 = (-1.0*(grad_cos314_def-grad_cos314)*sin_314-(cos_314_def-cos_314)*grad_sin314)/(sin_314*sin_314);
-		
+
 		vec3_t t4=-2.0*ds*KtP*(d_theta214*d_dtheta214+d_theta314*d_dtheta314);
 
 		// Term 5 of the Sum
@@ -260,7 +375,8 @@ double calculate(system_state &state, std::vector<vec3_t> &forces)
 		vec3_t t8_one=d*(d_theta214*(KrtP*(dv1/dr1)+KrtPP*(dv3/dr3))+(KrtP*dr1+KrtPP*dr3)*d_dtheta214);
 		vec3_t t8_two=d*(d_theta314*(KrtP*(dv2/dr2)+KrtPP*(dv3/dr3))+(KrtP*dr2+KrtPP*dr3)*d_dtheta314);
 		vec3_t t8=-1.0*(t8_one+t8_two);
-		
+
 	}
-	return 0.5*sum;
+
+    potential = 0.5*sum;
 }

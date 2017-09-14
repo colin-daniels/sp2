@@ -176,7 +176,8 @@ set(SOURCE_FILES
         # run/run_atac.cpp
         relaxation/relaxation_settings.cpp
         relaxation/relaxation_settings.hpp
-        include/sp2/sp2.h)
+        phos/ephos.cpp
+        include/sp2/sp2.h phos/ephos.hpp)
 
 # enable/disable inclusion of source files defined in ${SOURCE_FILES}
 # depending on current options (e.g. SP2_ENABLE_MPI, SP2_ENABLE_PHONOPY, etc)

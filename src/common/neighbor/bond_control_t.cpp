@@ -11,6 +11,12 @@
 using namespace std;
 using namespace sp2::fbc;
 
+bond_control_t::bond_control_t(const double (*input_lattice)[3],
+    double bond_max, double recalc_threshold) : bond_control_t()
+{
+    init(input_lattice, bond_max, recalc_threshold);
+}
+
 sp2::graph::ud_graph_t get_bond_graph(std::vector<double> positions,
     double lattice[3][3], double bond_max)
 {
