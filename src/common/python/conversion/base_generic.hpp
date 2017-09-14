@@ -2,6 +2,7 @@
 #define SP2_PYTHON_CONVERSION_BASE_GENERIC_HPP
 
 #include "base_generic_fwd.hpp"
+#include <iostream>
 #include "base_monomorphic_fwd.hpp"
 
 // base_generic.hpp:
