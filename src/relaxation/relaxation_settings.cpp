@@ -7,7 +7,8 @@ bool sp2::relaxation_settings_t::serialize(Json::Value &output) const
         "output_file", output_file,
         "minimize", minimize_settings
     );
-    return false;
+
+    return true;
 }
 
 bool sp2::relaxation_settings_t::deserialize(const Json::Value &input)
@@ -16,5 +17,6 @@ bool sp2::relaxation_settings_t::deserialize(const Json::Value &input)
         "output_file", output_file,
         "minimize", minimize_settings
     );
-    return false;
+
+    return true;
 }

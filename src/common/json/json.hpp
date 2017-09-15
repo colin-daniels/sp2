@@ -233,8 +233,13 @@ bool deserialize_basic(const Json::Value &input,
 {
     if (input.isMember(key)) {
         if (!get_json_as_type(input[key], std::forward<T>(value))) {
-            std::cerr << "Error deserializing value for "
-                      << '\'' << key << "'\n";
+            std::string json_actual;
+            write_json(input[key], json_actual);
+
+            std::cerr << "Error deserializing value for field named "
+                      << '\'' << key << "'\n"
+                      << "Input JSON was: \'" << json_actual << "\'\n";
+
             exit(EXIT_FAILURE);
         }
     }
