@@ -59,6 +59,8 @@ struct fake_module_t
     fake_module_t(fake_module_template_t meta)
             : meta(meta)
     {}
+
+    ~fake_module_t();
 };
 
 } // namespace python

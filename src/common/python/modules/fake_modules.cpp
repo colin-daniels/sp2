@@ -33,3 +33,17 @@ void sp2::python::fake_modules::finalize()
     for (auto p : fake_modules::all)
         p->module.destroy();
 }
+
+sp2::python::fake_module_t::~fake_module_t()
+{
+    // FIXME EVIL HORRIBLE HACK
+    //
+    // Deliberately leak the reference.
+    // Fake modules are all allocated statically, and this makes things
+    //  get ugly if C code invokes exit(), since they get destructed after
+    //  the interpreter has been shut down.
+    //
+    // The proper solution is to find a way to scope their lifetime
+    //  so that it isn't static, and ends before the interpreter closes.
+    this->module.inner().steal();
+}
