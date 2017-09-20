@@ -14,7 +14,7 @@
 #include <iostream>
 #include <vector>
 
-#include <json/json.h>
+#include "deps/json.hpp"
 
 namespace sp2 {
 namespace io {

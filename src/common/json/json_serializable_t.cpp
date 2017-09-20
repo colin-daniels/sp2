@@ -1,8 +1,6 @@
 #include "common/json/json_serializable_t.hpp"
 #include "common/json/json.hpp"
 
-#include <json/json.h>
-
 using namespace sp2;
 
 io::json_serializable_t::operator Json::Value() const

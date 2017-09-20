@@ -2,7 +2,6 @@
 #define SP2_RUN_TYPES_HPP
 
 #include <string>
-#include <json/json.h>
 #include <mpi.h>
 
 #include "common/structure_t.hpp"
