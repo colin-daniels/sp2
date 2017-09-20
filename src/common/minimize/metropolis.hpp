@@ -208,8 +208,8 @@ struct scaling_control_t
 {
     // config
     callbacks_t<P, D> cbs;
-    is_repeatable_fn_t<P, D> is_repeatable;
     scale_fn_t<P, D> scale;
+    is_repeatable_fn_t<P, D> is_repeatable;
 
     metropolis_scaling_settings_t settings;
 
@@ -223,9 +223,8 @@ struct scaling_control_t
         is_repeatable_fn_t<P, D> is_repeatable,
         scale_fn_t<P, D> scale
     )
-        : settings(settings), cbs(cbs), scale(scale),
-        is_repeatable(is_repeatable),
-        scaling_state{settings.downscale_max_attempts}
+        : cbs(cbs), scale(scale), is_repeatable(is_repeatable),
+        settings(settings), scaling_state{settings.downscale_max_attempts}
     {}
 
     callbacks_t<P, D> get_callbacks()
