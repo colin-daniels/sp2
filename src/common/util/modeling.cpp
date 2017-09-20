@@ -656,17 +656,3 @@ void recursively_shorten(const std::string prefix)
         shorten_tube(tube, 0.1);
     } while (!tube.positions.empty());
 }
-
-void sp2::util::make_nanotube_dataset()
-{
-    for (auto str : {
-//        "tube5-5",
-//        "tube6-6",
-//        "tube5-7",
-//        "tube3-9"
-        "tube5-5-open"
-    })
-    {
-        recursively_shorten(str);
-    }
-}

@@ -92,9 +92,9 @@ void remove_hydrogen(structure_t &structure,
     }
 }
 
-std::vector<sp2::vec3_t> static_atoms;
 
-void remove_static_atoms(sp2::structure_t &structure)
+void remove_static_atoms(std::vector<sp2::vec3_t> &static_atoms,
+    sp2::structure_t &structure)
 {
 
     auto graph = [&]{
@@ -159,7 +159,8 @@ void supercell_modes(vector<pair<double, vector<sp2::vec3_t>>> &modes_in,
     }
 }
 
-sp2::structure_t add_static_atoms(const sp2::structure_t &structure)
+sp2::structure_t add_static_atoms(std::vector<sp2::vec3_t> &static_atoms,
+    const sp2::structure_t &structure)
 {
     auto new_structure = structure;
 

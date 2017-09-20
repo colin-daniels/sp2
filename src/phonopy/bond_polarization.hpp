@@ -10,9 +10,6 @@
 namespace sp2 {
 namespace phonopy {
 
-#warning temp for nanotubes
-extern double tilt_angle;
-
 struct pol_constant_t
 {
     double c1 = 0, ///< a || -   a |-
