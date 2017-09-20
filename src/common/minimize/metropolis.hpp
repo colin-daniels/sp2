@@ -11,6 +11,7 @@
 #include <iostream>
 #include <iomanip>
 #include <functional>
+#include <boost/predef.h>
 
 namespace sp2 {
 namespace minimize {
@@ -241,6 +242,10 @@ struct scaling_control_t
                 case scaling_action::REGENERATE:
                     return cbs.generate(pos);
                 }
+#ifdef BOOST_COMP_GNUC
+                // silence invalid warning
+                __builtin_unreachable();
+#endif
             },
 
             // apply
@@ -290,8 +295,6 @@ structure_t _structural_metropolis(
     structural_metropolis_settings_t met_set)
 {
     using namespace sp2::python;
-
-    size_t natom = sys.get_structure().positions.size(); // FIXME
 
     auto diff_fn = [&](const auto &pos) {
         sys.set_structure(pos);
