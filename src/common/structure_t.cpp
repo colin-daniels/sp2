@@ -1,7 +1,7 @@
 #include "common/structure_t.hpp"
 #include "common/util/mpi.hpp"
 
-#include <json/json.h>
+#include "deps/json.hpp"
 #include <common/math/rotations.hpp>
 #include <common/math/vec3_util.hpp>
 

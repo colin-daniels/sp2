@@ -3,7 +3,6 @@
 //
 
 #include "phonopy_settings.hpp"
-#include "json/json.h"
 #include "common/json/json.hpp"
 #include <utility>
 
