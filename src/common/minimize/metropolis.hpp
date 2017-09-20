@@ -538,7 +538,7 @@ structure_t _structural_metropolis(
         return minimize::metropolis::advanced<pos_t, diff_t>
             (value_fn, callbacks, initial_pos, met_set.settings);
     }
-};
+}
 
 static structure_t apply_structural_mutation(
     const structure_t &in_pos,
@@ -587,7 +587,7 @@ static structure_t apply_structural_mutation(
     }
 
     return pos;
-};
+}
 
 /// Perform structure-aware metropolis minimization, leaving the optimal
 /// structure in 'sys' on exit.

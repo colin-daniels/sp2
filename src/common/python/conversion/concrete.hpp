@@ -49,7 +49,7 @@ SP2_FOR_EACH_CONCRETE_CUSTOM_TO(mac)
 
 #define MAC(T) \
     bool to_python_concrete(const T &c, py_ref_t &py)
-SP2_FOR_EACH_CONCRETE_TO( MAC );
+SP2_FOR_EACH_CONCRETE_TO( MAC )
 #undef MAC
 
 #define MAC(T) \
@@ -79,7 +79,7 @@ SP2_FOR_EACH_CONCRETE_FROM(MAC);
     template<> \
     struct has_concrete_to_python<T> : public std::true_type {}
 
-SP2_FOR_EACH_CONCRETE_TO(MAC);
+SP2_FOR_EACH_CONCRETE_TO(MAC)
 #undef MAC
 
 } // namespace python

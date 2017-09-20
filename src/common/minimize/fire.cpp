@@ -20,7 +20,7 @@ std::vector<double> sp2::minimize::fire(sp2::diff_fn_t grad_fn,
     // make a copy of x to track previous values for verlet
     std::vector<double> x = initial_position;
 
-    for (std::size_t k = 0; k < settings.max_iter; ++k)
+    for (int k = 0; k < settings.max_iter; ++k)
     {
         // update position from velocity verlet
         for (std::size_t i = 0; i < n; ++i)

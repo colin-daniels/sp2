@@ -79,7 +79,7 @@ static double compute_objective(objective_type type,
     default:
         throw std::logic_error("unrecognized objective type");
     }
-};
+}
 
 } // namespace sp2
 
