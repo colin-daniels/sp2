@@ -28,11 +28,12 @@ namespace minimize {
 /// \param gradient_fn : The objective function's associated vector gradient function.
 /// \param initial_position : The initial position to start at.
 /// \returns The best solution found before exit.
-std::vector<double> acgsd(scalar_fn_t objective_fn, vector_fn_t gradient_fn,
+[[nodiscard]] std::vector<double> acgsd(
+    scalar_fn_t objective_fn, vector_fn_t gradient_fn,
     std::vector<double> initial_position,
     const acgsd_settings_t &settings = {});
 /// \brief Non-linear conjugate gradient minimization routine, ACGSD \cite andrei2006c .
-std::vector<double> acgsd(diff_fn_t objective_fn,
+[[nodiscard]] std::vector<double> acgsd(diff_fn_t objective_fn,
     std::vector<double> initial_position,
     const acgsd_settings_t &settings = {});
 
@@ -50,10 +51,10 @@ double linesearch(diff1d_fn_t objective_fn, double alpha);
 /// \param b : The vector b in Ax = b.
 /// \param tolerance : Exit condition, ||residual||_{maximum norm} < tolerance to exit.
 /// \returns The vector x within tolerance.
-std::vector<double> linear_cg(vector_fn_t matrix_fn,
+[[nodiscard]] std::vector<double> linear_cg(vector_fn_t matrix_fn,
     std::vector<double> b, double tolerance = 1e-12);
 
-std::vector<double> fire(diff_fn_t grad_fn,
+[[nodiscard]] std::vector<double> fire(diff_fn_t grad_fn,
     double mass, std::vector<double> initial_position,
     const fire_settings_t &settings = {});
 
@@ -65,7 +66,7 @@ std::vector<double> fire(diff_fn_t grad_fn,
 /// \param objective_fn : The input objective function.
 /// \param comm : The mpi communicator on which the pso will run.
 /// \returns The best solution found before exit.
-std::vector<double> adaptive_pso(scalar_fn_t objective_fn,
+[[nodiscard]] std::vector<double> adaptive_pso(scalar_fn_t objective_fn,
     const pso_settings_t &settings, boost::mpi::communicator comm);
 
 /// function should evaluate current position and set value for particle
@@ -74,7 +75,7 @@ using pso_update_fn_t = std::function<void(particle_t&)>;
 
 /// specialization for update functions that need to know more or modify
 /// the calling particle in APSO
-std::vector<double> adaptive_pso(pso_update_fn_t update_fn,
+[[nodiscard]] std::vector<double> adaptive_pso(pso_update_fn_t update_fn,
     const pso_settings_t &settings, boost::mpi::communicator comm);
 
 #endif // SP2_ENABLE_MPI

@@ -34,7 +34,7 @@ public:
     // Make an arbitrary ndarray.
     as_ndarray_t(std::vector<T> data, std::vector<std::size_t> shape)
     {
-        auto product = 1;
+        std::size_t product = 1;
         for (auto x : shape)
             product *= x;
 

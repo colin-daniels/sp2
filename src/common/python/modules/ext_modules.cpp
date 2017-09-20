@@ -164,7 +164,7 @@ void post_py_initialize()
 
     // And that's all, folks.
     init_state = init_state_t::DONE;
-};
+}
 
 } // namespace ext_modules
 } // namespace python

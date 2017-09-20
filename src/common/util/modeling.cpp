@@ -31,7 +31,9 @@ void make_agnr_set()
             sys.init(util::construct_arm_gnr(width, length, periodic));
             sys.add_hydrogen();
 
-            minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset);
+            sys.set_position(
+                minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset)
+            );
             supercell = util::construct_supercell(sys.get_structure(), 5, 1, 1);
         }
 
@@ -39,7 +41,9 @@ void make_agnr_set()
         lset.compute_lj = false;
         lammps::system_control_t sys(supercell, lset);
 
-        minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset);
+        sys.set_position(
+            minimize::acgsd(sys.get_diff_fn(), sys.get_position(), mset)
+        );
         auto structure = sys.get_structure();
         auto pos = structure.positions;
 
@@ -578,7 +582,7 @@ void shorten_tube(sp2::structure_t &input, double delta)
     input.types.resize(input.positions.size());
 }
 
-void make_dataset(const sp2::run_settings_t &config, MPI_Comm comm)
+void make_dataset(const sp2::run_settings_t &, MPI_Comm)
 {
     using namespace sp2;
 

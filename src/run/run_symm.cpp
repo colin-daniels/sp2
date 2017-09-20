@@ -125,14 +125,19 @@ void process_files()
             if (vdot(sys.get_gradient(), sys.get_gradient()) < 1e-4)
                 return sys.get_value();
 
-            minimize::acgsd([&](const auto &pos) {
-                auto temp = sys.get_structure();
-                temp.positions = sp2::dtov3(pos);
-                sys.set_structure(temp);
+            auto min_struct = sys.get_structure();
+            min_struct.positions = sp2::dtov3(
+                minimize::acgsd([&](const auto &pos) {
+                    auto temp = sys.get_structure();
+                    temp.positions = sp2::dtov3(pos);
+                    sys.set_structure(temp);
 
-                sys.update();
-                return make_pair(sys.get_value(), sys.get_gradient());
-            }, sp2::v3tod(sys.get_structure().positions), cg_set);
+                    sys.update();
+                    return make_pair(sys.get_value(), sys.get_gradient());
+                }, sp2::v3tod(sys.get_structure().positions), cg_set)
+            );
+            sys.set_structure(min_struct);
+            sys.update();
 
             return sys.get_value();
         };
@@ -272,17 +277,22 @@ int sp2::run_symm(const run_settings_t &settings, MPI_Comm comm_in)
         else if (symm_settings.use_cg)
         {
             try {
-                minimize::acgsd([&](const auto &pos) {
-                    auto structure = sys.get_structure();
-                    structure.positions = sp2::dtov3(pos);
-                    sys.set_structure(structure);
+                auto min_struct = sys.get_structure();
+                min_struct.positions = sp2::dtov3(
+                    minimize::acgsd([&](const auto &pos) {
+                        auto structure = sys.get_structure();
+                        structure.positions = sp2::dtov3(pos);
+                        sys.set_structure(structure);
 
-                    sys.update();
-                    return make_pair(sys.get_value(), sys.get_gradient());
-                },
-                    sp2::v3tod(sys.get_structure().positions),
-                    symm_settings.acgsd_set
+                        sys.update();
+                        return make_pair(sys.get_value(), sys.get_gradient());
+                    },
+                        sp2::v3tod(sys.get_structure().positions),
+                        symm_settings.acgsd_set
+                    )
                 );
+                sys.set_structure(min_struct);
+                sys.update();
 
             } catch (std::domain_error &ex) {}
 
