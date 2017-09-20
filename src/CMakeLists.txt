@@ -204,9 +204,25 @@ else()
 endif()
 
 set_target_properties(sp2 PROPERTIES
-        CXX_STANDARD 14
+        CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
         CXX_EXTENSIONS OFF)
+
+# warnings and compiler-specific options
+if(CXX_CLANG OR CXX_GNU)
+    target_compile_options(sp2 PRIVATE
+            -Wall -Wextra -pedantic
+            -Wno-unused-function)
+
+    if(CXX_GNU)
+        # disable warning for 32-byte alignment change in GCC 4.6
+        target_compile_options(sp2 PRIVATE -Wno-abi)
+    endif()
+elseif(CXX_INTEL) # unsupported for now
+    message(FATAL_ERROR "${PROJECT_NAME} does not support ICC." )
+elseif(CXX_MSVC)  # unsupported for now
+    message(FATAL_ERROR "${PROJECT_NAME} does not support MSVC." )
+endif()
 
 include(Sp2CompileChecks)
 
@@ -241,10 +257,6 @@ add_dependencies(sp2 code_generation)
 
 if(SP2_ENABLE_TESTS)
     add_test(all sp2 --test)
-
-    # note: should work for gcc, clang
-    target_compile_options(sp2 PRIVATE
-            -Wall -Wextra -pedantic)
 endif()
 
 ################################################################################

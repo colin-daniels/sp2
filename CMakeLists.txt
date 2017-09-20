@@ -53,6 +53,20 @@ None Debug Release RelWithDebInfo MinSizeRel Coverage."
             FORCE)
 endif()
 
+# set some variable to check the compiler in an easier way
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set(CXX_CLANG 1)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    set(CXX_GNU 1)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
+    set(CXX_INTEL 1)
+elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    set(CXX_MSVC 1)
+else()
+    message(FATAL_ERROR
+        "Unknown/unsupported compiler with ID \"${CMAKE_CXX_COMPILER_ID}\".")
+endif()
+
 # enable ctest
 enable_testing()
 
