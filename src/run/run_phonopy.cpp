@@ -463,12 +463,52 @@ void generate_force_sets(run_settings_t rset)
     // store original position
     auto orig_pos = structure.positions;
 
-
     // pointers (and function) for switching potentials for gradient calc
     std::unique_ptr<lammps::system_control_t> sys_lammps;
     std::unique_ptr<airebo::system_control_t> sys_rebo;
     std::function<std::vector<vec3_t>(const std::vector<double>&)> get_forces;
 
+    auto force_fn = [&](auto &pos, auto &&sys) -> std::vector<vec3_t> {
+        sys.set_position(pos);
+        sys.update();
+
+        // get gradient, negate it for forces
+        auto temp = sys.get_gradient();
+        vscal(-1.0, temp);
+
+        return dtov3(temp);
+    };
+
+    switch (rset.potential)
+    {
+    case potential_type::LAMMPS:
+        sys_lammps = std::make_unique<lammps::system_control_t>(
+            structure, rset.lammps_settings);
+
+        get_forces = [&](auto& pos){return force_fn(pos, *sys_lammps);};
+        break;
+    case potential_type::REBO:
+        sys_rebo = std::make_unique<airebo::system_control_t>(
+            structure);
+
+        get_forces = [&](auto& pos){return force_fn(pos, *sys_rebo);};
+        break;
+    default:
+        return;
+    }
+
+    // optionally write file with force on undisplaced structure
+    if (!rset.phonopy_settings.write_force.empty())
+    {
+        std::ofstream out(rset.phonopy_settings.write_force);
+        auto force = v3tod(get_forces(v3tod(orig_pos)));
+        Json::Value value;
+        io::get_type_as_json(force, value);
+
+        out.precision(15);
+        out << value;
+        out << std::endl;
+    }
 
     // go through each displacement and calculate forces
     std::vector<std::vector<vec3_t>> forces;
@@ -477,38 +517,6 @@ void generate_force_sets(run_settings_t rset)
         // copy original positions, and displace the specified atom
         auto temp_pos = orig_pos;
         temp_pos[disp.first] += disp.second;
-
-        if (!get_forces)
-        {
-            auto force_fn = [&](auto &pos, auto &&sys) -> std::vector<vec3_t> {
-                sys.set_position(pos);
-                sys.update();
-
-                // get gradient, negate it for forces
-                auto temp = sys.get_gradient();
-                vscal(-1.0, temp);
-
-                return dtov3(temp);
-            };
-
-            switch (rset.potential)
-            {
-            case potential_type::LAMMPS:
-                sys_lammps = std::make_unique<lammps::system_control_t>(
-                    structure, rset.lammps_settings);
-
-                get_forces = [&](auto& pos){return force_fn(pos, *sys_lammps);};
-                break;
-            case potential_type::REBO:
-                sys_rebo = std::make_unique<airebo::system_control_t>(
-                    structure);
-
-                get_forces = [&](auto& pos){return force_fn(pos, *sys_rebo);};
-                break;
-            default:
-                return;
-            }
-        }
 
         forces.emplace_back(
             get_forces(v3tod(temp_pos))

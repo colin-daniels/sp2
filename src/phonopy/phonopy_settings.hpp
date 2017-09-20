@@ -69,6 +69,8 @@ struct phonopy_settings_t : public io::json_serializable_t
     bool calc_force_sets = true;
     bool calc_bands = true;
 
+    std::string write_force;
+
     fc_compute_type compute_force_constants = fc_compute_type::AUTO;
 
     std::vector<qpoint_t> qpoints = {

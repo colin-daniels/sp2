@@ -67,6 +67,7 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "write_all_mode_anim", write_all_mode_anim,
         "write_all_mode_gplot", write_all_mode_gplot,
         "supercell_dim", supercell_dim,
+        "write_force", write_force,
         "qpoints", qpoints
     );
 
@@ -95,6 +96,7 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "write_all_mode_anim", write_all_mode_anim,
         "write_all_mode_gplot", write_all_mode_gplot,
         "supercell_dim", supercell_dim,
+        "write_force", write_force,
         "qpoints", qpoints
     );
 
