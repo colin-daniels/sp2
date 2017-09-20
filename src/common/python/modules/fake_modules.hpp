@@ -89,7 +89,7 @@ namespace sp2 {
 namespace python {
 namespace fake_modules {
 
-    static const char * PACKAGE = "_sp2_fake";
+    extern const char * PACKAGE;
 
     // 1) Declarations of the fake modules, defined in separate files/namespaces
     namespace example { extern fake_module_t fake_module; }

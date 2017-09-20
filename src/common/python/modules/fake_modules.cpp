@@ -7,6 +7,8 @@
 
 #include <string>
 
+const char * sp2::python::fake_modules::PACKAGE = "_sp2_fake";
+
 using std::string;
 
 void sp2::python::fake_modules::initialize()
