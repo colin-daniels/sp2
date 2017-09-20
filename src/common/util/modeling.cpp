@@ -629,7 +629,9 @@ void recursively_shorten(const std::string prefix)
     do {
         // relax first
         sp2::lammps::system_control_t sys(tube, lmp_set, comm);
-        sp2::minimize::acgsd(sys.get_diff_fn(), sys.get_position(), min_set);
+        sys.set_position(
+            sp2::minimize::acgsd(sys.get_diff_fn(), sys.get_position(), min_set)
+        );
 
         tube = sys.get_structure();
 
