@@ -274,19 +274,19 @@ bool io::write_poscar(std::string filename, const structure_t &input)
     auto temp = input;
     sort_structure_types(temp);
 
-    // figure out how many atoms of each type there are
+    // output types and figure out how many atoms of each type there are
+    outfile << enum_to_str(temp.types[0]);
     std::vector<std::size_t> type_numbers = {1};
     for (std::size_t i = 1; i < temp.types.size(); ++i)
     {
         if (temp.types[i - 1] != temp.types[i])
+        {
+            outfile << ' ' << enum_to_str(temp.types[i]);
             type_numbers.push_back(1);
+        }
         else
             type_numbers.back()++;
     }
-
-    // output types
-    for (auto n : type_numbers)
-        outfile << enum_to_str(temp.types[n - 1]) << ' ';
     outfile << '\n';
 
     // output type numbers
