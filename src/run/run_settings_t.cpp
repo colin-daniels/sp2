@@ -1,5 +1,6 @@
 #include "common/json/json.hpp"
 #include "run/run_settings_t.hpp"
+#include "src/common/io/structure.hpp"
 
 using namespace std;
 using namespace sp2;
