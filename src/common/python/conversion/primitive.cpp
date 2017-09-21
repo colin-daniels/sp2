@@ -33,7 +33,7 @@ bool to_python_simple_conv(py_ref_t &py, F func, Args... args)
     return !print_on_py_err();
 }
 
-bool to_python_concrete(const nullptr_t &c, py_ref_t &py)
+bool to_python_concrete(const nullptr_t &, py_ref_t &py)
 {
     refuse_to_evict(py);
 

@@ -5,6 +5,8 @@
 #include "common/python/types/py_ref_t.hpp"
 #include "common/python/types/py_object_t.hpp"
 
+#include <boost/predef.h>
+
 namespace sp2 {
 namespace python {
 
@@ -38,6 +40,9 @@ py_object_t merge_dictionaries(const py_object_t &a,
 
         return c;
     }
+#ifdef BOOST_COMP_GNUC
+    __builtin_unreachable();
+#endif
 }
 
 } // namespace python

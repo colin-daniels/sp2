@@ -20,6 +20,8 @@ using namespace std;
 
 PyObject* py_add(PyObject *self, PyObject *args, PyObject *kw)
 {
+    (void)self; // pretend to use
+
     // NOTE: code before wrap_cxx_logic must not throw. Stick to barebones C.
     long first;
     long second;

@@ -137,6 +137,7 @@ int run_tests(sp2::program_args_t pargs)
     ::testing::InitGoogleTest(&pargs.argc, pargs.argv);
     return RUN_ALL_TESTS();
 #else
+    (void)(pargs);
     std::cerr << "Cannot run tests, recompile with them enabled.\n";
     return EXIT_FAILURE;
 #endif // SP2_ENABLE_TESTS
@@ -163,7 +164,7 @@ sp2::run_settings_t read_config(sp2::program_args_t pargs)
     return settings;
 }
 
-int run_normal(sp2::program_args_t pargs, mpi::communicator comm)
+int run_normal(sp2::program_args_t pargs, mpi::communicator)
 {
     // read configuration file
     sp2::run_settings_t settings;
