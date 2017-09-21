@@ -12,6 +12,55 @@
 using namespace std;
 using namespace sp2;
 
+// Helper types used in acgsd to group pieces of changing state.
+namespace {
+
+    // Helper type to collect position and output together, as they
+    // are frequently used together.
+    struct point_t {
+        vector<double> position;
+        double value;
+        vector<double> gradient;
+
+        point_t(vector<double> pos, double val, vector<double> grad)
+            : position(move(pos)), value(val), gradient(move(grad))
+        {}
+    };
+
+    // These are values at the "fencepost" that lies between each iteration.
+    // They are all updated at once to assist in reasoning about the current
+    // state of the algorithm.
+    struct saved_t : public point_t
+    {
+        // this additionally has the fields from point_t (superclass)
+        double alpha; // step size
+
+        saved_t(double a, point_t point) : point_t(point), alpha(a) {}
+        const point_t& point() const { return *this; }
+    };
+
+    // These are values that describe the events of the previous iteration.
+    // They are invalid during the first iteration.
+    struct last_t
+    {
+        vector<double> direction;   // direction searched (normalized)
+
+        // NOTE: These next three are all zero when linesearch has failed.
+        //       This can be a problem for d_value in particular.
+        double d_value;             // change in value
+        vector<double> d_position;  // change in position
+        vector<double> d_gradient;  // change in gradient
+
+        bool ls_failed;             // linesearch failed?
+
+        last_t(vector<double> dir, double d_val, vector<double> d_pos,
+            vector<double> d_grad, bool ls_fail)
+            : direction(move(dir)), d_value(d_val), d_position(move(d_pos)),
+            d_gradient(move(d_grad)), ls_failed(ls_fail)
+        {}
+    };
+}
+
 /// calculate beta (ACGSD)
 double calc_beta_acgsd(const vector<double> &gradient,
     const vector<double> &delta_x, const vector<double> &delta_g)
@@ -54,19 +103,6 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         settings.iteration_limit    <= 0)
         throw invalid_argument("all exit conditions disabled or set to 0.");
 
-    //--------------------------------------------
-    // composite type for function input/output
-
-    struct point_t {
-        vector<double> position;
-        double value;
-        vector<double> gradient;
-
-        point_t(vector<double> pos, double val, vector<double> grad)
-            : position(move(pos)), value(val), gradient(move(grad))
-        {}
-    };
-
     auto compute_point = [&](const vector<double>& position) {
         double value;
         vector<double> gradient;
@@ -74,50 +110,20 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         return point_t{position, value, gradient};
     };
 
-    //--------------------------------------------
-    // These are values at the "fencepost" that lies between each iteration.
-    // They are all updated at once to assist in reasoning about the current
-    // state of the algorithm.
-    struct saved_t : public point_t
-    {
-        // this additionally has the fields from point_t (superclass)
-        double alpha; // step size
-
-        saved_t(double a, point_t point) : point_t(point), alpha(a) {}
-        const point_t& point() const { return *this; }
-    };
-    saved_t saved(1.0, compute_point(initial_position));
-
-    // These are values that describe the events of the previous iteration.
-    // They are invalid during the first iteration.
-    struct last_t {
-
-        vector<double> direction;   // direction searched (normalized)
-
-        // NOTE: These next three are all zero when linesearch has failed.
-        //       This can be a problem for d_value in particular.
-        double d_value;             // change in value
-        vector<double> d_position;  // change in position
-        vector<double> d_gradient;  // change in gradient
-
-        bool ls_failed;             // linesearch failed?
-
-        last_t(vector<double> dir, double d_val, vector<double> d_pos,
-            vector<double> d_grad, bool ls_fail)
-            : direction(move(dir)), d_value(d_val), d_position(move(d_pos)),
-            d_gradient(move(d_grad)), ls_failed(ls_fail)
-        {}
-    };
-    std::optional<last_t> last;
-
-    //--------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 // Loop start                                                                 //
 ////////////////////////////////////////////////////////////////////////////////
 
-    // number of *elapsed* iterations, deliberately spelt plural
-    for (int iterations = 0 ;; ++iterations)
+    // These are all updated only at the end of an iteration.
+
+    // Describes data at the "fencepost" between iterations.
+    saved_t saved(1.0, compute_point(initial_position));
+    // Describes the previous iteration
+    boost::optional<last_t> last;
+    // Number of elapsed iterations
+    int iterations = 0;
+
+    while (true)
     {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +171,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         {
             double d_value = (last ? last->d_value : 0.0);
             double grad_mag = vmag(saved.gradient);
-            cout << "  i: " << setw(6) << iterations
+            cout << " i: " << setw(6) << iterations
                  << "  v: " << setw(18) << setprecision(14) << saved.value
                  << " dv: " << setw(13) << setprecision(7) << d_value
                  << "  g: " << setw(13) << setprecision(7) << grad_mag
@@ -332,6 +338,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         last = last_t(direction, d_value, d_position, d_gradient, ls_failed);
         saved = ls_failed ? saved
                           : saved_t{next_alpha, next_point};
+        iterations++;
     }
     // unreachable
 }
