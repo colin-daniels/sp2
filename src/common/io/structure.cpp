@@ -50,8 +50,8 @@ bool io::write_structure(std::string filename,
 
         // convert types to strings
         vector<std::string> types;
-        for (atom_type t : input.types)
-            types.push_back(enum_to_str<atom_type>(t));
+        for (auto t : input.types)
+            types.push_back(enum_to_str<atom_types>(t));
 
         // write the lattice (unstyled, no line breaks) to the comment line
         // and then write the file
@@ -101,7 +101,7 @@ bool io::read_structure(std::string filename,
 
         // convert strings to types
         for (string t : types)
-            output.types.push_back(enum_from_str<atom_type>(t));
+            output.types.push_back(enum_from_str<atom_types, true>(t));
 
         // and then deserialize the lattice information from
         // the comment line

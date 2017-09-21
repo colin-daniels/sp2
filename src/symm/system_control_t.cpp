@@ -24,7 +24,8 @@ void symm::system_control_t::set_group(const space_group_t &input) {
 
 structure_t symm::system_control_t::get_structure() const
 {
-    auto output = structure_t(lattice, types, v3tod(position));
+    auto output = structure_t(lattice, convert_atom_types(types),
+        v3tod(position));
     output.space_group = group.get_name();
     output.n_symm = group.n_symm();
     return output;
@@ -32,7 +33,8 @@ structure_t symm::system_control_t::get_structure() const
 
 structure_t symm::system_control_t::get_full_structure() const
 {
-    auto output = structure_t(lattice, get_full_types(), v3tod(get_full_pos()));
+    auto output = structure_t(lattice, convert_atom_types(get_full_types()),
+        v3tod(get_full_pos()));
     output.space_group = group.get_name();
     output.n_symm = group.n_symm();
     return output;
@@ -48,7 +50,7 @@ void symm::system_control_t::set_structure(const structure_t &input) {
         bond_control.set_lattice(lattice);
     }
 
-    types = input.types;
+    types = convert_atom_types(input.types);
     position = input.positions;
 }
 
@@ -165,7 +167,7 @@ structure_t symm::system_control_t::get_limited_structure(size_t max_dist)
 
     // only keep atoms which have been marked
     vector<double> selected_pos;
-    vector<atom_type> selected_types;
+    vector<atom_type_old> selected_types;
 
     selected_pos.reserve(full_pos.size() * 3);
     selected_types.reserve(full_types.size());
@@ -180,7 +182,8 @@ structure_t symm::system_control_t::get_limited_structure(size_t max_dist)
             selected_pos.push_back(d);
     }
 
-    return structure_t(lattice, selected_types, selected_pos);
+    return structure_t(lattice, convert_atom_types(selected_types),
+        selected_pos);
 }
 
 std::vector<vec3_t> symm::system_control_t::get_full_pos() const
@@ -201,9 +204,9 @@ std::vector<vec3_t> symm::system_control_t::get_full_pos() const
 }
 
 
-std::vector<atom_type> symm::system_control_t::get_full_types() const
+std::vector<atom_type_old> symm::system_control_t::get_full_types() const
 {
-    vector<atom_type> full_types;
+    vector<atom_type_old> full_types;
     for (size_t i = 0; i < group.n_symm(); ++i)
         full_types.insert(full_types.end(), types.begin(), types.end());
 

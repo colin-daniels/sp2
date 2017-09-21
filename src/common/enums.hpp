@@ -3,6 +3,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <src/common/io/util.hpp>
 
 #ifdef SP2_CAN_HASH_ENUM
 #define SPECIALIZE_ENUM_HASH(E)
@@ -44,12 +45,8 @@ inline namespace {
 template<class E>
 std::string enum_to_str(E val);
 
-/// convert const char* to enumeration E using enum_map<E> and default value
-template<class E>
-E enum_from_str(const char* str, E default_value = static_cast<E>(0));
-
 /// convert std::string to enumeration E using enum_map<E> and default value
-template<class E>
+template<class E, bool case_sensitive = true>
 E enum_from_str(const std::string &str, E default_value = static_cast<E>(0));
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,25 +63,24 @@ std::string enum_to_str(E val)
 }
 
 
-template<class E>
+template<class E, bool case_sensitive>
 E enum_from_str(const std::string &str, E default_value)
 {
     const static auto map = []{
         auto result = std::unordered_map<std::string, E>{};
         for (auto v : enum_map<E>)
-            result.emplace(v.second, v.first);
+            result.emplace(io::tolower(v.second), v.first);
 
         return result;
     }();
 
-    const auto loc = map.find(str);
-    return loc == map.end() ? default_value : loc->second;
-}
+    const auto loc = map.find(io::tolower(str));
+    // return a default value if we can't find the string in the map or if
+    // we CAN but the case-sensitive comparison doesn't check out
+    bool not_found = loc == map.end() ||
+        (case_sensitive && enum_to_str(loc->second) != str);
 
-template<class E>
-E enum_from_str(const char* str, E default_value)
-{
-    return enum_from_str<E>(std::string(str), default_value);
+    return not_found ? default_value : loc->second;
 }
 
 } // anonymous namespace
@@ -93,16 +89,16 @@ E enum_from_str(const char* str, E default_value)
 // Basic enum types used throughout the code                                  //
 ////////////////////////////////////////////////////////////////////////////////
 
-enum class atom_type : int
+enum class atom_type_old : int
 {
     HYDROGEN = 0,
     CARBON   = 1
 };
 
 template<>
-constexpr enum_map_t<atom_type> enum_map<atom_type> = {
-    {atom_type::CARBON,   "C"},
-    {atom_type::HYDROGEN, "H"}
+constexpr enum_map_t<atom_type_old> enum_map<atom_type_old> = {
+    {atom_type_old::CARBON,   "C"},
+    {atom_type_old::HYDROGEN, "H"}
 };
 
 enum class bond_type : int
@@ -156,7 +152,7 @@ enum class el_type : int
 };
 
 /// get bond type from atom types
-static inline bond_type get_bond_type(const atom_type a, const atom_type b)
+static inline bond_type get_bond_type(const atom_type_old a, const atom_type_old b)
 {
     return static_cast<bond_type>(
         (static_cast<int>(a) + 1)
@@ -165,6 +161,8 @@ static inline bond_type get_bond_type(const atom_type a, const atom_type b)
 }
 
 } // namespace sp2
+
+#include "atom_types.hpp"
 
 SPECIALIZE_ENUM_HASH(sp2::atom_type)
 SPECIALIZE_ENUM_HASH(sp2::run_type)

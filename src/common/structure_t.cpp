@@ -10,12 +10,12 @@ using namespace sp2;
 namespace mpi = boost::mpi;
 
 structure_t::structure_t(const double lattice_in[3][3],
-    const std::vector<atom_type> &types_in,
+    const std::vector<atom_types> &types_in,
     const std::vector<double> &positions_in) :
         structure_t(lattice_in, types_in, sp2::dtov3(positions_in)) {}
 
 structure_t::structure_t(const double lattice_in[3][3],
-    const std::vector<atom_type> &types_in,
+    const std::vector<atom_types> &types_in,
     const std::vector<vec3_t> &positions_in) :
         types(types_in),
         positions(positions_in)
@@ -35,7 +35,7 @@ bool structure_t::serialize(Json::Value &output) const
     for (Json::Value::ArrayIndex i = 0; i < types.size(); ++i)
     {
         structure.append(Json::Value());
-        structure[i].append(enum_to_str<atom_type>(types[i]));
+        structure[i].append(enum_to_str<atom_types>(types[i]));
         for (int j = 0; j < 3; ++j)
             structure[i].append(positions[i][j]);
     }
@@ -65,7 +65,7 @@ bool structure_t::deserialize(const Json::Value &input)
             return false;
 
         string type = atom_info[0].asString();
-        types.push_back(enum_from_str<atom_type>(type));
+        types.push_back(enum_from_str<atom_types, true>(type));
 
         sp2::vec3_t pos;
         for (int j = 1; j < 4; ++j)
@@ -241,7 +241,7 @@ void structure_t::rescale(mat3x3_t new_lattice)
 
 void sp2::sort_structure_types(structure_t &structure)
 {
-    vector<pair<atom_type, int>> atoms;
+    vector<pair<atom_types, int>> atoms;
     for (std::size_t i = 0; i < structure.types.size(); ++i)
         atoms.emplace_back(structure.types[i], i);
 
@@ -249,8 +249,8 @@ void sp2::sort_structure_types(structure_t &structure)
     sort(structure.types.begin(), structure.types.end());
 
     vector<vec3_t> sorted_pos;
-    for (std::size_t i = 0; i < atoms.size(); ++i)
-        sorted_pos.push_back(structure.positions[atoms[i].second]);
+    for (auto &atom : atoms)
+        sorted_pos.push_back(structure.positions[atom.second]);
 
     structure.positions = sorted_pos;
 }

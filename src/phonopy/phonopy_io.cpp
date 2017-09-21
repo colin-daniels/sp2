@@ -49,10 +49,8 @@ sp2::structure_t read_phonopy_structure(YAML::Node &root)
     {
         auto symbol = atom["symbol"].as<std::string>();
         structure.types.push_back(
-            symbol == "C" ? sp2::atom_type::CARBON :
-            symbol == "H" ? sp2::atom_type::HYDROGEN :
-                throw std::runtime_error("Bad atom symbol " +
-                    symbol + "in phonopy file.")
+            // case insensitive conversion
+            sp2::enum_from_str<sp2::atom_types, true>(symbol)
         );
 
         // transform to cartesian and store coordinates
@@ -114,7 +112,7 @@ void sp2::phonopy::draw_normal_mode(std::string filename,
     auto pos = structure.positions;
     for (std::size_t i = 0; i < structure.types.size(); ++i)
     {
-        if (structure.types[i] != atom_type::HYDROGEN)
+        if (structure.types[i] != atom_types::H)
             continue;
 
         pos.erase(pos.begin() + i);

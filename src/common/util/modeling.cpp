@@ -50,7 +50,7 @@ void make_agnr_set()
         double min = std::numeric_limits<double>::max(), max = std::numeric_limits<double>::lowest();
         for (std::size_t i = 0; i < structure.types.size(); ++i)
         {
-            if (structure.types[i] == atom_type::HYDROGEN)
+            if (structure.types[i] == atom_types::H)
                 continue;
 
             min = std::min(min, pos[i].y());
@@ -194,7 +194,7 @@ sp2::structure_t sp2::util::graphene_unit_cell()
             graphene.lattice[i][j] = lattice[i][j];
 
     // atom types
-    graphene.types = {atom_type::CARBON, atom_type::CARBON};
+    graphene.types = {atom_types::C, atom_types::C};
 
     // atom positions
     constexpr double bond_distance = 1.418;
@@ -227,7 +227,7 @@ sp2::structure_t sp2::util::make_hydrogen_terminated(
     for (auto idx : graph.vertices())
     {
         auto type = types[idx];
-        if (type != atom_type::CARBON)
+        if (type != atom_types::C)
             continue;
 
         auto n_bonds = graph.degree(idx);
@@ -390,7 +390,7 @@ sp2::structure_t construct_gnr_impl(bool zigzag, int width, int length,
     if (zigzag)
         std::swap(lattice[0][0], lattice[1][1]);
 
-    std::vector<atom_type> types(4, atom_type::CARBON);
+    std::vector<atom_types> types(4, atom_types::C);
     std::vector<vec3_t> pos;
 
     if (zigzag)

@@ -122,7 +122,7 @@ void lammps::system_control_t::set_position(const vector<double> &input)
 
 void lammps::system_control_t::set_structure(const structure_t  &input)
 {
-    type = input.types;
+    type = convert_atom_types(input.types);
     position = sp2::v3tod(input.positions);
 
     if (std::equal(std::begin(lattice_orig[0]), std::end(lattice_orig[2]),
@@ -147,7 +147,7 @@ structure_t lammps::system_control_t::get_structure() const
 {
     structure_t structure;
 
-    structure.types = type;
+    structure.types = convert_atom_types(type);
     structure.positions = sp2::dtov3(get_position());
 
     copy_n(lattice_orig[0], 9, structure.lattice[0]);
@@ -163,7 +163,7 @@ void lammps::system_control_t::init(const structure_t &info,
     // number of atoms
     na = info.types.size();
 
-    type = info.types;
+    type = convert_atom_types(info.types);
     position = sp2::v3tod(info.positions);
     force.resize(na * 3, 0);
 
@@ -306,7 +306,7 @@ void lammps::system_control_t::append_output(std::string filename)
         io::write_structure(filename, get_structure(), true);
 }
 
-void lammps::system_control_t::add_atom(atom_type type_in, const double *pos)
+void lammps::system_control_t::add_atom(atom_type_old type_in, const double *pos)
 {
     vec3_t transformed_pos = transform * vec3_t(pos);
 

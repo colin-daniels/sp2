@@ -77,7 +77,7 @@ void remove_hydrogen(structure_t &structure,
     auto &pos = structure.positions;
     for (std::size_t i = 0; i < structure.types.size(); ++i)
     {
-        if (structure.types[i] != atom_type::HYDROGEN)
+        if (structure.types[i] != atom_types::H)
             continue;
 
         pos.erase(pos.begin() + i);
@@ -101,11 +101,14 @@ std::vector<double> get_phonopy_masses(const sp2::structure_t &structure)
     {
         switch (type)
         {
-        case atom_type::CARBON:
+        case atom_types::C:
             masses.push_back(12.0107);
             break;
-        case atom_type::HYDROGEN:
+        case atom_types::H:
             masses.push_back(1.00794);
+            break;
+        default:
+            std::cerr << "Error: No default mass programmed for atom type.\n";
             break;
         }
     }

@@ -23,7 +23,7 @@ private:
 
     double lattice[3][3] = {};
 
-    std::vector<atom_type> types;
+    std::vector<atom_type_old> types;
     std::vector<vec3_t> position,
         gradient;
 
@@ -60,7 +60,7 @@ private:
     structure_t get_limited_structure(size_t max_dist = 3);
 
     std::vector<vec3_t> get_full_pos() const;
-    std::vector<atom_type> get_full_types() const;
+    std::vector<atom_type_old> get_full_types() const;
 };
 
 } // namespace symm

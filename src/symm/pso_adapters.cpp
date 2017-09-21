@@ -29,7 +29,7 @@ structure_t symm::basic_adapter(const std::vector<double> &input,
         d *= unit_cell;
 
     // all-carbon structure
-    vector<atom_type> types(na, atom_type::CARBON);
+    vector<atom_types> types(na, atom_types::C);
 
     // return the new structure
     return structure_t(lattice, types, pos);
@@ -133,7 +133,7 @@ structure_t symm::bonded_adapter(const std::vector<double> &input,
     }
 
     // all-carbon structure
-    vector<atom_type> types(na, atom_type::CARBON);
+    vector<atom_types> types(na, atom_types::C);
 
     // return the new structure
     return structure_t(lattice, types, v3tod(pos));

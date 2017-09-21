@@ -193,6 +193,31 @@ enum class bond_types : std::uint32_t
     HH =   detail::btype_ut(atype::H, atype::H)
 };
 
+inline std::vector<atom_types> convert_atom_types(
+    const std::vector<atom_type_old> &input)
+{
+    std::vector<atom_types> output;
+    output.reserve(input.size());
+    for (auto &t : input)
+        output.push_back(
+            t == atom_type_old ::CARBON ? atom_types::C
+                                        : atom_types::H);
+    return output;
+}
+
+inline std::vector<atom_type_old> convert_atom_types(
+    const std::vector<atom_types> &input)
+{
+    std::vector<atom_type_old> output;
+    output.reserve(input.size());
+    for (auto &t : input)
+        output.push_back(
+            t == atom_types::C ? atom_type_old::CARBON :
+            t == atom_types::H ? atom_type_old::HYDROGEN
+                               : atom_type_old::CARBON);
+    return output;
+}
+
 } // namespace sp2
 
 SPECIALIZE_ENUM_HASH(sp2::atom_types)

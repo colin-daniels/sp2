@@ -33,7 +33,7 @@ private:
     int na, ///< number of atoms
         nb; ///< number of bonds
     double total_potential;       ///< total system potential as calculated by LAMMPS
-    std::vector<atom_type> type;  ///< atom type vector, defined in util_enums.hpp
+    std::vector<atom_type_old> type;  ///< atom type vector, defined in util_enums.hpp
     std::vector<double> position, ///< atom position vector
         force;                    ///< atom force vector
 
@@ -108,7 +108,7 @@ public:
     void remove_atom(int id);
 
     /// add an atom
-    void add_atom(atom_type type_in, const double *pos);
+    void add_atom(atom_type_old type_in, const double *pos);
 
     /// conversion to bool for determining if everything is OK
     operator bool() {return lmp != nullptr;}

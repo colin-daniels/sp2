@@ -198,10 +198,7 @@ std::vector<std::pair<double, double>> raman_spectra_impl(
     auto bond_deltas = sp2::dtov3(sys.get_bond_control().get_bond_deltas());
 
     // convert from old to new types for now
-    std::vector<sp2::atom_types> types;
-    for (auto t : structure.types)
-        types.push_back(t == sp2::atom_type::CARBON ? sp2::atype::C :
-                        sp2::atype::H);
+    const auto &types = structure.types;
 
     std::vector<std::pair<double, double>> result;
     for (auto mode : modes)

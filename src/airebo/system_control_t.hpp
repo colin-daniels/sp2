@@ -32,7 +32,7 @@ private:
     double ref_lattice[3][3];       ///< original input lattice
 
     // atom info
-    std::vector<atom_type> types;   ///< atom type vector (na x 1)
+    std::vector<atom_type_old> types;   ///< atom type vector (na x 1)
     std::vector<double> position,   ///< atom position vector (na x 3)
         force;                      ///< atom force vector (na x 3)
 
@@ -81,7 +81,7 @@ public:
     system_control_t(
         const double lattice[3][3],
         const std::vector<double> &position_in,
-        const std::vector<atom_type> &types_in
+        const std::vector<atom_type_old> &types_in
     ) : system_control_t() { init(lattice, position_in, types_in); }
 
     /// \brief initialization function
@@ -90,7 +90,7 @@ public:
     /// \param types_in std::vector<atom_type> input types
     void init(const double lattice[3][3],
         const std::vector<double> &position_in,
-        const std::vector<atom_type> &types_in);
+        const std::vector<atom_type_old> &types_in);
 
     /// \brief initialization function
     void init(const structure_t &structure);
@@ -123,7 +123,7 @@ public:
     std::vector<double> get_gradient() const {
         std::vector<double> grad(force); vscal(-1.0, grad); return grad;}
     /// get the atom type vector
-    std::vector<atom_type> get_types() const {return types;}
+    std::vector<atom_type_old> get_types() const {return types;}
     /// get the bond force vector
     std::vector<double> get_bond_forces() const {return bond_force;}
     /// get the static atom vector
@@ -135,7 +135,7 @@ public:
     void set_position(const std::vector<double> &input_pos) {
         position = input_pos;}
     /// set the type vector
-    void set_types(const std::vector<atom_type> &types_in) {
+    void set_types(const std::vector<atom_type_old> &types_in) {
         types = types_in;}
     /// designate which atoms are static in the system
     void set_static_atoms(const std::vector<bool> &static_atoms_in) {

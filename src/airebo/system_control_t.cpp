@@ -22,7 +22,7 @@ using namespace sp2::airebo;
 // initialization function, takes lattice vectors, initial atom positions, and types
 void airebo::system_control_t::init(const double lattice[3][3],
     const vector<double> &position_in,
-    const vector<atom_type> &types_in)
+    const vector<atom_type_old> &types_in)
 {
     copy_n(lattice[0], 9, ref_lattice[0]);
     bond_control.init(lattice,
@@ -36,14 +36,18 @@ void airebo::system_control_t::init(const double lattice[3][3],
 
 void airebo::system_control_t::init(const structure_t &structure)
 {
-    init(structure.lattice, sp2::v3tod(structure.positions), structure.types);
+    init(
+        structure.lattice,
+        sp2::v3tod(structure.positions),
+        convert_atom_types(structure.types)
+    );
 }
 
 structure_t airebo::system_control_t::get_structure() const
 {
     structure_t structure;
 
-    structure.types = types;
+    structure.types = convert_atom_types(types);
     structure.positions = sp2::dtov3(get_position());
     copy_n(ref_lattice[0], 9, structure.lattice[0]);
 
@@ -72,7 +76,7 @@ void airebo::system_control_t::set_lattice(const double lattice[3][3])
 
 void airebo::system_control_t::set_structure(const structure_t &input)
 {
-    types = input.types;
+    types = convert_atom_types(input.types);
     position = sp2::v3tod(input.positions);
     for (int i = 0; i < 9; ++i)
     {
@@ -105,7 +109,7 @@ void airebo::system_control_t::update()
     fill(potential.begin(), potential.end(), 0.0);
 
     if ((int)types.size() != na)
-        types.resize(na, atom_type::CARBON);
+        types.resize(na, atom_type_old::CARBON);
 
     if (ref_pos.size() > position.size())
         ref_pos.resize(position.size());
@@ -227,7 +231,7 @@ void airebo::system_control_t::update_stage1()
     // Finish getting Na_vars (half of Na_conj)
     for (int i = 0; i < na; ++i)
         for (int j = offsets[i]; j < offsets[i + 1]; ++j)
-            if (cutoff[j * 2] != 0 && types[bond_ids[j]] == atom_type::CARBON)
+            if (cutoff[j * 2] != 0 && types[bond_ids[j]] == atom_type_old::CARBON)
                 Na_vars[i * 4 + 3] += cutoff[j * 2] * F_conj(Na_vars[bond_ids[j] * 4] - cutoff[j * 2]);
 }
 
@@ -261,7 +265,7 @@ void airebo::system_control_t::update_stage2()
 
             // Nca for j, Ncb for sister[j]
             Nb_vars[j * 7 + 5] = Na_vars[i * 4 + 3];
-            if (types[bond_ids[j]] == atom_type::CARBON)
+            if (types[bond_ids[j]] == atom_type_old::CARBON)
             {
                 Nb_vars[j * 7 + 5] -= cutoff[j * 2]
                                       * F_conj(Na_vars[bond_ids[j] * 4] - cutoff[j * 2]);
@@ -421,7 +425,7 @@ void airebo::system_control_t::update_stage3()
             {
                 if (b_types[j] == bond_type::CARBON_CARBON)
                     P[j * 3] = PCC[(int)N_h][(int)N_c];
-                else if (b_types[j] == bond_type::HYDROGEN_CARBON && types[i] == atom_type::CARBON)
+                else if (b_types[j] == bond_type::HYDROGEN_CARBON && types[i] == atom_type_old::CARBON)
                     P[j * 3] = PCH[(int)N_h][(int)N_c];
                 continue;
             }
@@ -431,7 +435,7 @@ void airebo::system_control_t::update_stage3()
 
             if (b_types[j] == bond_type::CARBON_CARBON)
                 coeff_ptr = map_pcc[id_p] != -1 ? coeff_pcc[map_pcc[id_p]] : nullptr;
-            else if (b_types[j] == bond_type::HYDROGEN_CARBON && types[i] == atom_type::CARBON)
+            else if (b_types[j] == bond_type::HYDROGEN_CARBON && types[i] == atom_type_old::CARBON)
                 coeff_ptr = map_pch[id_p] != -1 ? coeff_pch[map_pch[id_p]] : nullptr;
 
             // dont calculate if the value of P is zero
@@ -679,7 +683,7 @@ void airebo::system_control_t::update_stage5()
                 if (cutoff[k * 2] == 0 || k == j)
                     continue;
 
-                if (types[i] == atom_type::CARBON)
+                if (types[i] == atom_type_old::CARBON)
                     gtheta_C(cos_ptr[j2 * nb_a + k2], Nb_vars[j * 7],
                         gtheta[k2], dgtheta[k2 * 2], dgtheta[k2 * 2 + 1]);
                 else
@@ -751,7 +755,7 @@ void airebo::system_control_t::update_stage6()
         int nb_a = offsets[i + 1] - offsets[i];
         double *tv_ptr = &tvec[sd_offsets[i]]; // array -> [nb_a][nb_a]
         for (int j = 0; j < nb_a; ++j)
-            if (types[i] == atom_type::CARBON)
+            if (types[i] == atom_type_old::CARBON)
                 for (int k = j + 1; k < nb_a; ++k)
                     tv_ptr[k * nb_a + j] = tv_ptr[nb_a * j + j]
                                            * tv_ptr[nb_a * k + k] - tv_ptr[k * nb_a + j] * tv_ptr[k * nb_a + j];
@@ -893,7 +897,7 @@ void airebo::system_control_t::update_stage7()
                     int id_c = bond_ids[k];
                     if (cutoff[k * 2] == 0 ||
                         k == j ||
-                        types[id_c] != atom_type::CARBON)
+                        types[id_c] != atom_type_old::CARBON)
                         continue;
 
                     double Fc = F_conj(Nb_vars[k * 7 + 1]),
@@ -910,7 +914,7 @@ void airebo::system_control_t::update_stage7()
                     int id_c = bond_ids[k];
                     if (cutoff[k * 2] == 0 ||
                         k == sister_ids[j] ||
-                        types[id_c] != atom_type::CARBON)
+                        types[id_c] != atom_type_old::CARBON)
                         continue;
 
                     double Fc = F_conj(Nb_vars[k * 7 + 1]),
@@ -1034,7 +1038,7 @@ diff_fn_t system_control_t::get_diff_fn()
      for (int i = 0; i < na; ++i)
      {
          int id = cvec[i].second;
-         if (types[id] == atom_type::HYDROGEN)
+         if (types[id] == atom_type_old::HYDROGEN)
              continue;
 
          if (Na_vars[id * 4] >= 3 && h_left <= 0)
@@ -1045,7 +1049,7 @@ diff_fn_t system_control_t::get_diff_fn()
          for (int j = offsets[id]; j < offsets[id + 1]; ++j)
          {
              bonds.push_back(pair<double, int>(cutoff[j], j));
-             if (types[bond_ids[j]] == atom_type::HYDROGEN && cutoff[j] >= 1)
+             if (types[bond_ids[j]] == atom_type_old::HYDROGEN && cutoff[j] >= 1)
                  ++c_hyd;
          }
 
@@ -1085,7 +1089,7 @@ diff_fn_t system_control_t::get_diff_fn()
              for (int j = 0; j < 3; ++j)
                  position.push_back(position[id * 3 + j] - 1.09 * avg[j]
                      / sqrt(len));
-             types.push_back(atom_type::HYDROGEN);
+             types.push_back(atom_type_old::HYDROGEN);
              --h_left;
          }
          else if (nbonds == 1)
@@ -1102,14 +1106,14 @@ diff_fn_t system_control_t::get_diff_fn()
 
              for (int j = 0; j < 3; ++j)
                  position.push_back(position[id * 3 + j] + 1.09 * bond_a[j]);
-             types.push_back(atom_type::HYDROGEN);
+             types.push_back(atom_type_old::HYDROGEN);
              --h_left;
 
              if (per_atom_max > 1 && c_hyd == 0)
              {
                  for (int j = 0; j < 3; ++j)
                      position.push_back(position[id * 3 + j] + 1.09 * bond_b[j]);
-                 types.push_back(atom_type::HYDROGEN);
+                 types.push_back(atom_type_old::HYDROGEN);
                  --h_left;
              }
          }

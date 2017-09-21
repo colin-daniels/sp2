@@ -26,16 +26,16 @@ struct structure_t : public io::json_serializable_t
     std::string space_group;
     int n_symm;
 
-    std::vector<atom_type> types;   ///< N x 1 vector of atom types (see: enums.hpp)
+    std::vector<atom_types> types;  ///< N x 1 vector of atom types (see: atom_types.hpp)
     std::vector<vec3_t> positions;  ///< N x 1 vector of cartesian positions
 
     structure_t() = default;
     structure_t(const double lattice_in[3][3],
-        const std::vector<atom_type> &types_in,
+        const std::vector<atom_types> &types_in,
         const std::vector<double> &positions_in);
 
     structure_t(const double lattice_in[3][3],
-        const std::vector<atom_type> &types_in,
+        const std::vector<atom_types> &types_in,
         const std::vector<vec3_t> &positions_in);
 
     /// Rotate the structure, leaving the lattice fixed.
