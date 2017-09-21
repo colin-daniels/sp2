@@ -44,7 +44,7 @@ namespace minimize {
 /// \returns The best value of alpha found before exit.
 double linesearch(oned_fn_t objective_fn, oned_fn_t slope_fn, double alpha);
 /// \brief Cubic/quadratic interpolation linesearch.
-double linesearch(diff1d_fn_t objective_fn, double alpha);
+double linesearch(double alpha, diff1d_fn_t objective_fn);
 
 /// \brief Linear conjugate gradient for sparse matrices (solves Ax = b).
 /// \param matrix_fn : Function that returns the result of Ax for some x

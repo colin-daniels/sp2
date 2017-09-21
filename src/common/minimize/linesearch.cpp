@@ -20,12 +20,12 @@ double quad_min(ls_bound_t low, ls_bound_t high);
 double minimize::linesearch(oned_fn_t objective_fn, oned_fn_t slope_fn,
     double alpha)
 {
-    return linesearch([&](double a) {
+    return linesearch(alpha, [&](double a) {
         return std::make_pair(objective_fn(a), slope_fn(a));
-    }, alpha);
+    });
 }
 
-double minimize::linesearch(diff1d_fn_t objective_fn, double alpha)
+double minimize::linesearch(double alpha, diff1d_fn_t objective_fn)
 {
     constexpr int iter_lim = 16;
 
