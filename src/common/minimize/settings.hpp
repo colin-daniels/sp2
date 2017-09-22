@@ -19,6 +19,34 @@ namespace minimize {
 /// something with it (presumably outputs to a file)
 using output_fn_t = void_fn_t<const std::vector<double> &>;
 
+struct ls_settings_t : public io::json_serializable_t
+{
+    /// Coefficient for the Wolfe condition on sufficient decrease.
+    double armijo_threshold = 1e-4;
+    /// Coefficient for the Wolfe condition on curvature.
+    double curvature_threshold = 1e-1;
+    /// Threshold for switching between standard and weak-force linesearch.
+    double weak_force_threshold = 0;
+
+    /// Max number of iterations for linesearch.
+    ///
+    /// Too few iterations may cause linesearch to fail when it otherwise
+    /// could have succeeded. On the other hand, too many iterations can waste
+    /// time in circumstances where the Wolfe conditions cannot be met.
+    int iteration_limit = 16;
+
+    /// how much output should be sent to standard output (0-3):
+    /// 0: None
+    /// 1: Errors only
+    /// 2: --
+    /// 3: Data every iteration
+    int output_level = 1;
+
+    bool serialize(Json::Value &output) const;
+
+    bool deserialize(const Json::Value &input);
+};
+
 /// input settings structure for conjugate gradient minimization
 struct acgsd_settings_t : public io::json_serializable_t
 {
@@ -63,6 +91,8 @@ struct acgsd_settings_t : public io::json_serializable_t
     /// function to call with the current state
     /// every intermediate_output_interval iterations
     output_fn_t output_fn = [](const auto &) {};
+
+    ls_settings_t linesearch_settings;
 
     bool serialize(Json::Value &output) const;
 
@@ -326,7 +356,6 @@ struct structural_metropolis_settings_t : public io::json_serializable_t
     virtual bool serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
-
 
 } // namespace minimize
 } // namespace sp2

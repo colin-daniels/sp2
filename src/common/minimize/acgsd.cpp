@@ -1,13 +1,66 @@
 #include "common/minimize/minimize.hpp"
 #include "common/math/numerical_diff.hpp"
 #include "common/math/blas.hpp"
+#include "settings.hpp"
 
 #include <iostream>
 #include <iomanip>
 #include <cmath>
+#include <vector>
+#include <functional>
+#include <optional>
 
 using namespace std;
 using namespace sp2;
+
+// Helper types used in acgsd to group pieces of changing state.
+namespace {
+
+    // Helper type to collect position and output together, as they
+    // are frequently used together.
+    struct point_t {
+        vector<double> position;
+        double value;
+        vector<double> gradient;
+
+        point_t(vector<double> pos, double val, vector<double> grad)
+            : position(move(pos)), value(val), gradient(move(grad))
+        {}
+    };
+
+    // These are values at the "fencepost" that lies between each iteration.
+    // They are all updated at once to assist in reasoning about the current
+    // state of the algorithm.
+    struct saved_t : public point_t
+    {
+        // this additionally has the fields from point_t (superclass)
+        double alpha; // step size
+
+        saved_t(double a, point_t point) : point_t(point), alpha(a) {}
+        const point_t& point() const { return *this; }
+    };
+
+    // These are values that describe the events of the previous iteration.
+    // They are invalid during the first iteration.
+    struct last_t
+    {
+        vector<double> direction;   // direction searched (normalized)
+
+        // NOTE: These next three are all zero when linesearch has failed.
+        //       This can be a problem for d_value in particular.
+        double d_value;             // change in value
+        vector<double> d_position;  // change in position
+        vector<double> d_gradient;  // change in gradient
+
+        bool ls_failed;             // linesearch failed?
+
+        last_t(vector<double> dir, double d_val, vector<double> d_pos,
+            vector<double> d_grad, bool ls_fail)
+            : direction(move(dir)), d_value(d_val), d_position(move(d_pos)),
+            d_gradient(move(d_grad)), ls_failed(ls_fail)
+        {}
+    };
+}
 
 /// calculate beta (ACGSD)
 double calc_beta_acgsd(const vector<double> &gradient,
@@ -52,254 +105,243 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         settings.iteration_limit    <= 0)
         throw invalid_argument("all exit conditions disabled or set to 0.");
 
-    // storage variables:
-    int iter = 0,             // current iteration
-        n_target_fail = 0;    // number of times the targeted minimization
-    // exit condition has been failed in a row
-
-    bool ls_failed = false;   // whether or not the linesearch has failed so far
-
-    double alpha = 1.0,       // current step size
-        ddot_last = 1.0,       // ||direction|| from the previous iteration
-        value;                 // current objective function value
-
-    vector<double> direction, // current search direction
-        position,             // current position
-        gradient;             // current gradient
-
-    vector<double> delta_x,   // change in position between iterations
-        delta_g;              // change in gradient between iterations
-
-    // information output function for errors
-    auto output_info = [&]() {
-        cout << "Iteration: " << iter  << '\n'
-             << "    Alpha: " << alpha << '\n'
-             << "    Value: " << value << '\n'
-             << "Grad Norm: " << sqrt(vdot(gradient, gradient))
-             << endl;
+    auto compute_point = [&](const vector<double>& position) {
+        double value;
+        vector<double> gradient;
+        std::tie(value, gradient) = objective_fn(position);
+        return point_t{position, value, gradient};
     };
 
+////////////////////////////////////////////////////////////////////////////////
+// Loop start                                                                 //
+////////////////////////////////////////////////////////////////////////////////
 
-    do {
+    // These are all updated only at the end of an iteration.
+
+    // Describes data at the "fencepost" between iterations.
+    saved_t saved(1.0, compute_point(initial_position));
+    // Describes the previous iteration
+    boost::optional<last_t> last;
+    // Number of elapsed iterations
+    int iterations = 0;
+
+    while (true)
+    {
+
+////////////////////////////////////////////////////////////////////////////////
+// Closures for things commonly done during an iteration                      //
+////////////////////////////////////////////////////////////////////////////////
+
+        // Compute at a position relative to saved.position
+        auto compute_in_dir = [&](double alpha, vector<double> direction) {
+            std::vector<double> position = saved.position;
+            vaxpy(alpha, direction, position);
+
+            return compute_point(position);
+        };
+
+        auto warning = [&](std::string msg, double alpha, const point_t &point,
+            std::function<void(ostream&)> additional_output = {})
+        {
+            if (settings.output_level > 0) {
+                cerr << msg << '\n'
+                     << "Iterations: " << iterations << '\n'
+                     << "     Alpha: " << alpha << '\n'
+                     << "     Value: " << point.value << '\n'
+                     << " Grad Norm: " << vmag(point.gradient) << '\n';
+                if (additional_output)
+                    additional_output(cerr);
+            }
+        };
+
+        // use as 'return fatal(...);'
+        // this will return or throw based on the 'except_on_fail' setting
+        auto fatal = [&](std::string msg, double alpha, const point_t &point,
+                std::function<void(ostream&)> additional_output = {})
+        {
+            warning("ACGSD Failed: " + msg, alpha, point, additional_output);
+            if (settings.except_on_fail)
+                throw runtime_error(msg);
+            return point.position;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+// Per-iteration output                                                       //
+////////////////////////////////////////////////////////////////////////////////
+
+        if (settings.output_level > 2)
+        {
+            double d_value = (last ? last->d_value : 0.0);
+            double grad_mag = vmag(saved.gradient);
+            cout << " i: " << setw(6) << iterations
+                 << "  v: " << setw(18) << setprecision(14) << saved.value
+                 << " dv: " << setw(13) << setprecision(7) << d_value
+                 << "  g: " << setw(13) << setprecision(7) << grad_mag
+                 << endl;
+        }
+
+        // call the output function if applicable
+        if (settings.intermediate_output_interval > 0 &&
+            iterations % settings.intermediate_output_interval == 0)
+            settings.output_fn(saved.position);
+
+////////////////////////////////////////////////////////////////////////////////
+// Evaluate exit conditions                                                   //
+////////////////////////////////////////////////////////////////////////////////
+
+        { // scope
+            double grad_mag = vmag(saved.gradient);
+            double grad_max = max_norm(saved.gradient);
+
+            bool done = false;
+            done |= (grad_mag < settings.gradient_tolerance);
+            done |= (grad_max < settings.grad_max_tolerance);
+            if (last && !last->ls_failed)
+                done |= (std::abs(last->d_value) < settings.value_tolerance);
+            if (settings.iteration_limit > 0)
+                done |= (iterations >= settings.iteration_limit);
+
+            if (done)
+            {
+                // output final info
+                if (settings.output_level > 1)
+                {
+                    double d_value = last ? last->d_value : 0.0;
+                    cout << "ACGSD Finished.\n"
+                         << "Iterations: " << iterations << '\n'
+                         << "     Value: " << saved.value << '\n'
+                         << " Delta Val: " << d_value << '\n'
+                         << " Grad Norm: " << grad_mag << '\n'
+                         << "  Grad Max: " << grad_max << '\n';
+                }
+                return saved.position;
+            }
+        } // scope
+
 ////////////////////////////////////////////////////////////////////////////////
 // Calculate the search direction.                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
         // whether or not we will use steepest descent
-        bool use_steepest;
-
-        if (iter == 0)
-        {
-            // initialize quantities
-            position = initial_position;
-            tie(value, gradient) = objective_fn(position);
-
-            // if its the first iteration, we are forced to use steepest descent
-            use_steepest = true;
-        }
-        else
-        {
-            // get beta (ACGSD)
-            double beta = calc_beta_acgsd(gradient, delta_x, delta_g);
-
-            // calculate the search direction = beta * dx - g
-            direction = gradient;
-            vscal(-1.0, direction);
-            vaxpy(beta, delta_x, direction);
-
-            // check if we should revert to using steepest descent
-            use_steepest = should_revert_acgsd(gradient, direction);
-        }
-
         // note: force us to use steepest descent if linesearch failed
         // last iteration
-        if (use_steepest || ls_failed)
-        {
+        //
+        // an IIFE is used for complex control flow
+        vector<double> direction = ([&] {
+
+            // Consider the direction  'beta * dx - g'
+            if (last && !last->ls_failed)
+            {
+                double beta = calc_beta_acgsd(
+                    saved.gradient, last->d_position, last->d_gradient);
+
+                auto direction = saved.gradient;
+                vscal(-1.0, direction);
+                vaxpy(beta, last->d_position, direction);
+
+                // use this direction unless it is almost directly uphill
+                if (!should_revert_acgsd(saved.gradient, direction))
+                    return direction;
+            }
+
+            // Fallback to steepest descent:  '-g'
             if (settings.output_level > 2)
                 cout << "Using steepest descent." << endl;
 
-            // descent direction is just the negative gradient
-            direction = gradient;
+            auto direction = saved.gradient;
             vscal(-1.0, direction);
-        }
+            return direction;
+        })();
+
+        // NOTE: The original source scaled alpha instead of normalizing
+        //       direction, which seems to be a fruitless optimization
+        //       that only serves to amplify the mental workload.
+        if (!vnormalize(direction))
+            return fatal("cannot normalize direction", saved.alpha, saved);
 
 ////////////////////////////////////////////////////////////////////////////////
-// Record old data and calculate the next linesearch step size (alpha)        //
+// Perform the linesearch.                                                    //
 ////////////////////////////////////////////////////////////////////////////////
 
-        // record old data
-        auto val_last = value,
-            ddot = vdot(direction, direction);
+        // (these cache the best computation by linesearch)
+        double ls_alpha = 0;
+        auto ls_point = saved.point();
 
-        delta_x = position;
-        delta_g = gradient;
+        // Linesearch along direction for a better point.
+        // It is possible that no better point will be found, in which case
+        //  the displacement returned will naturally be zero.
+        auto next_alpha = linesearch(
+            settings.linesearch_settings,
+            saved.alpha,
+            diff1d_fn_t([&](double alpha) {
+                point_t point = compute_in_dir(alpha, direction);
+                double slope = vdot(point.gradient, direction);
 
-        // call the output function if applicable
-        if (settings.intermediate_output_interval > 0 &&
-            iter % settings.intermediate_output_interval == 0)
-            settings.output_fn(position);
+                // update cache, checking values to predict which
+                //  point linesearch will prefer to use.
+                // (future additions to linesearch may make this less reliable)
+                if (point.value < ls_point.value) {
+                    ls_alpha = alpha;
+                    ls_point = point;
+                }
 
-        // adjust and check alpha for the next linesearch
-        alpha = alpha * sqrt(ddot_last / ddot);
-
-        // store old ddot
-        ddot_last = ddot;
-
-        // check alpha
-        if (!std::isfinite(alpha))
-        {
-            if (settings.output_level > 0)
-            {
-                cerr << "Error, non-finite alpha." << endl;
-                output_info();
+                if (last && last->ls_failed && settings.output_level > 0)
+                {
+                    cout << "LS: a: " << setprecision(14) << alpha
+                         << "\tv: " << setprecision(14) << point.value
+                         << "\ts: " << setprecision(14) << slope << endl;
+                }
+                return make_pair(point.value, slope);
             }
+        ));
+        point_t next_point = (ls_alpha == next_alpha)
+                             ? ls_point // extraneous computation avoided!
+                             : compute_in_dir(next_alpha, direction);
 
-            if (settings.except_on_fail)
-                throw runtime_error("non-finite alpha");
-
-            return position;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-// Perform the linesearch and check for errors.                               //
-////////////////////////////////////////////////////////////////////////////////
-
-        // temporary to avoid re-calculation of the value post-linesearch
-        auto ls_position = position;
-
-        // 1D function that will be passed to the linsearch
-        auto ls_function = [&](double alpha_in) {
-            // set the new positon
-            ls_position = position;
-            vaxpy(alpha_in, direction, ls_position);
-
-            // get the value/gradient (note: updated in acgsd by reference)
-            tie(value, gradient) = objective_fn(ls_position);
-            // slope by just dotting the direction with the gradient
-            auto slope = vdot(gradient, direction);
-
-            if (ls_failed && settings.output_level > 0)
-            {
-                cout << "LS: a: " << setprecision(14) << alpha_in
-                     << "\tv: " << setprecision(14) << value
-                     << "\ts: " << setprecision(14) << slope << endl;
-            }
-            return make_pair(value, slope);
-        };
-
-        // do the linesearch
-        auto new_alpha = linesearch(ls_function, alpha);
-
-        // get updated position/value/gradient
-        vaxpy(new_alpha, direction, position);
-
-        // only need to update value/grad if the last evaluation in
-        // the linesearch was not the same as final alpha returned
-        if (ls_position != position)
-            tie(value, gradient) = objective_fn(position);
-
-        // if the linesearch failed, note it and try one more iteration
-        if (new_alpha == 0 && !ls_failed)
+        // if the linesearch failed, note it and try
+        //  again next iteration with steepest descent
+        bool ls_failed = (next_alpha == 0);
+        if (ls_failed)
         {
-            ls_failed = true;
-            if (settings.output_level > 0)
+            if (last && last->ls_failed)
             {
-                cout << "Linesearch failure (first), switching "
-                     << "to steepest descent." << endl;
-                output_info();
+                return fatal(
+                    "linesearch failure (second)", saved.alpha, saved.point(),
+                    [&](ostream &out) {
+                        auto test_dir = saved.gradient;
+                        vnormalize(test_dir);
+
+                        double numerical = util::central_difference<9, double>(
+                            [&](double a) {
+                                return compute_in_dir(a, test_dir).value;
+                            }, 0.0, 1e-3);
+
+                        out << "Numerical gradient: "
+                            << setprecision(14) << numerical << endl;
+                    }
+                );
             }
-        }
-        else if (new_alpha == 0)
-        {
-            if (settings.output_level > 0)
-            {
-                cout << "Linesearch failure (second), aborting."  << endl;
-                output_info();
-
-                auto test_dir = gradient;
-                vscal(1.0 / static_cast<double>(sqrt(vdot(test_dir, test_dir))),
-                    test_dir);
-
-                double numerical_grad = util::central_difference<9, double>(
-                    [&](double a) {
-                        auto temp = position;
-                        vaxpy(a, test_dir, temp);
-                        return objective_fn(temp).first;
-                    }, 0.0, 1e-3);
-
-                cout << "Numerical gradient: "
-                     << setprecision(14) << numerical_grad << endl;
-            }
-
-            if (settings.except_on_fail)
-                throw runtime_error("linesearch failure");
-
-            return position;
-        }
-        else
-        {
-            ls_failed = false;
-            alpha = new_alpha;
+            else
+                warning("Linesearch failure, switching to steepest descent",
+                    saved.alpha, saved.point());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Update quantities following the linesearch.                                //
 ////////////////////////////////////////////////////////////////////////////////
 
-        // finish calculating delta_x and delta_g
-        vaxpy(-1.0, position, delta_x);
-        vaxpy(-1.0, gradient, delta_g);
-        vscal(-1.0, delta_x);
-        vscal(-1.0, delta_g);
+        // NOTE: If linesearch failed, then next_alpha was zero and so
+        //       next_point is saved.point(). Hence, all of these will be zero.
+        auto d_value = next_point.value - saved.value;
+        auto d_position = next_point.position;
+        auto d_gradient = next_point.gradient;
+        vaxpy(-1.0, saved.position, d_position);
+        vaxpy(-1.0, saved.gradient, d_gradient);
 
-        // output current progress
-        double grad_mag = sqrt(vdot(gradient, gradient)),
-            grad_max = max_norm(gradient),
-            delta_val = value - val_last;
-
-        if (settings.output_level > 2)
-            cout << " i: " << setw(6)  << iter << ' '
-                 << " v: " << setw(18) << setprecision(14) << value     << ' '
-                 << "dv: " << setw(13) << setprecision(7)  << delta_val << ' '
-                 << " g: " << setw(13) << setprecision(7)  << grad_mag  << ' '
-                 << endl;
-
-        // targeted minimization
-        if (settings.target_ratio_tol > 0 &&
-            settings.target_exit_min > 0)
-        {
-            double delta_target = value - settings.target_value,
-                delta_ratio = std::abs(delta_val / delta_target);
-
-            n_target_fail += 1;
-            if (delta_target < 0 || delta_ratio > settings.target_ratio_tol)
-                n_target_fail = 0;
-        }
-
-        // exit conditions
-        bool acgsd_exit = std::abs(delta_val) < settings.value_tolerance    ||
-                                     grad_mag < settings.gradient_tolerance ||
-                           max_norm(gradient) < settings.grad_max_tolerance ||
-                                n_target_fail > settings.target_exit_min    ||
-            (settings.iteration_limit > 0 && iter >= settings.iteration_limit);
-
-        if (acgsd_exit)
-        {
-            // output final info
-            if (settings.output_level > 1)
-                cout << "ACGSD Finished.\n"
-                     << "Iteration: " << iter      << '\n'
-                     << "    Value: " << value     << '\n'
-                     << "Delta Val: " << delta_val << '\n'
-                     << "Grad Norm: " << grad_mag  << '\n'
-                     << " Grad Max: " << grad_max
-                     << endl;
-
-            break;
-        }
-
-        iter += 1;
-    } while (true);
-
-    return position;
+        last = last_t(direction, d_value, d_position, d_gradient, ls_failed);
+        saved = ls_failed ? saved
+                          : saved_t{next_alpha, next_point};
+        iterations++;
+    }
+    // unreachable
 }

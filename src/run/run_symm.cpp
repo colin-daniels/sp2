@@ -157,8 +157,9 @@ void process_files()
              << "\tuc: " << uc << "\ts: " << alpha << endl;
         for (int i = 0; i < 5 && std::abs(alpha) > 1e-4; ++i)
         {
-            alpha = minimize::linesearch(get_value, get_slope,
-                max(min(alpha, 0.5), -0.5));
+            alpha = minimize::linesearch({},
+                max(min(alpha, 0.5), -0.5),
+                get_value, get_slope);
 
             if (alpha == 0)
                 break;

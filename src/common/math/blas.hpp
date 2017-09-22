@@ -24,7 +24,7 @@ inline T vdot(const std::vector<T> &x, const std::vector<T> &y);
 
 /// x <- x / ||x||
 template<class T>
-inline void vnormalize(std::vector<T> &x);
+inline bool vnormalize(std::vector<T> &x);
 
 /// maximum norm, aka max{abs(x)}
 template<class T>
@@ -121,11 +121,22 @@ inline T vdot(const std::vector<T> &x, const std::vector<T> &y)
     return result;
 }
 
-/// x <- x / ||x||
+/// ||x||
 template<class T>
-inline void vnormalize(std::vector<T> &x)
+inline T vmag(const std::vector<T> &x)
 {
-    vscal(T{1} / static_cast<T>(std::sqrt(vdot(x, x))), x);
+    return static_cast<T>(std::sqrt(vdot(x, x)));
+}
+
+/// x <- x / ||x||
+///
+/// Returns false if normalization failed (zero vector or infinite)
+template<class T>
+inline bool vnormalize(std::vector<T> &x)
+{
+    double mag = vmag(x);
+    vscal(T{1} / mag, x);
+    return std::isnormal(mag);
 }
 
 /// maximum norm, aka max{abs(x)}
