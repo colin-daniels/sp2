@@ -26,9 +26,10 @@ double calc_beta_acgsd(const vector<double> &gradient,
 bool should_revert_acgsd(const vector<double> &gradient,
     const vector<double> &direction)
 {
+    // revert if: g.d > -0.001 * sqrt(d.d * g.g).
+    // Basically, we keep the direction as long as it is at least
+    // slightly downhill, and reject it otherwise.
     double dots = sqrt(vdot(gradient, gradient) * vdot(direction, direction));
-    // revert if: g.d > -0.001 * sqrt(d.d * g.g), basically just when the search
-    // direction is almost parallel to (or pointing the same was as) the gradient
     return vdot(gradient, direction) > -1e-3 * dots;
 }
 
