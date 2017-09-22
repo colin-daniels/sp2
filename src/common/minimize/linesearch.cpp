@@ -1,4 +1,10 @@
 #include "common/minimize/minimize.hpp"
+#include "settings.hpp"
+
+#include <utility>
+#include <tuple>
+#include <cmath>
+#include <iostream>
 
 using namespace std;
 using namespace sp2;
@@ -17,38 +23,53 @@ double cubic_min(ls_bound_t low, ls_bound_t high);
 /// get the analytical mininum of a quadratic fit to two input bounds
 double quad_min(ls_bound_t low, ls_bound_t high);
 
-double minimize::linesearch(oned_fn_t objective_fn, oned_fn_t slope_fn,
-    double alpha)
+class uphill_linesearch: public exception
 {
-    return linesearch(alpha, [&](double a) {
+    virtual const char* what() const noexcept
+    { return "Uphill linesearch"; }
+};
+
+double minimize::linesearch(const ls_settings_t &settings,
+    double alpha, oned_fn_t objective_fn, oned_fn_t slope_fn)
+{
+    return linesearch(settings, alpha, [&](double a) {
         return std::make_pair(objective_fn(a), slope_fn(a));
     });
 }
 
-double minimize::linesearch(double alpha, diff1d_fn_t objective_fn)
+double minimize::linesearch(const ls_settings_t &settings,
+    double alpha, diff1d_fn_t objective_fn)
 {
-    constexpr int iter_lim = 16;
-
     // get values for alpha = 0
     double value, slope;
     std::tie(value, slope) = objective_fn(0);
 
-    // record initial value
+    if (alpha <= 0)
+        throw logic_error("linesearch initial alpha <= 0");
+    if (slope > 0)
+        throw uphill_linesearch();
+
+    // TODO
+    if (settings.weak_force_threshold != 0)
+        throw runtime_error("weak force linesearch not yet implemented");
+
     auto initial_value = value;
 
-    // right hand side quantities for the wolfe condition linesearch
-    auto armijo = 1e-4 * slope,   // sufficient decrease, from the armijo
-                                  // condition
-        curvature = 1e-1 * slope; // the curvature condition
+    // Right hand side quantities for the wolfe condition linesearch.
+    // - sufficient decrease
+    auto armijo = settings.armijo_threshold * std::abs(slope);
+    // - the curvature condition
+    auto curvature = settings.curvature_threshold * std::abs(slope);
 
-    // lower and upper bounds for minumum finding
+    // lower and upper bounds for minimum finding
+    // (hard lower bound, soft upper bound)
     ls_bound_t low = {0, value, slope},
         high = {0, 0, 0};
 
     // running minimum, initialize with the information from alpha = 0
     auto min_point = std::make_pair(value, 0.0);
 
-    for (int iteration = 0; iteration < iter_lim; ++iteration)
+    for (int iteration = 0; iteration < settings.iteration_limit; ++iteration)
     {
         // check for errors in alpha
         if (!std::isfinite(alpha))
@@ -58,8 +79,8 @@ double minimize::linesearch(double alpha, diff1d_fn_t objective_fn)
         std::tie(value, slope) = objective_fn(alpha);
 
         // check the wolfe conditions
-        if (value <= initial_value + alpha * armijo)    // armijo
-            if (std::abs(slope) <= std::abs(curvature)) // curvature
+        if (value <= initial_value - alpha * armijo)    // armijo
+            if (std::abs(slope) <= curvature) // curvature
                 return alpha;
 
         // update running minimum
@@ -80,6 +101,7 @@ double minimize::linesearch(double alpha, diff1d_fn_t objective_fn)
     }
 
     // return the alpha that gave us the lowest value
+    // note: This could be zero!
     return min_point.second;
 }
 

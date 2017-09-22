@@ -4,9 +4,36 @@
 using namespace std;
 using namespace sp2;
 
+bool minimize::ls_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "armijo_threshold", armijo_threshold,
+        "curvature_threshold", curvature_threshold,
+        "weak_force_threshold", weak_force_threshold,
+        "iteration_limit", iteration_limit,
+        "output_level", output_level
+    );
+
+    return true;
+}
+
+bool minimize::ls_settings_t::deserialize(const Json::Value &input)
+{
+    io::deserialize_basic(input,
+        "armijo_threshold", armijo_threshold,
+        "curvature_threshold", curvature_threshold,
+        "weak_force_threshold", weak_force_threshold,
+        "iteration_limit", iteration_limit,
+        "output_level", output_level
+    );
+
+    return true;
+}
+
 bool minimize::acgsd_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
+        "linesearch", linesearch_settings,
         "gradient_tolerance", gradient_tolerance,
         "grad_max_tolerance", grad_max_tolerance,
         "value_tolerance", value_tolerance,
@@ -25,6 +52,7 @@ bool minimize::acgsd_settings_t::serialize(Json::Value &output) const
 bool minimize::acgsd_settings_t::deserialize(const Json::Value &input)
 {
     io::deserialize_basic(input,
+        "linesearch", linesearch_settings,
         "gradient_tolerance", gradient_tolerance,
         "grad_max_tolerance", grad_max_tolerance,
         "value_tolerance", value_tolerance,

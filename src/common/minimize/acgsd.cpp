@@ -1,6 +1,7 @@
 #include "common/minimize/minimize.hpp"
 #include "common/math/numerical_diff.hpp"
 #include "common/math/blas.hpp"
+#include "settings.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -269,6 +270,7 @@ std::vector<double> minimize::acgsd(diff_fn_t objective_fn,
         // It is possible that no better point will be found, in which case
         //  the displacement returned will naturally be zero.
         auto next_alpha = linesearch(
+            settings.linesearch_settings,
             saved.alpha,
             diff1d_fn_t([&](double alpha) {
                 point_t point = compute_in_dir(alpha, direction);

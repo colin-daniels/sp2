@@ -37,14 +37,23 @@ namespace minimize {
     std::vector<double> initial_position,
     const acgsd_settings_t &settings = {});
 
+class uphill_linesearch: public std::exception
+{
+    virtual const char* what() const noexcept
+    { return "Uphill linesearch"; }
+};
+
 /// \brief Cubic/quadratic interpolation linesearch.
 /// \param objective_fn : Input function to be minimized.
 /// \param slope_fn : The objective function's associated scalar gradient function.
 /// \param alpha : The initial stepsize for the linesearch.
 /// \returns The best value of alpha found before exit.
-double linesearch(oned_fn_t objective_fn, oned_fn_t slope_fn, double alpha);
+double linesearch(const ls_settings_t &settings,
+    double alpha, oned_fn_t objective_fn, oned_fn_t slope_fn);
+
 /// \brief Cubic/quadratic interpolation linesearch.
-double linesearch(double alpha, diff1d_fn_t objective_fn);
+double linesearch(const ls_settings_t &settings,
+    double alpha, diff1d_fn_t diff_fn);
 
 /// \brief Linear conjugate gradient for sparse matrices (solves Ax = b).
 /// \param matrix_fn : Function that returns the result of Ax for some x
