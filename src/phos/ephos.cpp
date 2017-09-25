@@ -15,7 +15,7 @@ std::vector<double> get_pristine()
 {
 	structure_t output;
 	io::read_structure("pristine.vasp", output);
-	double bond_cutoff=3.5;
+	double bond_cutoff=3.0;
 	fbc::bond_control_t bond_control(output.lattice, bond_cutoff, 0);
 	bond_control.update(v3tod(output.positions));
 	bond_control.lock_bonds();
@@ -48,7 +48,7 @@ void test_gradient(phos::phosphorene_sys_t &sys)
 
     // calculate numerical gradient
     double numerical_grad = util::central_difference<9, double>(
-        one_dim_func, 0.0, 1e-3);
+        one_dim_func, 0.0, 1e-5);
 
     std::cout << "Analytical gradient: " << analytical_grad << '\n'
               << "Numerical (actual): " << numerical_grad << std::endl;
@@ -190,7 +190,6 @@ double phos::phosphorene_sys_t::get_value() const
     return potential;
 }
 
-
 void phos::phosphorene_sys_t::update()
 {
     // reset state
@@ -223,7 +222,7 @@ void phos::phosphorene_sys_t::update()
 
 	for (int id_a : graph.vertices()) // atom ids
 	{
-		auto type_a = structure.types[id_a];
+		int type_a = int(structure.types[id_a]);
 
 		double st1=0.0,
 		       st2=0.0,
@@ -252,24 +251,34 @@ void phos::phosphorene_sys_t::update()
 			      edge2{-1, -1, -1},
 			      edge3{-1, -1, -1};
 
+		//std::cout<<edge1.id<<" "<<edge2.id<<" "<<edge3.id<<std::endl; 
+		assert(graph.degree(id_a)==3);
 		for (sp2::graph::ud_edge_t edge : graph.edges(id_a))
 		{
-			if (type_a == structure.types[edge.b])
+			if (type_a == int(structure.types[edge.b]))
 			{
+				//std::cout<<"Same "<<type_a<<" "<<int(structure.types[edge.b])<<std::endl;
 				// same pucker
 				if (edge1.id == -1)
 				{
 					edge1 = edge;
+					edge1.id = 1;
+					vec3_t fun = bond_deltas[edge1.id];
+					//std::cout<<fun.x()<<" "<<fun.y()<<" "<<fun.z()<<std::endl;
 				}
 				else
 				{
 					edge2 = edge;
+					vec3_t fun = bond_deltas[edge3.id];
+					//std::cout<<fun.x()<<" "<<fun.y()<<" "<<fun.z()<<std::endl;
 				}
 			}
 			else
 			{
 				// different pucker
 				edge3 = edge;
+				vec3_t fun = bond_deltas[edge3.id];
+				//std::cout<<fun.x()<<" "<<fun.y()<<" "<<fun.z()<<std::endl;
 			}
 		}
 
@@ -294,7 +303,7 @@ void phos::phosphorene_sys_t::update()
 		if (edge1.id != -1)
 		{
 			r12 = get_pristine_bond(pristine_bond_types[edge1.id]);
-			//r12=pristine_deltas(edge1.id);
+			//r12=vec3_t(0.33104,-0.5,0);
 			r12_def = bond_deltas[edge1.id];
 			// edge1.b
 		}
@@ -302,7 +311,7 @@ void phos::phosphorene_sys_t::update()
 		if (edge2.id != -1)
 		{
 			r13 = get_pristine_bond(pristine_bond_types[edge2.id]);
-			//r13=pristine_deltas(edge2.id);
+			//r13=vec3_t(0.33104,0.5,0);
 			r13_def = bond_deltas[edge2.id];
 		}
 
@@ -313,7 +322,7 @@ void phos::phosphorene_sys_t::update()
 			r14_def = bond_deltas[edge3.id];
 		}
 
-		//std::cout<<r13.x()<<" "<<r13.y()<<" "<<r13.z()<<std::endl;
+		//std::cout<<r12.x()<<" "<<r12.y()<<" "<<r12.z()<<std::endl;
 
 		double d12= r12.mag(),
 		       d12_def= r12_def.mag();
@@ -328,6 +337,8 @@ void phos::phosphorene_sys_t::update()
 			   dv2 = r13_def - r13,
 			   dv3 = r14_def - r14;
 
+		//std::cout<<dv3.x()<<" "<<dv3.y()<<" "<<dv3.z()<<std::endl;
+
 		double drs1 = dv1.mag_sq()/ds,
 			   drs2 = dv2.mag_sq()/ds,
 			   drs3 = dv3.mag_sq()/ds;
@@ -335,6 +346,8 @@ void phos::phosphorene_sys_t::update()
 		double dr1 = dv1.mag()/d,
 			   dr2 = dv2.mag()/d,
 			   dr3 = dv3.mag()/d;
+
+		//std::cout<<dr1<<" "<<dr2<<" "<<dr3<<std::endl;   /////////////////////////////////////////////
 
 		delta<<dr1<<" "<<dr2<<" "<<dr3<<std::endl;
 
@@ -394,12 +407,12 @@ void phos::phosphorene_sys_t::update()
 		st7= ds*Krt*(dr1+dr2)*d_theta213; // Term7
 		st8= ds*((KrtP*dr1+KrtPP*dr3)*d_theta214+(KrtP*dr2+KrtPP*dr3)*d_theta314); // Term8
 
-		sum+=st1+st2+st3+st4+st5+st6+st7+st8;
+		sum+=st1;
 
 		// Force Calculation
 
 		vec3_t t1=-1.0*ds*Kr*(dv1+dv2);
-		vec3_t t2=-1.0*ds*KrP*dv3;
+		vec3_t t2=-1.0*ds*KrP*(dv3);
 
 		// Term 3 of the Sum
 		vec3_t grad_cos213_def = cos_grad(r12_def,r13_def);
@@ -408,7 +421,7 @@ void phos::phosphorene_sys_t::update()
 		vec3_t d_dtheta213 = vec3_t(0.0, 0.0, 0.0);
 		if (sin_213!=0.0)
 		{	
-			vec3_t d_dtheta213 = (-1.0*(grad_cos213_def-grad_cos213)*sin_213+(cos_213_def-cos_213)*grad_sin213)/(sin_213*sin_213);
+			d_dtheta213 = (-1.0*(grad_cos213_def-grad_cos213)*sin_213+(cos_213_def-cos_213)*grad_sin213)/(sin_213*sin_213);
 		}
 
 		vec3_t t3=-2.0*ds*Kt*d_theta213*d_dtheta213;
@@ -420,7 +433,7 @@ void phos::phosphorene_sys_t::update()
 		vec3_t d_dtheta214 = vec3_t(0.0, 0.0, 0.0);
 		if (sin_214!=0.0)
 		{
-			vec3_t d_dtheta214 = (-1.0*(grad_cos214_def-grad_cos214)*sin_214+(cos_214_def-cos_214)*grad_sin214)/(sin_214*sin_214);
+			d_dtheta214 = (-1.0*(grad_cos214_def-grad_cos214)*sin_214+(cos_214_def-cos_214)*grad_sin214)/(sin_214*sin_214);
 		}
 
 		vec3_t grad_cos314_def = cos_grad(r13_def,r14_def);
@@ -429,7 +442,7 @@ void phos::phosphorene_sys_t::update()
 		vec3_t d_dtheta314 = vec3_t(0.0, 0.0, 0.0);
 		if (sin_314!=0.0)
 		{
-			vec3_t d_dtheta314 = (-1.0*(grad_cos314_def-grad_cos314)*sin_314+(cos_314_def-cos_314)*grad_sin314)/(sin_314*sin_314);
+			d_dtheta314 = (-1.0*(grad_cos314_def-grad_cos314)*sin_314+(cos_314_def-cos_314)*grad_sin314)/(sin_314*sin_314);
 		}
 
 		vec3_t t4=-2.0*ds*KtP*(d_theta214*d_dtheta214+d_theta314*d_dtheta314);
@@ -438,14 +451,14 @@ void phos::phosphorene_sys_t::update()
 		vec3_t t5 = vec3_t(0.0,0.0,0.0);
 		if (dr1!=0.0 and dr2!=0.0)
 		{
-			vec3_t t5=-1.0*ds*Krrp*(dv1*(dr2/dr1)+dv2*(dr1/dr2));
+			t5=-1.0*ds*Krrp*(dv1*(dr2/dr1)+dv2*(dr1/dr2));
 		}
 
 		// Term 6 of the Sum
 		vec3_t t6 = vec3_t(0.0,0.0,0.0);
 		if (dr1!=0.0 and dr2!=0.0 and dr3!=0.0)
 		{
-			vec3_t t6=-1.0*ds*(KrrpP*(dv1*(dr3/dr1)+dv3*(dr1/dr3))+KrrpP*(dv2*(dr3/dr2)+dv3*(dr2/dr3)));
+			t6=-1.0*ds*(KrrpP*(dv1*(dr3/dr1)+dv3*(dr1/dr3))+KrrpP*(dv2*(dr3/dr2)+dv3*(dr2/dr3)));
 		}
 
 		vec3_t div1=vec3_t(0.0,0.0,0.0),
@@ -464,9 +477,10 @@ void phos::phosphorene_sys_t::update()
 		vec3_t t8_two=ds*(d_theta314*(KrtP*div2+KrtPP*div3)+(KrtP*dr2+KrtPP*dr3)*d_dtheta314);
 		vec3_t t8=-1.0*(t8_one+t8_two);
 
-		vec3_t ft_sum=t1+t2+t3+t4+t5+t6+t7+t8;
+		vec3_t ft_sum=t1;
+		//std::cout<<t1.x()<<" "<<t1.y()<<" "<<t1.z()<<std::endl;
 
 		forces[id_a]=0.5*ft_sum;
 	}
-    potential = sum;
+    potential = -0.5*sum;
 }

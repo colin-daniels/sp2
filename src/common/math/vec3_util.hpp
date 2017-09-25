@@ -19,6 +19,11 @@ constexpr vec3_t cross(const vec3_t &a, const vec3_t &b);
 /// calculate the angle between two vectors (uses std::atan2)
 inline double angle(const vec3_t &a, const vec3_t &b);
 
+inline vec3_t hadamard(const vec3_t &a, const vec3_t &b)
+{
+    return vec3_t(a.x()*b.x(),a.y()*b.y(),a.z()*b.z());
+}
+
 /// generate a randomly oriented unit vector using the provided
 /// UniformRandomBitGenerator
 
