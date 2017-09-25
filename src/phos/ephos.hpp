@@ -44,9 +44,7 @@ private:
     std::vector<vec3_t> forces;
 
     sp2::fbc::bond_control_t bond_control;
-    std::vector<int> pristine_bond_types;
-
-    void update_pristine_bond_types();
+    const std::vector<vec3_t> pristine_deltas;
 };
 
 } // namespace phos

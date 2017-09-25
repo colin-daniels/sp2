@@ -19,8 +19,7 @@ std::vector<double> get_pristine()
 	fbc::bond_control_t bond_control(output.lattice, bond_cutoff, 0);
 	bond_control.update(v3tod(output.positions));
 	bond_control.lock_bonds();
-	auto deltas=bond_control.get_bond_deltas();
-	return deltas;
+	return bond_control.get_bond_deltas();
 }
 
 void test_gradient(phos::phosphorene_sys_t &sys)
@@ -47,53 +46,13 @@ void test_gradient(phos::phosphorene_sys_t &sys)
     };
 
     // calculate numerical gradient
-    double numerical_grad = util::central_difference<9, double>(
-        one_dim_func, 0.0, 1e-5);
+    double numerical_grad = util::central_difference<5, double>(
+        one_dim_func, 0.0, 1e-4);
 
     std::cout << "Analytical gradient: " << analytical_grad << '\n'
               << "Numerical (actual): " << numerical_grad << std::endl;
 
     exit(0);
-}
-
-inline std::array<vec3_t,20> get_pristine_bond_array()
-{ 
-	auto pristine_deltas = dtov3(get_pristine());
-	vec3_t place=vec3_t(0.0,0.0,0.0);
-    std::array<vec3_t,20> pristine_bonds;
-
-    for(int i=0;i<20;i++)
-    {
-    	pristine_bonds[i]=pristine_deltas[i];
-    }
-
-    return pristine_bonds;
-}
-
-inline int get_pristine_type(vec3_t bond)
-{
-    static const auto pristine_bonds = get_pristine_bond_array();
-
-    int min_id = -1;
-    double min_diff = std::numeric_limits<double>::max();
-
-    for (int i = 0; i < pristine_bonds.size(); ++i)
-    {
-        double diff = (pristine_bonds[i] - bond).mag_sq();
-        if (diff < min_diff)
-        {
-            min_id = i;
-            min_diff = diff;
-        }
-    }
-
-    return min_id;
-}
-
-inline vec3_t get_pristine_bond(int bond_type)
-{
-    static const auto pristine_bonds = get_pristine_bond_array();
-    return pristine_bonds[bond_type];
 }
 
 vec3_t sin_grad(vec3_t r1, vec3_t r2)
@@ -133,31 +92,15 @@ phos::phosphorene_sys_t::phosphorene_sys_t(const sp2::structure_t &input) :
     potential(0.0),
     forces(structure.types.size(), {0.0, 0.0, 0.0}),
     bond_control(structure.lattice, bond_cutoff, 0),
-    pristine_bond_types{}
-	{
-    	// do initial update to calculate bonds
-    	bond_control.update(v3tod(structure.positions));
-    	// and immediately lock them since this potential is not a dynamic one
-    	bond_control.lock_bonds();
-
-    	update_pristine_bond_types();
-    	test_gradient(*this);
-    	update();
-	}
-
-void phos::phosphorene_sys_t::update_pristine_bond_types()
+    pristine_deltas{dtov3(get_pristine())}
 {
-	//auto pristine_deltas = dtov3(get_pristine());
-    auto bond_deltas = dtov3(bond_control.get_bond_deltas());
-    //auto bond_deltas = dtov3(get_pristine);
-    // match bonds to their pristine types by checking distances
-    pristine_bond_types.clear();
-    for (auto delta : bond_deltas)
-    {
-        pristine_bond_types.push_back(
-            get_pristine_type(delta)
-        );
-    }
+    // do initial update to calculate bonds
+    bond_control.update(v3tod(structure.positions));
+    // and immediately lock them since this potential is not a dynamic one
+    bond_control.lock_bonds();
+
+    test_gradient(*this);
+    update();
 }
 
 diff_fn_t phos::phosphorene_sys_t::get_diff_fn()
@@ -220,9 +163,35 @@ void phos::phosphorene_sys_t::update()
 
 	double sum= 0.0;
 
-	for (int id_a : graph.vertices()) // atom ids
+    auto output_atom_into = [&](int id_a) {
+        auto output_vec = [&](std::string name, vec3_t v) {
+            std::cout << "      " << name << ": [ ";
+            for (auto x : v)
+                std::cout << x << ' ';
+            std::cout << "]\n";
+        };
+
+        std::cout << "Atom ID: " << id_a << '\n'
+                  << "  Type: " << sp2::enum_to_str(structure.types[id_a]) << '\n'
+                  << "  Bonds: " << graph.degree(id_a) << std::endl;
+
+        for (sp2::graph::ud_edge_t edge : graph.edges(id_a))
+        {
+            std::cout << "    ID " << edge.id << " "
+                      << "[" << edge.a << "->" << edge.b << "]\n";
+
+            output_vec("Components", bond_deltas[edge.id]);
+            output_vec("Pristine", pristine_deltas[edge.id]);
+
+            std::cout << "      Delta Mag: " << (pristine_deltas[edge.id] - bond_deltas[edge.id]).mag()
+                                             << std::endl;
+        }
+    };
+
+    assert(pristine_deltas.size() == bond_deltas.size());
+    for (int id_a : graph.vertices()) // atom ids
 	{
-		int type_a = int(structure.types[id_a]);
+		auto type_a = structure.types[id_a];
 
 		double st1=0.0,
 		       st2=0.0,
@@ -255,14 +224,13 @@ void phos::phosphorene_sys_t::update()
 		assert(graph.degree(id_a)==3);
 		for (sp2::graph::ud_edge_t edge : graph.edges(id_a))
 		{
-			if (type_a == int(structure.types[edge.b]))
+			if (type_a == structure.types[edge.b])
 			{
 				//std::cout<<"Same "<<type_a<<" "<<int(structure.types[edge.b])<<std::endl;
 				// same pucker
 				if (edge1.id == -1)
 				{
 					edge1 = edge;
-					edge1.id = 1;
 					vec3_t fun = bond_deltas[edge1.id];
 					//std::cout<<fun.x()<<" "<<fun.y()<<" "<<fun.z()<<std::endl;
 				}
@@ -302,7 +270,7 @@ void phos::phosphorene_sys_t::update()
 
 		if (edge1.id != -1)
 		{
-			r12 = get_pristine_bond(pristine_bond_types[edge1.id]);
+			r12 = pristine_deltas[edge1.id];
 			//r12=vec3_t(0.33104,-0.5,0);
 			r12_def = bond_deltas[edge1.id];
 			// edge1.b
@@ -310,14 +278,14 @@ void phos::phosphorene_sys_t::update()
 
 		if (edge2.id != -1)
 		{
-			r13 = get_pristine_bond(pristine_bond_types[edge2.id]);
+			r13 = pristine_deltas[edge2.id];
 			//r13=vec3_t(0.33104,0.5,0);
 			r13_def = bond_deltas[edge2.id];
 		}
 
 		if (edge3.id != -1)
 		{
-			r14 = get_pristine_bond(pristine_bond_types[edge3.id]);
+			r14 = pristine_deltas[edge3.id];
 			//r14=pristine_deltas(edge3.id);
 			r14_def = bond_deltas[edge3.id];
 		}
