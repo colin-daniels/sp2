@@ -93,7 +93,11 @@ environment::environment(const char *prog)
     Py_InitializeEx(0);
     ext_modules::post_py_initialize();
 
+    // numpy (or a dependency) likes to set the SIGINT handler to its own
+    // if it hasn't already been set, so we work around it here
+    PyOS_sighandler_t handler = PyOS_getsig(SIGINT);
     initialize_numpy();
+    PyOS_setsig(SIGINT, handler);
     throw_on_py_err("error initializing numpy");
 
     fake_modules::initialize();
