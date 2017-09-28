@@ -89,7 +89,8 @@ environment::environment(const char *prog)
     }
 
     ext_modules::pre_py_initialize();
-    Py_Initialize();
+    // initsigs = 0 to skip initialization of python signal handlers
+    Py_InitializeEx(0);
     ext_modules::post_py_initialize();
 
     initialize_numpy();
