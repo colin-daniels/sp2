@@ -14,7 +14,7 @@ struct lammps_settings_t : public io::json_serializable_t
         log_output = false;      ///< whether lammps should write to stdout or not
     double sigma_scale = 3.0;    ///< range of lj forces is this times 3.4 angstroms
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };

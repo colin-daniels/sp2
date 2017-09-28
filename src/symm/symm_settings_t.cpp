@@ -4,7 +4,7 @@
 using namespace std;
 using namespace sp2;
 
-bool symm::symm_settings_t::serialize(Json::Value &output) const
+void symm::symm_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
         "n_atoms", n_atoms,
@@ -18,13 +18,11 @@ bool symm::symm_settings_t::serialize(Json::Value &output) const
         "pso", pso_set,
         "acgsd", acgsd_set
     );
-
-    return true;
 }
 
 bool symm::symm_settings_t::deserialize(const Json::Value &input)
 {
-    bool ok = io::deserialize_basic(input,
+    return io::deserialize_basic(input,
         "n_atoms", n_atoms,
         "space_group", space_group,
         "space_group_file", space_group_file,
@@ -36,6 +34,4 @@ bool symm::symm_settings_t::deserialize(const Json::Value &input)
         "pso", pso_set,
         "acgsd", acgsd_set
     );
-
-    return ok;
 }

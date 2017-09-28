@@ -42,7 +42,7 @@ struct ls_settings_t : public io::json_serializable_t
     /// 3: Data every iteration
     int output_level = 1;
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };
@@ -94,7 +94,7 @@ struct acgsd_settings_t : public io::json_serializable_t
 
     ls_settings_t linesearch_settings;
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };
@@ -153,7 +153,7 @@ struct pso_settings_t : public io::json_serializable_t
     /// (assuming intermediate_output is set to true)
     output_fn_t output_fn = [](const auto &) {};
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };
@@ -186,7 +186,7 @@ struct fire_settings_t : public io::json_serializable_t
     /// every intermediate_output_interval iterations
     output_fn_t output_fn = [](const auto &) {};
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };
@@ -207,7 +207,7 @@ struct metropolis_settings_t : public io::json_serializable_t
     /// 3: Information after each successful refinement
     int output_level = 3;
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };
@@ -320,7 +320,7 @@ struct structural_metropolis_funcs_t : public io::json_serializable_t
     ///     return mutation
     std::string scale;
 
-    virtual bool serialize(Json::Value &output) const;
+    virtual void serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
 
@@ -331,7 +331,7 @@ struct metropolis_scaling_settings_t : public io::json_serializable_t
     double downscale_by = 0.5;
     int downscale_max_attempts = 3;
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };
@@ -353,7 +353,7 @@ struct structural_metropolis_settings_t : public io::json_serializable_t
     minimize::metropolis_settings_t settings;
     minimize::metropolis_scaling_settings_t scaling_settings;
 
-    virtual bool serialize(Json::Value &output) const;
+    virtual void serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
 

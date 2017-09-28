@@ -35,16 +35,16 @@ bool deserialize_polarization(
         case Json::arrayValue:
             if (input.size() != 2)
                 return false;
-            sp2::io::get_json_as_type(input[0], obj.polarization_axes[0]);
-            sp2::io::get_json_as_type(input[1], obj.polarization_axes[1]);
-            return true;
+
+            return sp2::io::get_json_as_type(input[0], obj.polarization_axes[0])
+                && sp2::io::get_json_as_type(input[1], obj.polarization_axes[1]);
 
         default:
             return false;
     }
 }
 
-bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
+void sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
 {
     Json::Value pol = serialize_polarization(*this);
 
@@ -69,15 +69,16 @@ bool sp2::phonopy::phonopy_settings_t::serialize(Json::Value &output) const
         "write_force", write_force,
         "qpoints", qpoints
     );
-
-    return true;
 }
 
 bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
 {
     Json::Value pol;
 
-    io::deserialize_basic(input,
+    if (!deserialize_polarization(*this, pol))
+        return false;
+
+    return io::deserialize_basic(input,
         "n_samples", n_samples,
         "minimize", min_set,
         "displacement_distance", displacement_distance,
@@ -98,11 +99,6 @@ bool sp2::phonopy::phonopy_settings_t::deserialize(const Json::Value &input)
         "write_force", write_force,
         "qpoints", qpoints
     );
-
-    if (!deserialize_polarization(*this, pol))
-        return false;
-
-    return true;
 }
 
 bool sp2::phonopy::qpoint_t::deserialize(const Json::Value &input)
@@ -110,15 +106,13 @@ bool sp2::phonopy::qpoint_t::deserialize(const Json::Value &input)
     if (!input.isArray() || input.size() != 4)
         return false;
 
-    io::get_json_as_type(input[0], label);
-    io::get_json_as_type(input[1], x);
-    io::get_json_as_type(input[2], y);
-    io::get_json_as_type(input[3], z);
-
-    return true;
+    return io::get_json_as_type(input[0], label)
+           && io::get_json_as_type(input[1], x)
+           && io::get_json_as_type(input[2], y)
+           && io::get_json_as_type(input[3], z);
 }
 
-bool sp2::phonopy::qpoint_t::serialize(Json::Value &output) const
+void sp2::phonopy::qpoint_t::serialize(Json::Value &output) const
 {
     output = Json::arrayValue;
 
@@ -126,6 +120,4 @@ bool sp2::phonopy::qpoint_t::serialize(Json::Value &output) const
     output.append(x);
     output.append(y);
     output.append(z);
-
-    return true;
 }

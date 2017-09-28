@@ -44,7 +44,7 @@ struct structure_t : public io::json_serializable_t
     /// (but leaving the lattice fixed).
     void transform(const mat3x3_t &transformation);
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
     bool deserialize(const Json::Value &input);
 
     Json::Value serialize_lattice() const;

@@ -41,7 +41,7 @@ struct qpoint_t : public io::json_serializable_t
     qpoint_t(std::string label_in, double x_in, double y_in, double z_in) :
         label(label_in), x(x_in), y(y_in), z(z_in) {}
 
-    virtual bool serialize(Json::Value &output) const;
+    virtual void serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
 
@@ -81,7 +81,7 @@ struct phonopy_settings_t : public io::json_serializable_t
     minimize::acgsd_settings_t min_set;
     minimize::structural_metropolis_settings_t metro_set;
 
-    virtual bool serialize(Json::Value &output) const;
+    virtual void serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
 

@@ -36,7 +36,7 @@ struct atac_settings_t : public io::json_serializable_t
 
     atac_settings_t();
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
 
     bool deserialize(const Json::Value &input);
 };

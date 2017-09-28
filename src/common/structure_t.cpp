@@ -24,7 +24,7 @@ structure_t::structure_t(const double lattice_in[3][3],
 }
 
 /// serialize object to Json::Value
-bool structure_t::serialize(Json::Value &output) const
+void structure_t::serialize(Json::Value &output) const
 {
     if (!space_group.empty())
         output["space_group"] = space_group;
@@ -41,7 +41,6 @@ bool structure_t::serialize(Json::Value &output) const
     }
 
     output["positions"] = structure;
-    return true;
 }
 
 /// deserialize object from Json::Value
