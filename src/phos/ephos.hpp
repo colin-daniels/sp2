@@ -44,7 +44,7 @@ private:
     std::vector<vec3_t> forces;
 
     sp2::fbc::bond_control_t bond_control;
-    const std::vector<vec3_t> pristine_deltas;
+    std::vector<vec3_t> pristine_deltas;
 };
 
 } // namespace phos

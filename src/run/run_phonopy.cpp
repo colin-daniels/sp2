@@ -18,6 +18,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <src/phos/ephos.hpp>
 #include "phonopy/phonopy_io.hpp"
 #include "common/math/rotations.hpp"
 #include "common/util/random.hpp"
@@ -106,6 +107,10 @@ std::vector<double> get_phonopy_masses(const sp2::structure_t &structure)
             break;
         case atom_types::H:
             masses.push_back(1.00794);
+            break;
+        case atom_types::P:
+        case atom_types::W:
+            masses.push_back(30.973762);
             break;
         default:
             std::cerr << "Error: No default mass programmed for atom type.\n";
@@ -385,10 +390,10 @@ void relax_structure(structure_t &structure, run_settings_t rset)
         }
         // at scope exit, 'sys' is the single source of truth.
 
-        if (rset.phonopy_settings.metro_set.enabled) {
-            perform_structural_metropolis(sys, structure.positions.size(),
-                supercell.positions.size(), rset.phonopy_settings.metro_set);
-        }
+        // if (rset.phonopy_settings.metro_set.enabled) {
+        //     perform_structural_metropolis(sys, structure.positions.size(),
+        //         supercell.positions.size(), rset.phonopy_settings.metro_set);
+        // }
 
         input.positions = sp2::dtov3(sys.get_position());
 
@@ -403,6 +408,8 @@ void relax_structure(structure_t &structure, run_settings_t rset)
                 lammps::system_control_t(input, rset.lammps_settings), input);
         case potential_type::REBO:
             return minimize(airebo::system_control_t(input), input);
+        case potential_type::PHOSPHORENE:
+            return minimize(phos::phosphorene_sys_t(input), input);
         default:
             std::cerr << "Invalid potential in relax for phonopy.\n";
             exit(EXIT_FAILURE);
@@ -410,7 +417,8 @@ void relax_structure(structure_t &structure, run_settings_t rset)
     };
 
     do_minimize(supercell);
-
+    io::write_structure("supercell_relaxed.vasp", supercell);
+    
     // just get the positions from the first primitive cell of the
     // supercell and pass it back out
     structure = util::deconstruct_supercell(supercell,
@@ -519,6 +527,12 @@ void generate_force_sets(run_settings_t rset)
             structure);
 
         get_forces = [&](auto& pos){return force_fn(pos, *sys_rebo);};
+        break;
+    case potential_type::PHOSPHORENE:
+        get_forces = [&](auto& pos){
+            phos::phosphorene_sys_t temp_sys(structure);
+            return force_fn(pos, temp_sys);
+        };
         break;
     default:
         return;
