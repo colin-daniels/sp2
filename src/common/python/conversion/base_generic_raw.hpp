@@ -28,6 +28,8 @@
 #include "common/python/types/py_ref_t.hpp"
 #include "base_monomorphic.hpp"
 
+#include <iostream>
+
 namespace sp2 {
 namespace python {
 

@@ -1,6 +1,6 @@
 download_project(PROJ templ
     GIT_REPOSITORY https://github.com/colin-daniels/templ.git
-    GIT_TAG master
+    GIT_TAG 5c2dd1d36b107cbeb5fc46a99b5775bbee355cad
     UPDATE_DISCONNECTED 1
     QUIET)
 

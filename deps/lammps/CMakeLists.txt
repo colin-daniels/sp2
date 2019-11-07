@@ -30,8 +30,9 @@ else()
 endif()
 
 find_package(OpenMP REQUIRED)
+# GPL v2.0: https://github.com/lammps/lammps/blob/patch_22Sep2017/LICENSE
 ExternalProject_Add(lammps_external
-        URL http://lammps.sandia.gov/tars/lammps-stable.tar.gz
+        URL https://github.com/lammps/lammps/archive/patch_22Sep2017.tar.gz
         SOURCE_DIR "${LAMMPS_SOURCE_DIR}"
 
         # patch LAMMPS makefile to pass along correct compiler and MPI
@@ -39,7 +40,7 @@ ExternalProject_Add(lammps_external
         PATCH_COMMAND patch "${LAMMPS_BUILD_DIR}/MAKE/OPTIONS/Makefile.omp"
             "${CMAKE_CURRENT_BINARY_DIR}/makefile.patch"
         # patch pair_airebo to read fake parameter "file"
-        COMMAND patch "${LAMMPS_BUILD_DIR}/pair_airebo.cpp"
+        COMMAND patch "${LAMMPS_BUILD_DIR}/MANYBODY/pair_airebo.cpp"
             "${CMAKE_CURRENT_SOURCE_DIR}/airebo_parameters.patch"
         # copy header that contains fake airebo parameter "file"
         COMMAND ${CMAKE_COMMAND} -E copy
