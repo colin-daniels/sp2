@@ -18,10 +18,22 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-lammps-
 
-    - name: Install Dependencies
+    - name: Install Package Dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y libopenmpi-dev
+
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+
+    - name: Install Python Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # we need to install numpy first because of something phonopy does in its setup
+        pip install -r <(grep numpy requirements.txt)
+        pip install -r requirements.txt
 
     - name: configure
       run: |
