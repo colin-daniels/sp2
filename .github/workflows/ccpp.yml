@@ -19,7 +19,9 @@ jobs:
           ${{ runner.os }}-lammps-
 
     - name: Install Dependencies
-      run: sudo apt-get install libopenmpi-dev
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libopenmpi-dev
 
     - name: configure
       run: |
