@@ -48,7 +48,7 @@ std::vector<double> minimize::adaptive_pso(pso_update_fn_t update_fn,
         // output stats for this generation
         if (!settings.quiet)
         {
-            int gen_width = ceil(log10(settings.max_generations) + 1);
+            int gen_width = std::ceil(log10(settings.max_generations) + 1);
             double dist_min, dist_max, dist_global,
                 inertia, accel_self, accel_global;
 

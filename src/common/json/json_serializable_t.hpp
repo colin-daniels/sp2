@@ -19,7 +19,7 @@ public:
     virtual ~json_serializable_t() = default;
 
     /// serialize object to Json::Value
-    virtual bool serialize(Json::Value &output) const = 0;
+    virtual void serialize(Json::Value &output) const = 0;
     /// deserialize object from Json::Value
     virtual bool deserialize(const Json::Value &input) = 0;
 };

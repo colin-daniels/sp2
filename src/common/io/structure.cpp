@@ -65,8 +65,8 @@ bool io::write_structure(std::string filename,
 
         // just serialize to json and write
         Json::Value val;
-        return input.serialize(val) &&
-               io::write_json_file(val, filename);
+        input.serialize(val);
+        return io::write_json_file(val, filename);
     }
     case file_type::CIF:
         return io::write_cif(filename, input);

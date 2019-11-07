@@ -1,7 +1,7 @@
 #include "common/structure_t.hpp"
 #include "common/util/mpi.hpp"
 
-#include <json/json.h>
+#include "deps/json.hpp"
 #include <common/math/rotations.hpp>
 #include <common/math/vec3_util.hpp>
 
@@ -24,7 +24,7 @@ structure_t::structure_t(const double lattice_in[3][3],
 }
 
 /// serialize object to Json::Value
-bool structure_t::serialize(Json::Value &output) const
+void structure_t::serialize(Json::Value &output) const
 {
     if (!space_group.empty())
         output["space_group"] = space_group;
@@ -41,7 +41,6 @@ bool structure_t::serialize(Json::Value &output) const
     }
 
     output["positions"] = structure;
-    return true;
 }
 
 /// deserialize object from Json::Value
@@ -151,17 +150,20 @@ void right_multiply_inplace(vector<vec3_t> &vecs, mat3x3_t mat)
         vec = transpose * vec;
 }
 
-std::vector<vec3_t> structure_t::fractional_positions()
+std::vector<vec3_t> structure_t::fractional_positions() const
 {
     auto inv = mat3x3_t(lattice).inverse();
     return right_multiply(positions, inv, {});
 }
 
-std::vector<vec3_t> structure_t::reduced_fractional_positions()
+std::vector<vec3_t> structure_t::reduced_fractional_positions() const
 {
     auto out = fractional_positions();
-    for (auto &x : out)
-        x -= apply_fn<std::floor>(x);
+    for (auto &vec : out)
+    {
+        vec -= floor(vec); // into interval [0,1]; consider x = -1e-20
+        vec -= floor(vec); // into interval [0,1)
+    }
     return out;
 }
 

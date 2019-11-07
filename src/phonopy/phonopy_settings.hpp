@@ -9,6 +9,27 @@
 namespace sp2 {
 namespace phonopy {
 
+enum class fc_compute_type : int
+{
+    NONE = 0,
+    /// Write force_constants.hdf5 only if it does not exist.
+    AUTO = 1,
+    /// Always write force_constants.hdf5, even if it exists.
+    ALWAYS = 2
+};
+
+} // namespace phonopy
+
+template<>
+constexpr enum_map_t<phonopy::fc_compute_type>
+    enum_map<phonopy::fc_compute_type> =
+    {
+        {phonopy::fc_compute_type::AUTO,   "auto"},
+        {phonopy::fc_compute_type::ALWAYS, "always"}
+    };
+
+namespace phonopy {
+
 struct qpoint_t : public io::json_serializable_t
 {
     std::string label = "G";
@@ -20,7 +41,7 @@ struct qpoint_t : public io::json_serializable_t
     qpoint_t(std::string label_in, double x_in, double y_in, double z_in) :
         label(label_in), x(x_in), y(y_in), z(z_in) {}
 
-    virtual bool serialize(Json::Value &output) const;
+    virtual void serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
 
@@ -43,9 +64,14 @@ struct phonopy_settings_t : public io::json_serializable_t
     double raman_active_cutoff = 1e-3;
     int polarization_axes[2] = {0, 0};
 
+    bool do_minimization = true;
     bool calc_displacements = true;
     bool calc_force_sets = true;
     bool calc_bands = true;
+
+    std::string write_force;
+
+    fc_compute_type compute_force_constants = fc_compute_type::AUTO;
 
     std::vector<qpoint_t> qpoints = {
         qpoint_t("\u0393", 0, 0, 0),
@@ -53,8 +79,9 @@ struct phonopy_settings_t : public io::json_serializable_t
     };
 
     minimize::acgsd_settings_t min_set;
+    minimize::structural_metropolis_settings_t metro_set;
 
-    virtual bool serialize(Json::Value &output) const;
+    virtual void serialize(Json::Value &output) const;
     virtual bool deserialize(const Json::Value &input);
 };
 

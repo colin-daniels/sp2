@@ -343,7 +343,7 @@ void graph::write_gplot_graph(std::string filename, const ud_graph_t &graph)
     for (int i = 0; i < n_vert; ++i)
     {
         for (int j = offsets[i]; j < offsets[i + 1]; ++j)
-            adj_map[i * n_vert + edge_ids[j]] = abs(i - edge_ids[j]);
+            adj_map[i * n_vert + edge_ids[j]] = std::abs(i - edge_ids[j]);
 
         for (int j = 0; j < n_vert; ++j)
             outfile << i << '\t' << j << '\t' << adj_map[i * n_vert + j] << '\n';

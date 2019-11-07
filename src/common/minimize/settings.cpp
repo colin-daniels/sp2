@@ -4,9 +4,32 @@
 using namespace std;
 using namespace sp2;
 
-bool minimize::acgsd_settings_t::serialize(Json::Value &output) const
+void minimize::ls_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
+        "armijo_threshold", armijo_threshold,
+        "curvature_threshold", curvature_threshold,
+        "weak_force_threshold", weak_force_threshold,
+        "iteration_limit", iteration_limit,
+        "output_level", output_level
+    );
+}
+
+bool minimize::ls_settings_t::deserialize(const Json::Value &input)
+{
+    return io::deserialize_basic(input,
+        "armijo_threshold", armijo_threshold,
+        "curvature_threshold", curvature_threshold,
+        "weak_force_threshold", weak_force_threshold,
+        "iteration_limit", iteration_limit,
+        "output_level", output_level
+    );
+}
+
+void minimize::acgsd_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "linesearch", linesearch_settings,
         "gradient_tolerance", gradient_tolerance,
         "grad_max_tolerance", grad_max_tolerance,
         "value_tolerance", value_tolerance,
@@ -18,13 +41,12 @@ bool minimize::acgsd_settings_t::serialize(Json::Value &output) const
         "target_exit_min", target_exit_min,
         "intermediate_output_interval", intermediate_output_interval
     );
-
-    return true;
 }
 
 bool minimize::acgsd_settings_t::deserialize(const Json::Value &input)
 {
-    io::deserialize_basic(input,
+    return io::deserialize_basic(input,
+        "linesearch", linesearch_settings,
         "gradient_tolerance", gradient_tolerance,
         "grad_max_tolerance", grad_max_tolerance,
         "value_tolerance", value_tolerance,
@@ -36,11 +58,9 @@ bool minimize::acgsd_settings_t::deserialize(const Json::Value &input)
         "target_exit_min", target_exit_min,
         "intermediate_output_interval", intermediate_output_interval
     );
-
-    return true;
 }
 
-bool minimize::pso_settings_t::serialize(Json::Value &output) const
+void minimize::pso_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
         "n_particles", n_particles,
@@ -64,19 +84,15 @@ bool minimize::pso_settings_t::serialize(Json::Value &output) const
         "min_bound", min_bound,
         "max_bound", max_bound
     );
-
-    return true;
 }
 
 bool minimize::pso_settings_t::deserialize(const Json::Value &input)
 {
-    io::deserialize_basic(input,
+    return io::deserialize_basic(input,
         "n_particles", n_particles,
         "max_generations", max_generations,
         "intermediate_output", intermediate_output,
-        "quiet", quiet);
-
-    io::deserialize_basic(input,
+        "quiet", quiet,
         "vel_max_scale", vel_max_scale,
         "accel_delta_min", accel_delta_min,
         "accel_delta_max", accel_delta_max,
@@ -92,11 +108,9 @@ bool minimize::pso_settings_t::deserialize(const Json::Value &input)
         "min_bound", min_bound,
         "max_bound", max_bound
     );
-
-    return true;
 }
 
-bool minimize::fire_settings_t::serialize(Json::Value &output) const
+void minimize::fire_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
         "grad_tol", grad_tol,
@@ -109,13 +123,11 @@ bool minimize::fire_settings_t::serialize(Json::Value &output) const
         "alpha_initial", alpha_initial,
         "alpha_mult", alpha_mult
     );
-
-    return true;
 }
 
 bool minimize::fire_settings_t::deserialize(const Json::Value &input)
 {
-    io::deserialize_basic(input,
+    return io::deserialize_basic(input,
         "grad_tol", grad_tol,
         "max_iter", max_iter,
         "dt_initial", dt_initial,
@@ -126,6 +138,93 @@ bool minimize::fire_settings_t::deserialize(const Json::Value &input)
         "alpha_initial", alpha_initial,
         "alpha_mult", alpha_mult
     );
+}
 
-    return true;
+
+void minimize::metropolis_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "iteration_limit", iteration_limit,
+        "improve_iteration_limit", improve_iteration_limit,
+        "output_level", output_level
+    );
+}
+
+bool minimize::metropolis_settings_t::deserialize(const Json::Value &input)
+{
+    return io::deserialize_basic(input,
+        "iteration_limit", iteration_limit,
+        "improve_iteration_limit", improve_iteration_limit,
+        "output_level", output_level
+    );
+}
+
+
+void minimize::metropolis_scaling_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "upscale_by", upscale_by,
+        "downscale_by", downscale_by,
+        "downscale_max_attempts", downscale_max_attempts
+    );
+}
+
+bool minimize::metropolis_scaling_settings_t::deserialize(const Json::Value &input)
+{
+    return io::deserialize_basic(input,
+        "upscale_by", upscale_by,
+        "downscale_by", downscale_by,
+        "downscale_max_attempts", downscale_max_attempts
+    );
+}
+
+void minimize::structural_metropolis_settings_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "enabled", enabled,
+        "objective", objective,
+        "python_sys_path", python_sys_path,
+        "python_module", python_module,
+        "python_functions", python_functions,
+        "settings", settings
+    );
+}
+
+bool minimize::structural_metropolis_settings_t::deserialize(const Json::Value &input)
+{
+    return io::deserialize_basic(input,
+        "enabled", enabled,
+        "objective", objective,
+        "python_sys_path", python_sys_path,
+        "python_module", python_module,
+        "python_functions", python_functions,
+        "settings", settings
+    );
+}
+
+
+void minimize::structural_metropolis_funcs_t::serialize(Json::Value &output) const
+{
+    io::serialize_basic(output,
+        "class", class_,
+        "generate", generate,
+        "apply", apply,
+        "applied", applied,
+        "visit", visit,
+        "is_repeatable", is_repeatable,
+        "scale", scale
+    );
+}
+
+bool minimize::structural_metropolis_funcs_t::deserialize(const Json::Value &input)
+{
+    return io::deserialize_basic(input,
+        "class", class_,
+        "generate", generate,
+        "apply", apply,
+        "applied", applied,
+        "visit", visit,
+        "is_repeatable", is_repeatable,
+        "scale", scale
+    );
 }

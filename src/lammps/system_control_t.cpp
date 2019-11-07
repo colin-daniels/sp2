@@ -223,8 +223,6 @@ void lammps::system_control_t::init(const structure_t &info,
             + string(lmp_set.compute_lj ? "1 " : "0 ")      // LJ on/off
             + string(lmp_set.compute_torsion ? "1" : "0"),  // torsion on/off
         "pair_coeff * * CH.airebo H C", // read potential info
-        // set lj potential scaling factor (hack)
-        "pair_coeff * * lj/scale " + std::to_string(lmp_set.lj_scale),
         "compute 1 all pe",             // set up compute ID 1 for energy
         "run 0"                         // do an iteration
     );

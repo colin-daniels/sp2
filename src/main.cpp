@@ -6,6 +6,11 @@
 #include "common/json/json.hpp"
 
 #include <boost/mpi.hpp>
+#include <common/util/templates.hpp>
+
+#ifdef SP2_ENABLE_PYTHON
+#include "common/python/environment.hpp"
+#endif // SP2_ENABLE_PYTHON
 
 #ifdef SP2_ENABLE_TESTS
 #include <gtest/gtest.h>
@@ -20,7 +25,11 @@ int run_normal(string config_filename, MPI_Comm comm);
 int main(int argc, char *argv[])
 {
     // setup program environment
-    boost::mpi::environment env;
+    boost::mpi::environment mpi_env(argc, argv);
+
+    #ifdef SP2_ENABLE_PYTHON
+    sp2::python::environment py_env(argv[0]);
+    #endif // SP2_ENABLE_PYTHON
 
 ////////////////////////////////////////////////////////////////////////////////
 // check command line flags for special options that bypass normal operation  //

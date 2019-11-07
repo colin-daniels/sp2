@@ -48,7 +48,7 @@ double penalty_func(const structure_t &structure)
                 n_bonds += (1.65 - bond_len) / 0.1;
         }
 
-        auto diff = abs(n_bonds - 3.0);
+        auto diff = std::abs(n_bonds - 3.0);
         penalty_potential += diff * multiplier;
     }
 
@@ -125,14 +125,19 @@ void process_files()
             if (vdot(sys.get_gradient(), sys.get_gradient()) < 1e-4)
                 return sys.get_value();
 
-            minimize::acgsd([&](const auto &pos) {
-                auto temp = sys.get_structure();
-                temp.positions = sp2::dtov3(pos);
-                sys.set_structure(temp);
+            auto min_struct = sys.get_structure();
+            min_struct.positions = sp2::dtov3(
+                minimize::acgsd([&](const auto &pos) {
+                    auto temp = sys.get_structure();
+                    temp.positions = sp2::dtov3(pos);
+                    sys.set_structure(temp);
 
-                sys.update();
-                return make_pair(sys.get_value(), sys.get_gradient());
-            }, sp2::v3tod(sys.get_structure().positions), cg_set);
+                    sys.update();
+                    return make_pair(sys.get_value(), sys.get_gradient());
+                }, sp2::v3tod(sys.get_structure().positions), cg_set)
+            );
+            sys.set_structure(min_struct);
+            sys.update();
 
             return sys.get_value();
         };
@@ -150,10 +155,11 @@ void process_files()
         double alpha = get_slope(0);
         cout << filename << " v: " << sys.get_value()
              << "\tuc: " << uc << "\ts: " << alpha << endl;
-        for (int i = 0; i < 5 && abs(alpha) > 1e-4; ++i)
+        for (int i = 0; i < 5 && std::abs(alpha) > 1e-4; ++i)
         {
-            alpha = minimize::linesearch(get_value, get_slope,
-                max(min(alpha, 0.5), -0.5));
+            alpha = minimize::linesearch({},
+                max(min(alpha, 0.5), -0.5),
+                get_value, get_slope);
 
             if (alpha == 0)
                 break;
@@ -272,17 +278,22 @@ int sp2::run_symm(const run_settings_t &settings, MPI_Comm comm_in)
         else if (symm_settings.use_cg)
         {
             try {
-                minimize::acgsd([&](const auto &pos) {
-                    auto structure = sys.get_structure();
-                    structure.positions = sp2::dtov3(pos);
-                    sys.set_structure(structure);
+                auto min_struct = sys.get_structure();
+                min_struct.positions = sp2::dtov3(
+                    minimize::acgsd([&](const auto &pos) {
+                        auto structure = sys.get_structure();
+                        structure.positions = sp2::dtov3(pos);
+                        sys.set_structure(structure);
 
-                    sys.update();
-                    return make_pair(sys.get_value(), sys.get_gradient());
-                },
-                    sp2::v3tod(sys.get_structure().positions),
-                    symm_settings.acgsd_set
+                        sys.update();
+                        return make_pair(sys.get_value(), sys.get_gradient());
+                    },
+                        sp2::v3tod(sys.get_structure().positions),
+                        symm_settings.acgsd_set
+                    )
                 );
+                sys.set_structure(min_struct);
+                sys.update();
 
             } catch (std::domain_error &ex) {}
 

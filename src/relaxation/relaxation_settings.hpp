@@ -13,7 +13,7 @@ struct relaxation_settings_t : public io::json_serializable_t
 
     // TODO: add FIRE settings and switch for minimization algorithm
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
     bool deserialize(const Json::Value &input);
 };
 

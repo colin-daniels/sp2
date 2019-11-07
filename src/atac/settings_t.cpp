@@ -25,7 +25,7 @@ atac::atac_settings_t::atac_settings_t() :
     min_set.target_exit_min = 5;
 }
 
-bool atac::atac_settings_t::serialize(Json::Value& output) const
+void atac::atac_settings_t::serialize(Json::Value &output) const
 {
     io::serialize_basic(output,
         "iteration_limit", iteration_limit,
@@ -42,8 +42,6 @@ bool atac::atac_settings_t::serialize(Json::Value& output) const
         "stretch_amount", stretch_amount,
         "minimize", min_set
     );
-
-    return true;
 }
 
 bool atac::atac_settings_t::deserialize(const Json::Value& input)

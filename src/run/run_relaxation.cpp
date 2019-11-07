@@ -16,8 +16,10 @@ int sp2::run_relaxation(const run_settings_t &config, MPI_Comm)
 
     auto run_relax = [&](auto&& sys) {
         // minimize
-        minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
-            config.relaxation_settings.minimize_settings);
+        sys.set_position(
+            minimize::acgsd(sys.get_diff_fn(), sys.get_position(),
+                config.relaxation_settings.minimize_settings)
+        );
 
         // write output
         if (!io::write_structure(config.relaxation_settings.output_file,

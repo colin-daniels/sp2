@@ -45,7 +45,7 @@ struct symm_settings_t : public io::json_serializable_t
         acgsd_set.iteration_limit = 100;
     }
 
-    bool serialize(Json::Value &output) const;
+    void serialize(Json::Value &output) const;
     bool deserialize(const Json::Value &input);
 };
 

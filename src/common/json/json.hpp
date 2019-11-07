@@ -14,7 +14,7 @@
 #include <iostream>
 #include <vector>
 
-#include <json/json.h>
+#include "deps/json.hpp"
 
 namespace sp2 {
 namespace io {
@@ -212,7 +212,7 @@ void get_type_as_json(const T (&arr)[N][M], Json::Value &obj)
 
 ////////////////////
 // serialization
-inline void serialize_basic(Json::Value&) {}
+constexpr void serialize_basic(Json::Value&) {}
 
 template<typename T, typename ...Args>
 void serialize_basic(Json::Value &output,
@@ -225,10 +225,10 @@ void serialize_basic(Json::Value &output,
 
 ////////////////////
 // deserialization
-inline bool deserialize_basic(const Json::Value&) {return true;}
+[[nodiscard]] constexpr bool deserialize_basic(...) { return true; } //
 
 template<typename T, typename ...Args>
-bool deserialize_basic(const Json::Value &input,
+[[nodiscard]] bool deserialize_basic(const Json::Value &input,
     const std::string &key, T&& value, Args &&...args_left)
 {
     if (input.isMember(key)) {

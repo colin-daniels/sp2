@@ -44,7 +44,7 @@ int graph::get_bandwidth(const ud_graph_t &graph)
 {
     int max_dist = 0;
     for (auto edge : graph.edges())
-        max_dist = max(max_dist, static_cast<int>(abs(edge.a - edge.b)));
+        max_dist = max(max_dist, static_cast<int>(std::abs(edge.a - edge.b)));
     return max_dist;
 }
 

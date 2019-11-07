@@ -1,12 +1,8 @@
-//
-// Created by cc on 1/28/17.
-//
-
 #ifndef SP2_CL_TIMER_T_HPP
 #define SP2_CL_TIMER_T_HPP
 
-#include <time.h>
 #include <functional>
+#include <chrono>
 
 namespace sp2 {
 
@@ -15,41 +11,43 @@ double benchmark(unsigned int iters, std::function<void(void)> func);
 /// a small timer class.
 class cl_timer_t
 {
-private:
-    timespec m_start, ///< start time
-        m_end;   ///< end time
 public:
-    cl_timer_t() : m_start(), m_end()
-    {
-        m_start.tv_nsec = 0;
-        m_end.tv_nsec = 0;
-    };
-
-/// start the timer and clear the last run
+    /// start the timer and clear the last run
     void start()
     {
-        clock_gettime(CLOCK_REALTIME, &m_start);
-        m_end.tv_sec = 0;
-    };
+        time_start = clock_type::now();
+        running = true;
+    }
 
-/// stop the timer and save the elapsed time
+    /// stop the timer and save the elapsed time (returned by duration)
     void stop()
-    { clock_gettime(CLOCK_REALTIME, &m_end); };
+    {
+        time_stop = clock_type::now();
+        running = false;
+    }
 
-/// get seconds since timer start or last duration if the timer is stopped
+    /// get seconds since timer start or last duration if the timer is stopped
     double duration()
     {
-        if (m_end.tv_sec == 0)
-        {
-            timespec temp;
-            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &temp);
-            return (temp.tv_sec - m_start.tv_sec) +
-                   1e-9 * (temp.tv_nsec - m_start.tv_nsec);
-        }
-        else
-            return (m_end.tv_sec - m_start.tv_sec) +
-                   1e-9 * (m_end.tv_nsec - m_start.tv_nsec);
-    };
+        const auto end = (running ? clock_type::now() : time_stop);
+        return std::chrono::duration_cast<std::chrono::duration<double>>(
+            end - time_start).count();
+    }
+
+    bool is_running() const { return running; }
+
+private:
+    using clock_type = std::conditional_t<
+        // use high resolution clock if it's steady
+        std::chrono::high_resolution_clock::is_steady,
+        std::chrono::high_resolution_clock,
+        // otherwise fall back to steady clock
+        std::chrono::steady_clock
+    >;
+
+    bool running = false;
+    std::chrono::time_point<clock_type> time_start,
+        time_stop;
 };
 
 } // namespace sp2

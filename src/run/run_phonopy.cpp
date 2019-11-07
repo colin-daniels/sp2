@@ -18,9 +18,10 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <phonopy/phonopy_io.hpp>
-#include <common/math/rotations.hpp>
-#include <common/util/random.hpp>
+#include "phonopy/phonopy_io.hpp"
+#include "common/math/rotations.hpp"
+#include "common/util/random.hpp"
+#include "common/python.hpp"
 
 using namespace std;
 using namespace sp2;
@@ -44,6 +45,7 @@ inline int run_phonopy_with_args(const phonopy::phonopy_settings_t pset,
     return system(command.c_str());
 }
 
+void add_hydrogen(structure_t &structure);
 void relax_structure(structure_t &structure, run_settings_t rset);
 int get_symmetric_cell(sp2::structure_t &structure, sp2::run_settings_t &rset);
 
@@ -136,7 +138,12 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
 
     // relax
     write_log(settings.log_filename, "Relaxing Structure");
-    relax_structure(structure, settings);
+
+    // construct system + minimize with default parameters
+    if (settings.add_hydrogen)
+        add_hydrogen(structure);
+    if (settings.phonopy_settings.do_minimization)
+        relax_structure(structure, settings);
 
     sort_structure_types(structure);
     io::write_structure("POSCAR", structure, false, file_type::POSCAR);
@@ -167,6 +174,17 @@ int sp2::run_phonopy(const run_settings_t &settings_in, MPI_Comm)
     {
         write_log(settings.log_filename, "Generating Force Sets");
         generate_force_sets(settings);
+    }
+
+    if (settings.phonopy_settings.compute_force_constants ==
+        phonopy::fc_compute_type::ALWAYS &&
+        io::file_exists("force_constants.hdf5"))
+    {
+        if (!io::remove_file("force_constants.hdf5"))
+        {
+            std::cerr << "Failed to remove force_constants.hdf5.\n";
+            return EXIT_FAILURE;
+        }
     }
 
     write_log(settings.log_filename, "Computing Force Constants");
@@ -226,6 +244,14 @@ sp2::structure_t shake_structure(sp2::structure_t structure, double mag = 0.05)
     return structure;
 }
 
+void add_hydrogen(structure_t &structure)
+{
+    airebo::system_control_t sys;
+    sys.init(structure);
+    sys.add_hydrogen();
+    structure = sys.get_structure();
+}
+
 // extremely simple orthogonal lattice relaxation
 template<class F>
 void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
@@ -278,17 +304,59 @@ void minimize_lattice_simple(sp2::structure_t &input, F &min_func,
     }
 }
 
-void relax_structure(structure_t &structure, run_settings_t rset)
+//--------------------
+
+#ifdef SP2_ENABLE_PHONOPY
+sp2::python::py_object_t make_extra_kw(
+    std::vector<size_t> sc_to_prim)
 {
-    // construct system + minimize with default parameters
-    if (rset.add_hydrogen)
+    using namespace sp2::python;
+
+    auto list = py_from(sc_to_prim);
+    auto &module = fake_modules::mutation_helper::fake_module.module;
+    auto klass = module.getattr("supercell_index_mapper");
+
+    auto py_sc_map = klass.call(py_tuple(list), {});
+
+    auto kw = py_import("builtins").getattr("dict").call();
+    kw.getattr("__setitem__").call({py_from("supercell"s), py_sc_map});
+
+    return kw;
+}
+#endif // SP2_ENABLE_PHONOPY
+
+// Perform structure-aware metropolis minimization, with extra data
+//  specific to run_phonopy.
+template<typename S>
+void perform_structural_metropolis(S &sys,
+    size_t primitive_size, size_t supercell_size,
+    minimize::structural_metropolis_settings_t met_set)
+{
+#ifndef SP2_ENABLE_PYTHON
+    throw runtime_error("Python bindings must be enabled for metropolis");
+#else
+
+    // primitive cell indices of supercell atoms,
+    // to be communicated to the python script
+    vector<size_t> indices;
+    while (indices.size() < supercell_size)
     {
-        airebo::system_control_t sys;
-        sys.init(structure);
-        sys.add_hydrogen();
-        structure = sys.get_structure();
+        for (size_t i = 0; i < primitive_size; i++)
+            indices.push_back(i);
     }
 
+    if (indices.size() != supercell_size)
+    { throw logic_error("_/o\\_"); }
+
+    auto extra_kw = make_extra_kw(indices);
+    minimize::metropolis::structural(sys, extra_kw, met_set);
+#endif // SP2_ENABLE_PYTHON
+}
+
+//--------------------
+
+void relax_structure(structure_t &structure, run_settings_t rset)
+{
     auto supercell = util::construct_supercell(structure,
         rset.phonopy_settings.supercell_dim[0],
         rset.phonopy_settings.supercell_dim[1],
@@ -305,13 +373,21 @@ void relax_structure(structure_t &structure, run_settings_t rset)
             io::write_structure("intermediate.xyz", cell_copy, true);
         };
 
-        input.positions = sp2::dtov3(
-            minimize::acgsd(
-                sys.get_diff_fn(),
-                sys.get_position(),
-                rset.phonopy_settings.min_set
-            )
-        );
+        {
+            auto diff_fn = sys.get_diff_fn();
+            auto position = minimize::acgsd(diff_fn, sys.get_position(),
+                    rset.phonopy_settings.min_set);
+
+            sys.set_position(position);
+        }
+        // at scope exit, 'sys' is the single source of truth.
+
+        if (rset.phonopy_settings.metro_set.enabled) {
+            perform_structural_metropolis(sys, structure.positions.size(),
+                supercell.positions.size(), rset.phonopy_settings.metro_set);
+        }
+
+        input.positions = sp2::dtov3(sys.get_position());
 
         return sys.get_value();
     };
@@ -359,6 +435,24 @@ int get_symmetric_cell(sp2::structure_t &structure, sp2::run_settings_t &rset)
     return EXIT_SUCCESS;
 }
 
+void clean_phonopy_poscar_disps()
+{
+    // Clean out POSCAR-### files, we don't use them.
+    // This explicitly iterates over the names expected to be generated by
+    // phonopy to avoid accidentally deleting something the user cares about.
+    // (POSCAR-001, POSCAR-002, ... POSCAR-999, POSCAR-1000, ...)
+    for (int i = 1;; i++)
+    {
+        std::ostringstream oss;
+        oss << "POSCAR-" << std::setw(3) << std::setfill('0') << i;
+        if (!io::remove_file(oss.str())) {
+            // either it doesn't exist (we deleted the last one),
+            // or something is preventing us from deleting them (no big deal)
+            break;
+        }
+    }
+}
+
 int generate_displacements(phonopy::phonopy_settings_t pset)
 {
     ofstream outfile("disp.conf");
@@ -371,7 +465,13 @@ int generate_displacements(phonopy::phonopy_settings_t pset)
 
     outfile.close();
 
-    return run_phonopy_with_args(pset, "disp.conf");
+    int code = run_phonopy_with_args(pset, "disp.conf");
+    if (code)
+        return code;
+
+    clean_phonopy_poscar_disps();
+
+    return 0;
 }
 
 /// read disp.yaml and calculate forces to output to FORCE_SETS
@@ -387,12 +487,52 @@ void generate_force_sets(run_settings_t rset)
     // store original position
     auto orig_pos = structure.positions;
 
-
     // pointers (and function) for switching potentials for gradient calc
     std::unique_ptr<lammps::system_control_t> sys_lammps;
     std::unique_ptr<airebo::system_control_t> sys_rebo;
     std::function<std::vector<vec3_t>(const std::vector<double>&)> get_forces;
 
+    auto force_fn = [&](auto &pos, auto &&sys) -> std::vector<vec3_t> {
+        sys.set_position(pos);
+        sys.update();
+
+        // get gradient, negate it for forces
+        auto temp = sys.get_gradient();
+        vscal(-1.0, temp);
+
+        return dtov3(temp);
+    };
+
+    switch (rset.potential)
+    {
+    case potential_type::LAMMPS:
+        sys_lammps = std::make_unique<lammps::system_control_t>(
+            structure, rset.lammps_settings);
+
+        get_forces = [&](auto& pos){return force_fn(pos, *sys_lammps);};
+        break;
+    case potential_type::REBO:
+        sys_rebo = std::make_unique<airebo::system_control_t>(
+            structure);
+
+        get_forces = [&](auto& pos){return force_fn(pos, *sys_rebo);};
+        break;
+    default:
+        return;
+    }
+
+    // optionally write file with force on undisplaced structure
+    if (!rset.phonopy_settings.write_force.empty())
+    {
+        std::ofstream out(rset.phonopy_settings.write_force);
+        auto force = v3tod(get_forces(v3tod(orig_pos)));
+        Json::Value value;
+        io::get_type_as_json(force, value);
+
+        out.precision(15);
+        out << value;
+        out << std::endl;
+    }
 
     // go through each displacement and calculate forces
     std::vector<std::vector<vec3_t>> forces;
@@ -401,38 +541,6 @@ void generate_force_sets(run_settings_t rset)
         // copy original positions, and displace the specified atom
         auto temp_pos = orig_pos;
         temp_pos[disp.first] += disp.second;
-
-        if (!get_forces)
-        {
-            auto force_fn = [&](auto &pos, auto &&sys) -> std::vector<vec3_t> {
-                sys.set_position(pos);
-                sys.update();
-
-                // get gradient, negate it for forces
-                auto temp = sys.get_gradient();
-                vscal(-1.0, temp);
-
-                return dtov3(temp);
-            };
-
-            switch (rset.potential)
-            {
-            case potential_type::LAMMPS:
-                sys_lammps = std::make_unique<lammps::system_control_t>(
-                    structure, rset.lammps_settings);
-
-                get_forces = [&](auto& pos){return force_fn(pos, *sys_lammps);};
-                break;
-            case potential_type::REBO:
-                sys_rebo = std::make_unique<airebo::system_control_t>(
-                    structure);
-
-                get_forces = [&](auto& pos){return force_fn(pos, *sys_rebo);};
-                break;
-            default:
-                return;
-            }
-        }
 
         forces.emplace_back(
             get_forces(v3tod(temp_pos))
@@ -753,7 +861,7 @@ int write_spectra(run_settings_t rset,
         {
             phonopy::draw_normal_mode(
                 "mode_" + get_id_suffix(mode_id) + ".gplot",
-                structure, modes[i]);
+                structure, modes[i].second);
         }
 
         // animation file

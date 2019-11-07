@@ -31,7 +31,7 @@ bool load_structure(const Json::Value &config, structure_t &structure)
     return true;
 }
 
-bool run_settings_t::serialize(Json::Value &output) const
+void run_settings_t::serialize(Json::Value &output) const
 {
     output["run_type"] = "";
     output["structure_file"] = "";
@@ -51,8 +51,6 @@ bool run_settings_t::serialize(Json::Value &output) const
 #endif // SP2_ENABLE_PHONOPY
         "relax", relaxation_settings
     );
-
-    return true;
 }
 
 bool run_settings_t::deserialize(const Json::Value &input)
@@ -80,7 +78,7 @@ bool run_settings_t::deserialize(const Json::Value &input)
     if (!load_structure(input, structure) && mode != run_type::SYMM)
         return false;
 
-    io::deserialize_basic(input,
+    return io::deserialize_basic(input,
         "add_hydrogen", add_hydrogen,
         "log_filename", log_filename,
         "n_threads", n_threads,
@@ -94,6 +92,4 @@ bool run_settings_t::deserialize(const Json::Value &input)
 #endif // SP2_ENABLE_PHONOPY
         "relax", relaxation_settings
     );
-
-    return true;
 }
