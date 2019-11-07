@@ -21,7 +21,7 @@ jobs:
     - name: Install Package Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libopenmpi-dev
+        sudo apt-get install -y libopenmpi-dev libboost-all-dev
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
