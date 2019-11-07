@@ -45,13 +45,13 @@ jobs:
       if: steps.cache-lammps.outputs.cache-hit != 'true'
       run: |
         cd build
-        make lammps_external
+        make -j2 lammps_external
 
     - name: Make
       run: |
         cd build
         # We want `--keep-going` just in case there are multiple errors
-        make --keep-going
+        make -j2 --keep-going
 
     - name: Test
       run: build/src/sp2 --test
