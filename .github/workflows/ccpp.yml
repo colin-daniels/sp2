@@ -52,3 +52,6 @@ jobs:
         cd build
         # We want `--keep-going` just in case there are multiple errors
         make --keep-going
+
+    - name: Test
+      run: build/src/sp2 --test
