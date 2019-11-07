@@ -1,0 +1,39 @@
+name: C/C++ CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - uses: actions/cache@v1
+      id: cache-lammps
+      with:
+        path: build/lammps-build
+        key: ${{ runner.os }}-lammps-${{ hashFiles(format('{0}{1}', github.workspace, '/deps/lammps/*')) }}
+        restore-keys: |
+          ${{ runner.os }}-lammps-
+
+    - name: Install Dependencies
+      run: sudo apt-get install libopenmpi-dev
+
+    - name: configure
+      run: |
+        mkdir -p build
+        cd build
+        cmake ../
+
+    - name: Build LAMMPS
+      if: steps.cache-lammps.outputs.cache-hit != 'true'
+      run: |
+        cd build
+        make lammps_external
+
+    - name: Make
+      run: |
+        cd build
+        make
