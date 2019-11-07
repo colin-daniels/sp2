@@ -164,7 +164,7 @@ bool from_python_concrete(const py_ref_t &py, std::string &c)
     //     Unicode object, and subsequent calls will return a pointer
     //     to the same buffer.
     //     The caller is not responsible for deallocating the buffer.
-    char *buf = PyUnicode_AsUTF8(py.raw());
+    const char *buf = PyUnicode_AsUTF8(py.raw());
     if (!buf && print_on_py_err())
     {
         return false;
