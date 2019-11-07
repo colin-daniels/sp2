@@ -14,7 +14,7 @@ jobs:
       id: cache-lammps
       with:
         path: build/lammps-build
-        key: ${{ runner.os }}-lammps-${{ hashFiles(deps/lammps/*) }}
+        key: ${{ runner.os }}-lammps-${{ hashFiles('**/deps/lammps/*') }}
         restore-keys: |
           ${{ runner.os }}-lammps-
 
