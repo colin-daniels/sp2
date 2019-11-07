@@ -76,7 +76,7 @@ environment::environment(const char *prog)
 
     if (prog)
     {
-        py_allocated_program = Py_DecodeLocale(prog, NULL);
+        py_allocated_program = Py_DecodeLocale(prog, nullptr);
         if (py_allocated_program)
         {
             Py_SetProgramName(py_allocated_program);
