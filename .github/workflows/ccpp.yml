@@ -35,11 +35,11 @@ jobs:
         pip install -r <(grep numpy requirements.txt)
         pip install -r requirements.txt
 
-    - name: configure
+    - name: Configure (CMAKE)
       run: |
         mkdir -p build
         cd build
-        cmake ../
+        cmake -DCMAKE_BUILD_TYPE=Debug -DSP2_ENABLE_TESTS=ON ../
 
     - name: Build LAMMPS
       if: steps.cache-lammps.outputs.cache-hit != 'true'
@@ -50,4 +50,5 @@ jobs:
     - name: Make
       run: |
         cd build
-        make
+        # We want `--keep-going` just in case there are multiple errors
+        make --keep-going
