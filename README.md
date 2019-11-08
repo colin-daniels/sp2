@@ -1,16 +1,16 @@
-## sp<sup>2</sup>
+# sp<sup>2</sup>
 ![](https://github.com/colin-daniels/sp2/workflows/C%2FC%2B%2B%20CI/badge.svg)
 
 Computational physics research application dealing mainly with carbon-based structures 
-(e.g. graphene, carbon nanotubes). A web interface to some of the Raman functionality is available [here](https://icmp.phys.rpi.edu/sp2).
+(e.g. graphene, carbon nanotubes) developed at the ICMP research group by Colin Daniels and Michael Lamparski. A web interface to some of the Raman functionality is available [here](https://icmp.phys.rpi.edu/sp2).
 
-> **Disclaimer**: sp<sup>2</sup> is very much research code, and has hardly followed best practices in terms of development. As such, some features may not work and it is unfortunately very possible that the exact code used for a particular publication may not even be present in the git commit history.
+> **Disclaimer**: sp<sup>2</sup> is very much research code, and has hardly followed best practices in terms of development. As such, some features may not work and it is unfortunately very possible that the exact code used for a particular publication may not even be present in the git commit history. The code itself is reproduced here for reference, and in particular the Raman functionality has been superceded by [rsp2](https://github.com/ExpHP/rsp2). 
 
-### Installation
+## Installation
 There are only a few dependencies, the primary ones being `MPI`, `boost`, `python 3`, and `phonopy`.
-Look at the GitHub workflow file if totally lost, since it does build fine in that environment.
+Look at the [GitHub workflow file](.github/workflows/ccpp.yml) if totally lost, since it does build fine in that environment.
 
-### Related Publications
+## Related Publications
 Below is a list of publications in which this software was utilized at least in part.
 
 - J. Overbeck, G. B. Barin, C. Daniels, M. L. Perrin, O. Braun, Q. Sun, R. Darawish, M. De Luca, X.-Y. Wang, T. Dumslaff, A. Narita, K. Müllen, P. Ruffieux, V. Meunier, R. Fasel, and M. Calame, _A Universal Length-Dependent Vibrational Mode in Graphene Nanoribbons_, ACS Nano [10.1021/acsnano.9b05817](https://doi.org/10.1021/acsnano.9b05817) (2019).
@@ -21,7 +21,7 @@ Below is a list of publications in which this software was utilized at least in 
 - C. Daniels, A. Horning, A. Phillips, D. V. P. Massote, L. Liang, Z. Bullard, B. G. Sumpter, and V. Meunier, _Elastic, Plastic, and Fracture Mechanisms in Graphene Materials_, J. Phys.: Condens. Matter **27**, 373002 [10.1088/0953-8984/27/37/373002](https://doi.org/10.1088/0953-8984/27/37/373002) (2015).
 - C. Daniels, Z. Bullard, E. C. Girão, and V. Meunier, _Emergent Magnetism in Irradiated Graphene Nanostructures_, Carbon **78**, 196 [10.1016/j.carbon.2014.06.072](https://doi.org/10.1016/j.carbon.2014.06.072) (2014).
 
-### References
+## References
 sp<sup>2</sup> would not be possible without building upon the following works:
 
 - A. N. Kolmogorov and V. H. Crespi, _Registry-Dependent Interlayer Potential for Graphitic Systems_, Phys. Rev. B **71**, 235415 [10.1103/PhysRevB.71.235415](https://doi.org/10.1103/PhysRevB.71.235415) (2005).
