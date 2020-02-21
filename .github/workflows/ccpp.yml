@@ -45,6 +45,7 @@ jobs:
       if: steps.cache-lammps.outputs.cache-hit != 'true'
       run: |
         cd build
+        grep lammps Makefile
         make -j2 lammps_external
 
     - name: Make
