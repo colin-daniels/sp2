@@ -10,14 +10,6 @@ jobs:
     steps:
     - uses: actions/checkout@v1
 
-    - uses: actions/cache@v1
-      id: cache-lammps
-      with:
-        path: build/lammps-build
-        key: ${{ runner.os }}-lammps-${{ hashFiles('**/deps/lammps/*') }}
-        restore-keys: |
-          ${{ runner.os }}-lammps-
-
     - name: Install Package Dependencies
       run: |
         sudo apt-get update
@@ -42,10 +34,8 @@ jobs:
         cmake -DCMAKE_BUILD_TYPE=Debug -DSP2_ENABLE_TESTS=ON ../
 
     - name: Build LAMMPS
-      if: steps.cache-lammps.outputs.cache-hit != 'true'
       run: |
         cd build
-        grep lammps Makefile
         make -j2 lammps_external
 
     - name: Make
